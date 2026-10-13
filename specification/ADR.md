@@ -7,8 +7,8 @@ Legenda statusów: **✅ Zaakceptowane**, `Otwarte`, `Proponowane`, `Odrzucone`,
 
 ---
 
-> [!success]- ✅ ADR-001: Docelowa platforma — tylko PC, C# (.NET), bez webu
-> **Status:** ✅ Zaakceptowane · **Data:** 2026-10-11
+> [!failure]- ADR-001: Docelowa platforma — tylko PC, C# (.NET), bez webu
+> **Status:** `Zastąpione` (przez ADR-003) · **Data:** 2026-10-11
 >
 > #### Kontekst
 > Rozważaliśmy wydanie gry na **PC (Windows/Linux) oraz w przeglądarce (Web)**.
@@ -69,14 +69,38 @@ Legenda statusów: **✅ Zaakceptowane**, `Otwarte`, `Proponowane`, `Odrzucone`,
 > - [ ] Styl: pixel art (A) czy wektor/2D HD (B)?
 > - [ ] Bazowa rozdzielczość / grid kafelków (jeśli pixel art).
 
+> [!success]- ✅ ADR-003: Powrót do GDScript i wsparcie web
+> **Status:** ✅ Zaakceptowane · **Data:** 2026-10-13
+>
+> #### Kontekst
+> Chcemy, aby gra działała również **w przeglądarce (web)**. Eksport web w Godot 4
+> wymaga WebAssembly i WebGL 2.0 (renderer `gl_compatibility`). Projektów w C#
+> (.NET) nie można eksportować na web, więc dotychczasowa decyzja (ADR-001)
+> blokowała ten cel.
+>
+> #### Decyzja
+> Przepisujemy logikę gry z **C# na GDScript** i usuwamy zależność od .NET.
+> Platformy docelowe: **PC (Windows/Linux) oraz web**.
+>
+> #### Konsekwencje
+> - Wsparcie web staje się możliwe (WASM + WebGL 2.0).
+> - Usunięte: `my_very_advance_wars.csproj`, `my_very_advance_wars.sln`,
+>   `scripts/Main.cs` oraz sekcja `[dotnet]` w `project.godot`.
+> - Renderer pozostaje `gl_compatibility` (wymagany dla web; wystarcza dla 2D).
+> - Tracimy statyczne typowanie i ekosystem .NET na rzecz GDScript.
+>
+> #### Odrzucone opcje
+> - **Pozostanie przy C#** — wyklucza web (patrz ADR-001).
+> - **Dwa równoległe backendy (C# + GDScript)** — podwójne utrzymanie logiki gry.
+
 > [!abstract]- Backlog / planowane ADR
 > Kolejne decyzje do podjęcia (kolejność orientacyjna). Numer nadajemy w momencie
 > rozstrzygnięcia.
 >
 > | #       | Temat                        | Czego dotyczy                                                                      |
 > | ------- | ---------------------------- | ---------------------------------------------------------------------------------- |
-> | ADR-003 | Struktura katalogów projektu | `scenes/`, `scripts/`, `assets/`, `resources/` — układ type-based vs feature-based |
-> | ADR-004 | Organizacja scen i skryptów  | konwencja wiązania sceny ze skryptem C#, sceny jako prefaby/reużywalne komponenty  |
-> | ADR-005 | Autoloady / singletony       | `GameState`, `EventBus`, `Config`, zarządzanie scenami                             |
-> | ADR-006 | UI i rozdzielczość           | `Control` vs `Node2D`, Theme, skalowanie przy różnych rozdzielczościach            |
-> | ADR-007 | Konwencje kodu i nazewnictwa | nazwy plików/klas, namespace, styl C#                                              |
+> | ADR-004 | Struktura katalogów projektu | `scenes/`, `scripts/`, `assets/`, `resources/` — układ type-based vs feature-based |
+> | ADR-005 | Organizacja scen i skryptów  | konwencja wiązania sceny ze skryptem GDScript, sceny jako prefaby/reużywalne komponenty |
+> | ADR-006 | Autoloady / singletony       | `GameState`, `EventBus`, `Config`, zarządzanie scenami                             |
+> | ADR-007 | UI i rozdzielczość           | `Control` vs `Node2D`, Theme, skalowanie przy różnych rozdzielczościach            |
+> | ADR-008 | Konwencje kodu i nazewnictwa | nazwy plików/klas, styl GDScript                                                   |
