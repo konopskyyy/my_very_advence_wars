@@ -7,35 +7,51 @@ Legenda statusów: **✅ Zaakceptowane**, `Otwarte`, `Proponowane`, `Odrzucone`,
 
 ---
 
-> [!success]- ✅ ADR-001: Docelowa platforma — tylko PC, C# (.NET), bez webu
-> **Status:** ✅ Zaakceptowane · **Data:** 2026-10-11
+> [!success]- ✅ ADR-001: Stack technologiczny — TypeScript + Phaser + Electron (web + PC)
+> **Status:** ✅ Zaakceptowane · **Data:** 2026-10-19
 >
 > #### Kontekst
-> Rozważaliśmy wydanie gry na **PC (Windows/Linux) oraz w przeglądarce (Web)**.
+> Pierwotnie zakładaliśmy **Godot 4.7 + C# (.NET)** wyłącznie na PC (wcześniejsza
+> wersja tego ADR). Priorytety się zmieniły: chcemy **łatwo udostępniać grę w sieci**
+> oraz **budować na PC z tego samego kodu**, a przede wszystkim pracować **code-first**
+> — z agentem AI generującym kod, przy minimum klikania w GUI edytora.
 >
-> Silnik: Godot 4.7. Eksport web wymaga WebAssembly i WebGL 2.0, czyli renderera
-> **Compatibility** (`gl_compatibility`) — ten jest już ustawiony w `project.godot`.
->
-> Kluczowe ograniczenie: **projektów pisanych w C# (.NET) nie można obecnie eksportować
-> na web w Godot 4** (potwierdzone w oficjalnej dokumentacji „Exporting for the Web”).
-> Obecny projekt ma włączony `.NET` (`[dotnet] assembly_name`), czyli jest w konflikcie
-> z celem „web”.
+> Dwie cechy Godota stoją w sprzeczności z tym celem:
+> - **C# nie eksportuje się na web** w Godocie 4 — web wypada przy zachowaniu .NET.
+> - Godot jest **GUI-centryczny** (sceny, tilemapy, animacje, UI robi się w edytorze),
+>   co słabo pasuje do pracy, w której kod generuje agent.
 >
 > #### Decyzja
-> Zostajemy przy **C# (.NET)**. Platforma docelowa: **wyłącznie PC (Windows/Linux)**.
-> **Rezygnujemy z eksportu na web.**
+> Klient gry: **TypeScript + Phaser + Vite**.
+> Dystrybucja: **web (deploy)** oraz **PC przez Electron** — z **jednego bundle'a**.
+>
+> Zasady architektoniczne:
+> - Cała logika gry w module `core/` **bez zależności od Phasera** (czysty TS) —
+>   dla testowalności (Vitest) i możliwego przyszłego portu na inny silnik.
+> - Mapy jako **JSON** (schemat walidowany Zodem), edytor map **wbudowany w klienta**.
+> - Gra działa **offline (local-first)**; sejwy lokalnie (web: IndexedDB, Electron: plik).
+> - Backend (konta, osiągnięcia, sejwy w chmurze) — **odłożony**; docelowo **Symfony**.
 >
 > #### Konsekwencje
-> - Web wypada jako cel — nie ograniczamy się do tego, co potrafi web.
-> - Renderer: obecnie `gl_compatibility`; to wystarcza dla 2D. Ewentualne przejście na
->   `Forward+` nie jest wymagane i może poczekać.
-> - Odwrócenie decyzji (jeśli web kiedyś stanie się wymagany) oznacza przepisanie
->   logiki na GDScript.
+> - Porzucamy Godota, C# i .NET; obecny projekt (`project.godot`, `.csproj`, `scenes/`,
+>   `scripts/`) zostaje usunięty z repo.
+> - Electron **nie jest silnikiem** — sceny, tilemapy, animacje i UI bierzemy z Phasera
+>   lub piszemy sami. Build Electron waży ok. 150–250 MB.
+> - Dzięki czystemu `core/` ewentualny **port na Godota w przyszłości** oznacza
+>   przepisanie tylko warstwy widoku, nie całej logiki.
+> - Dwa artefakty z jednego kodu: build web i build Electron.
 >
 > #### Odrzucone opcje
-> - **GDScript + web** — pełne wsparcie PC + Web, ale kosztem rezygnacji z C#;
->   odrzucone, bo priorytetem jest .NET.
-> - **C# + web „obejściem”** — duża złożoność i ryzyko, niepolecane.
+> - **Godot + C#** — brak eksportu na web przy .NET; GUI-centryczny, słaby fit do
+>   pracy code-first z agentem.
+> - **Godot + GDScript** — pełne wsparcie web + PC, ale GUI-centryczny i rezygnacja
+>   z ekosystemu JS/Vite; odrzucone na rzecz pracy code-first.
+> - **PHP uruchamiane lokalnie w Electronie** — niepotrzebna złożoność (bundlowanie
+>   runtime PHP, lokalny serwer HTTP); backend zostaje po stronie serwera.
+>
+> #### Uwaga
+> Ten ADR **odwraca** wcześniejszą decyzję o PC-only + C#. Ponieważ **kod nie został
+> jeszcze napisany**, decyzję zmieniamy w miejscu, bez zachowywania historii.
 
 > [!warning]- ADR-002: Styl grafiki — pixel art vs wektor
 > **Status:** `Otwarte` (wymaga rozstrzygnięcia) · **Data:** 2026-10-11
@@ -50,13 +66,13 @@ Legenda statusów: **✅ Zaakceptowane**, `Otwarte`, `Proponowane`, `Odrzucone`,
 >
 > **A. Pixel art (retro, jak Advance Wars)**
 > - Plusy: naturalnie pasuje do gatunku; dużo referencji; łatwa animacja klatka po
->   klatce; świetne wsparcie w Godocie (`texture_filter = nearest`, pixel snap).
+>   klatce; świetne wsparcie w Phaserze (`pixelArt: true`, filtr `nearest`).
 > - Minusy: trzeba zamrozić rozdzielczość bazową (np. 480×270) i skalować całkowicie;
 >   każdy wariant frakcji i animacja to ręczna praca.
 >
 > **B. Wektor / 2D HD**
 > - Plusy: ostrość w każdej rozdzielczości; łatwe recolory frakcji; skalowanie;
->   animacje przez Tween / `Skeleton2D`; mniej powtarzalnej pracy.
+>   animacje przez Tween / `AnimatedSprite`; mniej powtarzalnej pracy.
 > - Minusy: ryzyko sterylnego „flashowego” looku; animacja szkieletowa wymaga riggow;
 >   SVG i tak importuje się jako raster.
 >
@@ -69,14 +85,3 @@ Legenda statusów: **✅ Zaakceptowane**, `Otwarte`, `Proponowane`, `Odrzucone`,
 > - [ ] Styl: pixel art (A) czy wektor/2D HD (B)?
 > - [ ] Bazowa rozdzielczość / grid kafelków (jeśli pixel art).
 
-> [!abstract]- Backlog / planowane ADR
-> Kolejne decyzje do podjęcia (kolejność orientacyjna). Numer nadajemy w momencie
-> rozstrzygnięcia.
->
-> | #       | Temat                        | Czego dotyczy                                                                      |
-> | ------- | ---------------------------- | ---------------------------------------------------------------------------------- |
-> | ADR-003 | Struktura katalogów projektu | `scenes/`, `scripts/`, `assets/`, `resources/` — układ type-based vs feature-based |
-> | ADR-004 | Organizacja scen i skryptów  | konwencja wiązania sceny ze skryptem C#, sceny jako prefaby/reużywalne komponenty  |
-> | ADR-005 | Autoloady / singletony       | `GameState`, `EventBus`, `Config`, zarządzanie scenami                             |
-> | ADR-006 | UI i rozdzielczość           | `Control` vs `Node2D`, Theme, skalowanie przy różnych rozdzielczościach            |
-> | ADR-007 | Konwencje kodu i nazewnictwa | nazwy plików/klas, namespace, styl C#                                              |

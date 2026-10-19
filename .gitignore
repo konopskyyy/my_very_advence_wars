@@ -1,8 +1,19 @@
-# Godot 4+ specific ignores
-.godot/
-/android/
+# Node / JS
+node_modules/
+.vite/
+dist/
+dist-electron/
 
-# .NET / C# build output
-bin/
-obj/
-*.user
+# Electron build output
+release/
+*.asar
+
+# Logi i środowisko
+*.log
+.env
+.env.local
+*.local
+
+# Systemy
+.DS_Store
+Thumbs.db
