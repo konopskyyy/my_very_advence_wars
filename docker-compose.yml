@@ -1,0 +1,85 @@
+# Porty niestandardowe, konfigurowalne przez .env (patrz .env.example).
+#
+# Zmieniasz cokolwiek tutaj? Zaktualizuj specification/Infrastruktura.md
+# w tym samym commicie.
+
+name: my-very-advance-wars
+
+services:
+  client:
+    image: node:22-alpine
+    working_dir: /app
+    volumes:
+      - ./client:/app
+      - client_node_modules:/app/node_modules
+    command: sh -c "npm install && npm run dev"
+    ports:
+      - "${CLIENT_PORT:-18573}:5173"
+    restart: unless-stopped
+
+  server:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    volumes:
+      - ./server:/var/www/html
+      - server_vendor:/var/www/html/vendor
+    environment:
+      APP_ENV: dev
+      DATABASE_URL: mysql://${MYSQL_USER:-app}:${MYSQL_PASSWORD:-app}@db:3306/${MYSQL_DATABASE:-my_very_advance_wars}?serverVersion=8.4
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:1.27-alpine
+    volumes:
+      - ./server:/var/www/html
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "${BACKEND_PORT:-18080}:80"
+    depends_on:
+      - server
+    restart: unless-stopped
+
+  db:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-my_very_advance_wars}
+      MYSQL_USER: ${MYSQL_USER:-app}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-app}
+    volumes:
+      - db_data:/var/lib/mysql
+    ports:
+      - "127.0.0.1:${DB_PORT:-13306}:3306"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'mysqladmin ping -h 127.0.0.1 -uroot -p"$${MYSQL_ROOT_PASSWORD}" --silent',
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 25s
+    restart: unless-stopped
+
+  # Opcjonalny panel do bazy: docker compose --profile tools up -d adminer
+  adminer:
+    image: adminer:4
+    profiles: ["tools"]
+    ports:
+      - "${ADMINER_PORT:-18081}:8080"
+    depends_on:
+      - db
+
+volumes:
+  db_data:
+  client_node_modules:
+  server_vendor:
+
+# Electron nie ma tu serwisu i mieć nie powinien: okno wymaga displaya, a build
+# pod każdy system — jego własnych narzędzi. Opakowuje gotowy client/dist,
+# więc buduje się na hoście: make electron-build.

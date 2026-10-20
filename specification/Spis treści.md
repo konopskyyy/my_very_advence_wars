@@ -1,2 +1,5 @@
 1. [[ADR]]
 2. [[Wymagania]]
+3. [[Interfejs]]
+4. [[Zadania]]
+5. [[Infrastruktura]]

@@ -8,6 +8,10 @@ dist-electron/
 release/
 *.asar
 
+# PHP / Symfony
+vendor/
+var/
+
 # Logi i środowisko
 *.log
 .env
