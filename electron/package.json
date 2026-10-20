@@ -1,0 +1,26 @@
+{
+  "name": "@my-very-advance-wars/electron",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Opakowanie desktopowe dla My Very Advance Wars (placeholder).",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --dir"
+  },
+  "devDependencies": {
+    "electron": "^44.9.1",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "com.myveryadvancewars.app",
+    "productName": "My Very Advance Wars",
+    "files": [
+      "main.cjs",
+      "preload.cjs"
+    ],
+    "directories": {
+      "output": "release"
+    }
+  }
+}
