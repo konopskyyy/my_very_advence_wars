@@ -6,9 +6,12 @@
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
+    "start:dist": "cross-env VITE_DEV_SERVER_URL= electron .",
+    "dist": "npm --prefix ../client run build && npm run start:dist",
     "build": "electron-builder --dir"
   },
   "devDependencies": {
+    "cross-env": "^7.0.3",
     "electron": "^44.9.1",
     "electron-builder": "^26.15.3"
   },

@@ -1,0 +1,34 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc", "vitest", "import"],
+  "env": {
+    "browser": true,
+    "es2022": true
+  },
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error",
+    "perf": "error"
+  },
+  "rules": {
+    "no-console": "error",
+    "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
+    "typescript/no-explicit-any": "error",
+    "typescript/no-non-null-assertion": "error",
+    "typescript/no-unnecessary-condition": "error",
+    "typescript/consistent-type-imports": "error",
+    "unicorn/prefer-set-has": "error",
+    "import/no-cycle": "error",
+    "import/no-named-as-default-member": "off",
+    "eslint/no-new": "off"
+  },
+  "ignorePatterns": ["dist", "node_modules", "scripts"],
+  "overrides": [
+    {
+      "files": ["**/*.test.ts"],
+      "rules": {
+        "no-console": "off"
+      }
+    }
+  ]
+}

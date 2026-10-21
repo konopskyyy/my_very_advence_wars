@@ -4,21 +4,17 @@
     "type": "split",
     "children": [
       {
-        "id": "c974df74f4d56d5b",
+        "id": "6f62aabfc427290c",
         "type": "tabs",
         "children": [
           {
-            "id": "a9e648ac2726e17f",
+            "id": "8a66ab7e7bed5b69",
             "type": "leaf",
             "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Interfejs.md",
-                "mode": "source",
-                "source": false
-              },
+              "type": "empty",
+              "state": {},
               "icon": "lucide-file",
-              "title": "Interfejs"
+              "title": "New tab"
             }
           }
         ]
@@ -188,14 +184,16 @@
       "bases:Create new base": false
     }
   },
-  "active": "a9e648ac2726e17f",
+  "active": "8a66ab7e7bed5b69",
   "lastOpenFiles": [
-    "Spis treści.md",
-    "Wymagania.md",
-    "Zadania.md",
+    "MapaHeksagonalna.md",
     "Infrastruktura.md",
-    "ADR.md",
+    "Commity.md",
+    "Zadania.md",
+    "Wymagania.md",
+    "Spis treści.md",
     "Interfejs.md",
+    "ADR.md",
     "INTERF-001 Interfejs menu.md",
     "INTERF-002 Pierwsze pole bitwy.md",
     "WYM-003 Zapis stanu gry.md",

@@ -26,6 +26,9 @@ Legenda: `[ ]` do zrobienia · `[x]` zrobione
 
 ## Gra
 
-| Kod  | Nazwa | Opis | Ukończone | Szczegóły |
-| ---- | ----- | ---- | :-------: | --------- |
-| GRA- |       |      |           |           |
+| Kod     | Nazwa                  | Opis                                                                                                                                                                              | Ukończone | Szczegóły          |
+| ------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------: | ------------------ |
+| GRA-001 | Ekran główny gry (menu) | Pierwsza scena Phasera: menu z przyciskami „Gra", „Ustawienia" i zamykaniem gry. `Gra` prowadzi do sceny z polem bitwy na siatce heksów (tereny: równina, las, woda, góry, miasto; czołg do testów, ruch o jedno pole). `Ustawienia` otwiera scenę/panel ustawień. Krzyżyk w prawym górnym rogu zamyka grę (w webie brak okna — ukryty lub nieaktywny). |    [x]    | [[Interfejs#INTERF-001\|INTERF-001]] · [[ADR#ADR-003\|ADR-003]] |
+| GRA-002 | Czołg nie wychodzi poza planszę + analiza statyczna | Mapa zna granice planszy (`terrainAt` zwraca `undefined` poza planszą), `canMoveTo` odrzuca cel `out-of-bounds`, testy brzegów i losowego spaceru. Klient ma analizę statyczną: `oxlint` (reguły typowe) + `tsc --noEmit`, obie w `make lint` i w buildzie. |    [x]    | [[MapaHeksagonalna#Granice planszy a ruch]] · [[Infrastruktura#Analiza statyczna klienta]] |
+
+Praca nad ekranem głównym odbywa się na gałęzi `feat/main-menu-scene`.
