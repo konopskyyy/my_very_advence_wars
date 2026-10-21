@@ -13,7 +13,8 @@ ADMINER_PORT ?= 18081
 
 .PHONY: help up up-tools down stop restart ps logs logs-server logs-client \
         shell console composer cache-clear db-shell build rebuild client-install \
-        install electron electron-build clean clean-all test lint env
+        install setup deps check electron electron-build run clean clean-all test lint \
+        typecheck env
 
 ## ——— Pomoc ————————————————————————————————————————————————
 
@@ -74,6 +75,47 @@ cache-clear: ## Wyczyść cache Symfony
 db-shell: ## MySQL CLI w kontenerze bazy
 	$(COMPOSE) exec db sh -c 'mysql -u"$${MYSQL_USER}" -p"$${MYSQL_PASSWORD}" "$${MYSQL_DATABASE}"'
 
+## ——— Instalacja / setup dev ————————————————————————————————
+
+check: ## Sprawdź wymagane narzędzia (docker, docker compose, node, npm)
+	@command -v docker >/dev/null 2>&1 || { echo "Brak 'docker'."; exit 1; }
+	@docker compose version >/dev/null 2>&1 || { echo "Brak 'docker compose' (v2)."; exit 1; }
+	@command -v node >/dev/null 2>&1 || { echo "Brak 'node'."; exit 1; }
+	@command -v npm >/dev/null 2>&1 || { echo "Brak 'npm'."; exit 1; }
+	@echo "OK: docker, docker compose, node, npm"
+
+install: setup ## Alias: pełna instalacja dev
+
+deps: ## Zainstaluj zależności na hoście (client + electron)
+	@echo "==> Instaluję zależności klienta..."
+	cd client && npm install
+	@echo "==> Instaluję zależności Electrona..."
+	cd electron && npm install
+
+setup: check ## Pełne przygotowanie dev: .env + build + start + composer + deps
+	@test -f .env || (cp .env.example .env && echo "Utworzono .env z .env.example")
+	@echo "==> Buduję obrazy..."
+	$(COMPOSE) build
+	@echo "==> Uruchamiam kontenery..."
+	$(COMPOSE) up -d
+	@echo "==> Czekam na gotowość bazy..."
+	@for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do \
+		if $(COMPOSE) exec -T db sh -c 'mysqladmin ping -h 127.0.0.1 -u"$${MYSQL_USER:-app}" -p"$${MYSQL_PASSWORD:-app}" --silent' >/dev/null 2>&1 || $(COMPOSE) exec -T db sh -c 'mysqladmin ping -h 127.0.0.1 -uroot -p"$${MYSQL_ROOT_PASSWORD:-root}" --silent' >/dev/null 2>&1; then break; fi; \
+		sleep 2; \
+	done
+	@echo "==> Instaluję zależności PHP (composer) w woluminie server_vendor..."
+	$(COMPOSE) exec server composer install --no-interaction --prefer-dist
+	@echo "==> Przygotowuję plik .env dla Symfony..."
+	$(COMPOSE) exec server sh -c 'test -f .env || cp .env.dev .env'
+	@echo "==> Czyszczę cache Symfony..."
+	$(COMPOSE) exec server php bin/console cache:clear >/dev/null 2>&1 || true
+	@$(MAKE) deps
+	@echo
+	@echo "Gotowe:"
+	@echo "  Klient (Vite): http://localhost:$(CLIENT_PORT)"
+	@echo "  Backend (nginx): http://localhost:$(BACKEND_PORT)"
+	@echo "  Adminer (opcjonalny): make up-tools -> http://localhost:$(ADMINER_PORT)"
+
 ## ——— Build ——————————————————————————————————————————————
 
 build: ## Przebuduj obrazy (po zmianie Dockerfile)
@@ -82,17 +124,16 @@ build: ## Przebuduj obrazy (po zmianie Dockerfile)
 rebuild: ## Przebuduj bez cache i podnieś od nowa
 	$(COMPOSE) build --no-cache && $(COMPOSE) up -d
 
-client-install: ## Zainstaluj zależności klienta na hoście (opcjonalne)
-	cd client && npm install
-
-install: ## Skopiuj .env.example -> .env (jeśli brak) i postaw środowisko
-	@test -f .env || cp .env.example .env
-	@echo "Plik .env gotowy. Uruchom 'make up'."
+client-install: deps ## Alias: zależności klienta + electron na hoście
 
 ## ——— Electron (na hoście, poza compose) ———————————————————
 
 electron: ## Uruchom Electrona (dev: ładuje Vite z kontenera)
 	$(ELECTRON) start --prefix electron
+
+run: ## Zbuduj klienta i uruchom Electrona na dist (bez Dockera)
+	cd client && npm run build
+	$(ELECTRON) run start:dist --prefix electron
 
 electron-build: ## Zbuduj klienta i paczkę Electrona
 	cd client && npm run build
@@ -103,8 +144,11 @@ electron-build: ## Zbuduj klienta i paczkę Electrona
 test: ## Testy klienta (Vitest)
 	cd client && npm test
 
-lint: ## Sprawdź typy klienta
-	cd client && npx tsc --noEmit
+lint: ## Analiza statyczna klienta (oxlint + typy TypeScript)
+	cd client && npm run check
+
+typecheck: ## Sprawdź typy klienta (TypeScript)
+	cd client && npm run typecheck
 
 clean: ## Zatrzymaj kontenery i usuń woluminy (⚠️ kasuje dane bazy)
 	$(COMPOSE) down -v

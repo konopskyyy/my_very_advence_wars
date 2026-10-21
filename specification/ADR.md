@@ -85,3 +85,49 @@ Legenda statusów: **✅ Zaakceptowane**, `Otwarte`, `Proponowane`, `Odrzucone`,
 > - [ ] Styl: pixel art (A) czy wektor/2D HD (B)?
 > - [ ] Bazowa rozdzielczość / grid kafelków (jeśli pixel art).
 
+> [!success]- ✅ ADR-003: Siatka heksów — współrzędne doubled-width (q parzyste/nieparzyste)
+> **Status:** `Zaakceptowane` · **Data:** 2026-10-20
+>
+> #### Kontekst
+> Pole bitwy to siatka heksów w rzucie „pointy-top” (heksy płaskie u góry, kolumny
+> pionowe). Potrzebujemy modelu współrzędnych, który: (1) daje jednoznaczne klucze do
+> kafelków i ruchu jednostek, (2) pozwala liczyć sąsiadów i odległość bez błędów
+> zaokrągleń, (3) czyta się naturalnie „od lewej” przy numeracji kolumn, tak by dało
+> się powiedzieć, że heks o nieparzystym `q` leży między heksami z wiersza wyżej.
+>
+> #### Rozważane opcje
+> **A. Axial (q, r) punktowe**
+> - Plusy: kanoniczny model, proste `hexNeighbors` i `hexDistance` (kostka + odrzucenie
+>   największej różnicy).
+> - Minusy: numeracja nie mapuje się wprost na kolumny ekranu, więc wyświetlanie i
+>   „liczenie od lewej” wymaga dodatkowej konwersji offset→axial.
+>
+> **B. Offset (kolumna, wiersz)**
+> - Plusy: numeracja 1:1 z ekranem, trywialne do wypisania w UI.
+> - Minusy: `q` i `r` **nie są** współrzędnymi heksowymi — sąsiedzi i odległość wymagają
+>   osobnych funkcji z rozgałęzieniami na parzystość wiersza; łatwo o „duchy” heksów.
+>
+> **C. Doubled-width (2×kolumna, wiersz)** — wybrane
+> - `q = 2 · kolumna + (r & 1)`, `r = wiersz`. Parzyste wiersze mają `q = 0, 2, 4…`,
+>   nieparzyste `q = 1, 3, 5…`, więc **parzystość `q` mówi wprost, w którym wierszu
+>   leży heks** (`q=3` leży między `q=2` i `q=4` z wiersza wyżej).
+> - Plusy: jeden spójny model — sąsiedzi to stałe kierunki (`±2` w wierszu, `±1` po
+>   skosie), `hexDistance` to zamknięty wzór `dr + max(0, (dq − dr)/2)`, a numeracja
+>   czyta się od lewej. Kolumny stoją w pionowych „szynach”.
+> - Minusy: obowiązuje niezmiennik `q ≡ r (mod 2)` — heks o złej parzystości nie
+>   istnieje, więc `hexesInRange` musi filtrować kandydatów po tej parzystości.
+>
+> #### Decyzja
+> Model **doubled-width**. Geometria ekranu: `HEX_SIZE = 16`, krok kolumny
+> `√3·size/2`, krok wiersza `1.5·size`. Lewa i górna krawędź planszy startują od 0.
+> Ruch jednostki to **jedno pole (sąsiad)**, a woda i góry są nieprzejezdne
+> (`core/movement.ts`). Mapa generowana deterministycznie z listy regionów
+> (środek + promień) w `sampleMap.ts` — bez losowości, więc testy są stabilne.
+>
+> #### Konsekwencje
+> - Wszystkie stałe geometryczne i konwersje `hexToPixel`/`pixelToHex` mieszkają w
+>   `client/src/hexLayout.ts`; logika heksowa w `client/src/core/hex.ts` (bez Phasera,
+>   zgodnie z [[ADR#ADR-001|ADR-001]]).
+> - Dodawanie heksów i regionów mapy musi pilnować parzystości `q`.
+
+

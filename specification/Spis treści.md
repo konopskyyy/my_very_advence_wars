@@ -3,3 +3,4 @@
 3. [[Interfejs]]
 4. [[Zadania]]
 5. [[Infrastruktura]]
+6. [[Commity]]

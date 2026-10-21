@@ -110,6 +110,25 @@ czyli **dev serwer Vite na żywo** z podpiętym kodem z `./client`.
   hoście — inaczej montowanie `./client` zasłoniłoby moduły zainstalowane w
   kontenerze (host nie ma ich w tej samej wersji/architekturze).
 
+### Analiza statyczna klienta
+
+Kod klienta sprawdzają dwa narzędzia, oba odpalane **na hoście** (nie w
+kontenerze):
+
+| Narzędzie | Rola | Polecenie |
+| --------- | ---- | --------- |
+| `tsc --noEmit` | typy (TypeScript 7, natywny kompilator) | `make typecheck` |
+| `oxlint` (+ `oxlint-tsgolint`) | lint + reguły typowe (`no-unnecessary-condition`, `no-unsafe-type-assertion`, …) | `make lint` |
+
+- `make lint` uruchamia oba (`npm run check` w `client/`), `npm run build` też —
+  **build nie przejdzie z błędami linta ani typów**.
+- Konfiguracja: `client/.oxlintrc.json`. Reguły typowe wymagają flagi
+  `--type-aware`, więc skrypt `lint` w `client/package.json` zawiera ją wprost.
+- `oxlint-tsgolint` to wtyczka do reguł typowych — działa na kompilatorze
+  TypeScript 7, którego `typescript-eslint` jeszcze nie obsługuje.
+- `client/package-lock.json` musi zawierać `oxlint` i `oxlint-tsgolint` —
+  inaczej `--type-aware` wywala się brakiem pliku wykonawczego.
+
 ### `nginx` — front HTTP backendu
 
 Obraz `nginx:1.27-alpine`. Serwuje `public/` z `server/` i przekazuje `.php`
@@ -235,23 +254,54 @@ Dlatego uruchamiasz i budujesz go **na hoście**:
 ```bash
 make electron        # dev: ładuje Vite z kontenera (localhost:18573)
 make electron-build  # buduje client/dist i paczkę do electron/release
+make run             # bez Dockera: buduje client/dist i odpala Electrona na dist
 ```
+
+`make run` nie potrzebuje działającego kontenera Vite — buduje klienta lokalnie
+(`cd client && npm run build`) i uruchamia Electrona na statycznym `client/dist`
+(skrypt `start:dist`, który czyści `VITE_DEV_SERVER_URL`). To najszybsza droga, gdy
+chcesz tylko zobaczyć grę bez stawiania całego środowiska.
 
 Albo równoważnie przez npm bezpośrednio:
 
 ```bash
 cd client && npm run build      # produkuje client/dist
 npm start --prefix electron     # dev: ładuje localhost:18573
+npm run start:dist --prefix electron  # statyczny dist (bez Vite)
 npm run build --prefix electron # buduje paczkę do electron/release
 ```
 
 Pliki: `electron/main.cjs` (okno — pełne ekran, bez menu, F11/Alt+Enter
 przełącza fullscreen) i `electron/preload.cjs` (contextIsolation + sandbox).
 
-W trybie dev Electron ładuje Vite z kontenera (`localhost:18573`, port
-zgodny z `CLIENT_PORT`); w buildzie produkcyjnym — statyczny
-`client/dist/index.html`. Innym adresem dev sterujesz zmienną
-`VITE_DEV_SERVER_URL`.
+Electron rozróżnia dwa tryby po zmiennej `VITE_DEV_SERVER_URL`:
+
+- **niepusta** (`make electron`, `npm start`) → ładuje Vite z kontenera i otwiera
+  narzędzia deweloperskie,
+- **pusta** (`make run`, `npm run start:dist`) → ładuje statyczny `client/dist`
+  i **nie otwiera** narzędzi deweloperskich.
+
+Narzędzia deweloperskie w trybie dev wyłączysz jednym przełącznikiem:
+`ELECTRON_NO_DEVTOOLS=1`.
+
+Adres dev-serwera (domyślnie `http://localhost:18573`, port zgodny z
+`CLIENT_PORT`) ustawisz zmienną `VITE_DEV_SERVER_URL`.
+
+### WSL2 — WebGL i logi GPU
+
+WSL2 **nie eksponuje karty graficznej** do Linuksa (brak `/dev/dri`), więc Chromium
+blocklistuje WebGL i wypisuje na `stderr` powtarzające się błędy
+`WebGL1 blocklisted`. Gra działa mimo tego (Phaser spada na renderer Canvas), ale
+konsola jest zaśmiecona.
+
+`electron/main.cjs` wykrywa WSL w runtime i **tylko tam** wyłącza proces GPU
+(przełączniki `disable-gpu`), co usuwa te logi. Na maszynach z GPU (Linux, Windows,
+macOS) nic nie zmieniamy — WebGL działa normalnie. Detekcja sprawdza
+`WSL_DISTRO_NAME` / `WSL_INTEROP` oraz `os.release()` (rdzeń `…-microsoft-standard-WSL2`).
+
+To kosmetyka **wyłącznie środowiska deweloperskiego**. Serwer nie renderuje gry —
+przy otwieraniu w przeglądarce grafika liczy się na maszynie gracza i problem nie
+występuje.
 
 ---
 
@@ -263,6 +313,9 @@ Compose bezpośrednio też działa — poniżej oba warianty.
 | Co                                       | `make`                | Bezpośrednio (compose)                                    |
 | ---------------------------------------- | --------------------- | --------------------------------------------------------- |
 | Lista celi                               | `make help`           | —                                                         |
+| Pełne przygotowanie dev (env+build+start+deps) | `make setup` / `make install` | —                                                         |
+| Sprawdzenie narzędzi                     | `make check`          | —                                                         |
+| Zależności hosta (client+electron)        | `make deps`           | —                                                         |
 | Start wszystkiego                        | `make up`             | `docker compose up -d`                                    |
 | Start z adminerem                        | `make up-tools`       | `docker compose --profile tools up -d`                    |
 | Status                                   | `make ps`             | `docker compose ps`                                       |
@@ -275,9 +328,11 @@ Compose bezpośrednio też działa — poniżej oba warianty.
 | MySQL CLI                                | `make db-shell`       | —                                                         |
 | Rebuild backendu (po Dockerfile)         | `make rebuild`        | `docker compose build --no-cache && docker compose up -d` |
 | Uruchom Electrona (dev)                  | `make electron`       | `npm start --prefix electron`                             |
+| Uruchom Electrona na dist (bez Dockera)  | `make run`            | `npm run start:dist --prefix electron`                    |
 | Build klienta + Electrona                | `make electron-build` | —                                                         |
 | Testy klienta (Vitest)                   | `make test`           | `cd client && npm test`                                   |
-| Typy klienta                             | `make lint`           | `cd client && npx tsc --noEmit`                           |
+| Analiza statyczna klienta (oxlint + typy) | `make lint`          | `cd client && npm run check`                              |
+| Tylko typy klienta                        | `make typecheck`      | `cd client && npm run typecheck`                          |
 | Zatrzymaj wszystko                       | `make down`           | `docker compose down`                                     |
 | Zatrzymaj i usuń woluminy (⚠️ dane bazy) | `make clean`          | `docker compose down -v`                                  |
 
@@ -327,6 +382,18 @@ Compose bezpośrednio też działa — poniżej oba warianty.
 > make rebuild
 > ```
 > Przy zmianie samej konfiguracji (porty, zmienne) wystarczy `make up`.
+
+> [!question]- Spam `WebGL1 blocklisted` w konsoli Electrona (WSL2)
+> **Przyczyna:** WSL2 nie eksponuje GPU do Linuksa (brak `/dev/dri`), więc Chromium
+> blocklistuje WebGL i wypisuje błąd dla każdej próby kontekstu. Gra działa (Canvas),
+> ale logi zaśmiecają konsolę.
+>
+> **Rozwiązanie:** nie rób nic — `electron/main.cjs` wykrywa WSL i sam wyłącza proces
+> GPU. Jeśli mimo to widzisz logi, sprawdź detekcję:
+> ```bash
+> uname -r        # powinno zawierać "microsoft-standard-WSL2"
+> ```
+> Szczegóły w [[#WSL2 — WebGL i logi GPU]].
 
 > [!question]- Port zajęty (`port is already allocated`)
 > Coś innego trzyma port (stary kontener, inna aplikacja). Sprawdź:

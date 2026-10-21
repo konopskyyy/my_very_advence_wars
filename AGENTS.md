@@ -52,5 +52,6 @@ usuń komentarze, które przestały być prawdą.
 
 - Kod gry (logika `core/` bez zależności od Phasera) — patrz ADR-001 w
   `specification/ADR.md`. Nie wiąż logiki gry z silnikiem.
-- Commity po polsku, styl conventional (`feat:`, `fix:`, `chore:`).
+- Commity po polsku, styl conventional (`feat:`, `fix:`, `chore:`) — pełny opis
+  w notatce [[Commity]] (`specification/Commity.md`).
 - Nie commituj sekretów: `.env` i `server/.env` są w `.gitignore` i mają tam zostać.

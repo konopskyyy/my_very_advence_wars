@@ -1,11 +1,27 @@
 'use strict';
 
 const path = require('node:path');
-const { app, BrowserWindow, Menu } = require('electron');
+const os = require('node:os');
+const { app, BrowserWindow, Menu, ipcMain } = require('electron');
+
+// WSL2 nie ma GPU (/dev/dri), więc Chromium blocklistuje WebGL i spamuje konsolę.
+// Phaser i tak spada na Canvas, więc wyłączamy GPU tylko w WSL.
+function isWsl() {
+  if (process.platform !== 'linux') return false;
+  if (process.env.WSL_DISTRO_NAME || process.env.WSL_INTEROP) return true;
+  return /microsoft/i.test(os.release());
+}
+
+if (isWsl()) {
+  app.commandLine.appendSwitch('disable-gpu');
+  app.commandLine.appendSwitch('disable-gpu-compositing');
+}
 
 // Port zgodny z CLIENT_PORT w .env.
 const DEV_URL = process.env.VITE_DEV_SERVER_URL || 'http://localhost:18573';
-const isDev = !!process.env.VITE_DEV_SERVER_URL || !app.isPackaged;
+// Puste VITE_DEV_SERVER_URL (np. `make run`) oznacza statyczny build z dist,
+// a nie dev-serwer — wtedy nie ma dokąd się łączyć.
+const useDevServer = !!process.env.VITE_DEV_SERVER_URL;
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -23,17 +39,16 @@ function createWindow() {
     },
   });
 
-  if (isDev) {
+  if (useDevServer) {
     void win.loadURL(DEV_URL);
-    win.webContents.openDevTools({ mode: 'detach' });
+    if (!process.env.ELECTRON_NO_DEVTOOLS) {
+      win.webContents.openDevTools({ mode: 'detach' });
+    }
   } else {
     void win.loadFile(path.join(__dirname, '..', 'client', 'dist', 'index.html'));
   }
-}
 
-app.whenReady().then(() => {
-  Menu.setApplicationMenu(null);
-  const win = createWindow();
+  ipcMain.on('window:close', () => win.close());
 
   // Bez menu F11/Alt+Enter to jedyny sposób wyjścia z pełnego ekranu.
   win.webContents.on('before-input-event', (_event, input) => {
@@ -44,6 +59,12 @@ app.whenReady().then(() => {
       win.setFullScreen(!win.isFullScreen());
     }
   });
+  return win;
+}
+
+app.whenReady().then(() => {
+  Menu.setApplicationMenu(null);
+  createWindow();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
