@@ -16,6 +16,12 @@
 - **Opis:** Serializacja mapy (zapis do pliku / API) i wczytywanie jej do edytora oraz na pole bitwy.
 - **Powiązane:** ADR-005, INTERF-003
 
+## GRA-004: Podstawa budowy mapek
+- **Status:** Zrobione
+- **Opis:** Zamrożenie stanu po zakończeniu edytora map jako punktu odniesienia dla dalszej pracy nad budową map. Podstawa obejmuje: model terenu i komórek mapy (`core/terrain.ts`, `core/map.ts`), siatkę heksagonalną (`core/hex.ts`), widok heksów (`view/hexGrid.ts`), edytor z menu (`scenes/MapEditorScene.ts`, `scenes/MenuScene.ts`) oraz testy modelu.
+- **Kryteria:** Model mapy jest niezależny od silnika i przetestowany; edytor pozwala malować teren poza pierwotnym prostokątem; stan można cofnąć do tego punktu (`10a2cfd`).
+- **Powiązane:** ADR-004, ADR-005, GRA-001, GRA-003, INTERF-003
+
 ## INFRA-001: Środowisko Docker
 - **Status:** Zrobione
 - **Opis:** docker-compose + Makefile + usługi client/server/nginx/db/adminer.
