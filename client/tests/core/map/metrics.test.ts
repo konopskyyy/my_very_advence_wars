@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { mapMemoryUsage, measureMapOperation } from './metrics';
-import { createMap } from './model';
+import { mapMemoryUsage, measureMapOperation } from '../../../src/core/map/metrics';
+import { createMap } from '../../../src/core/map/model';
 
 describe('measureMapOperation', () => {
   it('zwraca wynik operacji i czas jej trwania', () => {

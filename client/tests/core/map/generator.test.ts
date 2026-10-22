@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { cellCoord, mapBounds, terrainAt } from './model';
-import { extendMap, generateMap, paintRect } from './generator';
-import { hexToPixel } from './layout';
+import { cellCoord, mapBounds, terrainAt } from '../../../src/core/map/model';
+import { extendMap, generateMap, paintRect } from '../../../src/core/map/generator';
+import { hexToPixel } from '../../../src/core/map/layout';
 
 describe('generateMap', () => {
   it('tworzy prostokąt 22×14 z terenem bazowym', () => {

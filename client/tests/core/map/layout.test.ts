@@ -8,7 +8,7 @@ import {
   pixelToHex,
   toAxial,
   toDoubled,
-} from './layout';
+} from '../../../src/core/map/layout';
 
 describe('konwersje współrzędnych', () => {
   it('zachowuje koordynaty w obie strony', () => {
