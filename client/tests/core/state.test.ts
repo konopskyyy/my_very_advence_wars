@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { createMap } from './map';
+import { createMap } from '../../src/core/map';
 import {
   clearUnits,
   createInitialState,
   findUnitAt,
   placeUnit,
   removeUnitAt,
-} from './state';
+} from '../../src/core/state';
 
 describe('placeUnit', () => {
   it('stawia jednostkę na wolnym heksie', () => {

@@ -73,6 +73,10 @@ usuń komentarze, które przestały być prawdą.
 
 ## Inne konwencje
 
+- **Testy klienta w `client/tests/`** — drzewo lustrzane do `client/src/`; test
+  `src/core/map/model.ts` to `tests/core/map/model.test.ts`. Nie dodawaj plików
+  `*.test.ts` w `src/`. Szczegóły: `specification/Konwencje.md`, decyzja:
+  ADR-008.
 - **Najpierw dokumentacja, potem kod.** Zadania, których nie ma w
   `specification/Zadania.md` (albo interfejsu, którego nie ma w
   `specification/Interfejs.md`), nie się robi. Nową pracę zaczynaj od wpisu

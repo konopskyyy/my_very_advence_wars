@@ -38,10 +38,16 @@
 - **Status:** Zaakceptowany
 - **Kontekst:** Kod mapy rozproszono po `core/hex.ts`, `core/map.ts`, `core/mapGenerator.ts`, `core/maps.ts` i `view/hexGrid.ts` — część czystej matematyki (zasięg mapy w pikselach) leżała w warstwie widoku, a dokumentacja opisywała inny układ plików.
 - **Decyzja:** Mapa ma własny moduł `client/src/core/map/`: `layout.ts` (algorytm siatki heksagonalnej), `model.ts` (model i operacje), `generator.ts` (`generateMap`, `extendMap`, `paintRect`), `catalog.ts` (mapy wbudowane) i `index.ts` (publiczne API modułu). Warstwa widoku rysuje, ale nie wylicza: `HexMapView` pozycjonuje heksy wprost z `layout.ts`, a przesunięcie podglądu w menu map jest wyłącznie kwestią prezentacji (`view/mapPreview.ts`) i nie dotyka modelu.
-- **Konsekwencje:** Jedno miejsce na geometrię heksów i jedno na model mapy; testy logiki mapy leżą obok siebie w `core/map/`; podgląd nie może już „przesunąć" modelu.
+- **Konsekwencje:** Jedno miejsce na geometrię heksów i jedno na model mapy; testy logiki mapy leżą w lustrzanym `tests/core/map/` (ADR-008); podgląd nie może już „przesunąć" modelu.
 
 ## ADR-007: Narzędzia deweloperskie tylko na żądanie
 - **Status:** Zaakceptowany
 - **Kontekst:** Pasek FPS w edytorze jest pomocny przy pracy nad generatorem, ale przy zwykłym uruchomieniu gry jest tylko szumem w interfejsie — a użytkownik nie powinien trafiać na klawisz, którego efekt zależy od trybu uruchomienia.
 - **Decyzja:** Narzędzia deweloperskie nie powstają, dopóki nie zostaną jawnie włączone parametrem `?dev=1` w adresie (`client/src/devTools.ts`). W edytorze działa wtedy własny dev bar (`client/src/view/devBar.ts`) z FPS, czasem klatki, liczbą kafli, czasem CPU poświęconym na operacje na bieżącej mapie i rozmiarem modelu mapy w pamięci. Pomiary są czystą logiką (`client/src/core/map/metrics.ts`), więc da się je przetestować bez silnika.
 - **Konsekwencje:** Gra startuje czysto, a diagnostyka jest dostępna na wyraźne życzenie (`http://localhost:18573/?dev=1`). HUD nie pokazuje skrótów, które nic nie robią.
+
+## ADR-008: Testy poza `src/`, w lustrzanym drzewie
+- **Status:** Zaakceptowany
+- **Kontekst:** Testy leżały obok modułów w `client/src/`, więc katalog kodu produkcyjnego mieszał się z testowym, a granica „kod vs testy” była widoczna tylko po nazwie pliku. Chcieliśmy jednym spojrzeniem oddzielić jedno od drugiego, nie tracąc powiązania testu z modułem.
+- **Decyzja:** Testy leżą w `client/tests/`, a drzewo katalogów jest lustrem `client/src/`: moduł `src/core/map/model.ts` ma test `tests/core/map/model.test.ts` (ta sama nazwa plus `.test.ts`). Importy w testach są względne (`../../../src/...`), bez aliasów. Reguły pilnuje `tests/structure.test.ts`: każdy plik testowy musi mieć odpowiednik w `src/`, a w `src/` nie może być plików `*.test.ts`. Szczegóły i przykłady: [[Konwencje]].
+- **Konsekwencje:** `src/` zawiera wyłącznie kod produkcyjny, a dodanie testu sprowadza się do odtworzenia ścieżki w `tests/`. Vitest ma zawężony `test.include` i nie zbiera przypadkowych plików, a `tsc --noEmit` sprawdza również testy. Koszt: dłuższe ścieżki importów i obowiązek utrzymania lustra — wymusza go test struktury.

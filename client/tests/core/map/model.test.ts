@@ -8,7 +8,7 @@ import {
   removeTerrain,
   setTerrain,
   terrainAt,
-} from './model';
+} from '../../../src/core/map/model';
 
 describe('createMap', () => {
   it('wypełnia prostokąt terenem bazowym', () => {
