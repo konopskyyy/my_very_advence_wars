@@ -254,6 +254,9 @@ zgodny z `CLIENT_PORT`); w buildzie produkcyjnym — statyczny
 `client/dist/index.html`. Innym adresem dev sterujesz zmienną
 `VITE_DEV_SERVER_URL`.
 
+DevTools Electrona nie otwierają się same — włączasz je zmienną
+`ELECTRON_DEVTOOLS=1` (`ELECTRON_DEVTOOLS=1 make electron`).
+
 ---
 
 ## Codzienna praca
@@ -278,6 +281,7 @@ Compose bezpośrednio też działa — poniżej oba warianty.
 | Uruchom Electrona (dev)                  | `make electron`       | `npm start --prefix electron`                             |
 | Uruchom Electrona (alias)                | `make run`            | `npm start --prefix electron`                             |
 | Build klienta + Electrona                | `make electron-build` | —                                                         |
+| Przebuduj klienta (po zmianach)           | —                     | `cd client && npm run build && docker compose restart client` |
 | Testy klienta (Vitest)                   | `make test`           | `cd client && npm test`                                   |
 | Typy klienta                             | `make lint`           | `cd client && npx tsc --noEmit`                           |
 | Zatrzymaj wszystko                       | `make down`           | `docker compose down`                                     |
@@ -321,6 +325,19 @@ Compose bezpośrednio też działa — poniżej oba warianty.
 > `server` czeka na zdrową bazę (`depends_on: condition: service_healthy`). Jeśli
 > baza długo się inicjalizuje (pierwszy start, wolny dysk), healthcheck może nie
 > zdążyć — poczekaj lub zwiększ `start_period` w `docker-compose.yml`.
+
+> [!question]- Aplikacja się nie ładuje po przeniesieniu modułu (np. plik zamieniony na katalog)
+> Vite trzyma w pamięci rozwiązanie importów. Gdy `src/core/map.ts` zmienisz w
+> katalog `src/core/map/`, stary import wskazuje już nieistniejący plik i Vite
+> zwraca `Failed to load url /src/core/map.ts` — aplikacja nie startuje, choć
+> kod w repozytorium jest poprawny.
+>
+> **Rozwiązanie:** zrestartuj klienta, żeby Vite rozwiązał importy od nowa:
+> ```bash
+> docker compose restart client
+> ```
+> Ten sam objaw daje pusty ekran po `npm install` w kontenerze — wtedy
+> `docker compose restart client` też wystarczy.
 
 > [!question]- Zmiana w `docker-compose.yml` lub Dockerfile nie bierze się pod uwagę
 > Compose nie przebudowuje obrazu przy zwykłym `up`. Przy zmianie

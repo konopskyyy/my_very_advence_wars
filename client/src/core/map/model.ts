@@ -1,5 +1,5 @@
-import type { HexCoord } from './hex';
-import type { TerrainId } from './terrain';
+import { hexToPixel, toDoubled, type HexCoord } from './layout';
+import type { TerrainId } from '../terrain';
 
 export interface GameMap {
   readonly cells: Readonly<Record<string, TerrainId>>;
@@ -10,6 +10,13 @@ export interface MapBounds {
   readonly minRow: number;
   readonly maxCol: number;
   readonly maxRow: number;
+}
+
+export interface PixelBounds {
+  readonly left: number;
+  readonly top: number;
+  readonly right: number;
+  readonly bottom: number;
 }
 
 export function cellKey(coord: HexCoord): string {
@@ -95,4 +102,50 @@ export function mapBounds(map: GameMap): MapBounds | undefined {
   }
 
   return { minCol, minRow, maxCol, maxRow };
+}
+
+export function mapDoubledBounds(map: GameMap): MapBounds | undefined {
+  let minCol = Infinity;
+  let minRow = Infinity;
+  let maxCol = -Infinity;
+  let maxRow = -Infinity;
+
+  for (const key of Object.keys(map.cells)) {
+    const doubled = toDoubled(cellCoord(key));
+
+    minCol = Math.min(minCol, doubled.col);
+    minRow = Math.min(minRow, doubled.row);
+    maxCol = Math.max(maxCol, doubled.col);
+    maxRow = Math.max(maxRow, doubled.row);
+  }
+
+  if (minCol === Infinity) {
+    return undefined;
+  }
+
+  return { minCol, minRow, maxCol, maxRow };
+}
+
+export function mapPixelBounds(map: GameMap, size: number): PixelBounds | undefined {
+  const halfWidth = (Math.sqrt(3) / 2) * size;
+
+  let left = Infinity;
+  let top = Infinity;
+  let right = -Infinity;
+  let bottom = -Infinity;
+
+  for (const key of Object.keys(map.cells)) {
+    const center = hexToPixel(cellCoord(key), size);
+
+    left = Math.min(left, center.x - halfWidth);
+    top = Math.min(top, center.y - size);
+    right = Math.max(right, center.x + halfWidth);
+    bottom = Math.max(bottom, center.y + size);
+  }
+
+  if (left === Infinity) {
+    return undefined;
+  }
+
+  return { left, top, right, bottom };
 }

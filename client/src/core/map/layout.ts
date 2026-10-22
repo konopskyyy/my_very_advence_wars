@@ -8,6 +8,11 @@ export interface AxialHex {
   readonly r: number;
 }
 
+export interface DoubledHex {
+  readonly col: number;
+  readonly row: number;
+}
+
 const SQRT3 = Math.sqrt(3);
 
 export function toAxial(coord: HexCoord): AxialHex {
@@ -16,6 +21,14 @@ export function toAxial(coord: HexCoord): AxialHex {
 
 export function fromAxial(hex: AxialHex): HexCoord {
   return { col: hex.q + ((hex.r - (hex.r & 1)) >> 1), row: hex.r };
+}
+
+export function toDoubled(coord: HexCoord): DoubledHex {
+  return { col: 2 * coord.col + (coord.row & 1), row: coord.row };
+}
+
+export function fromDoubled(hex: DoubledHex): HexCoord {
+  return { col: Math.floor(hex.col / 2), row: hex.row };
 }
 
 export function hexDistance(a: HexCoord, b: HexCoord): number {

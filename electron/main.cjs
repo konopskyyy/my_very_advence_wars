@@ -25,7 +25,11 @@ function createWindow() {
 
   if (isDev) {
     void win.loadURL(DEV_URL);
-    win.webContents.openDevTools({ mode: 'detach' });
+
+    // DevTools na życzenie: ELECTRON_DEVTOOLS=1 make electron
+    if (process.env.ELECTRON_DEVTOOLS === '1') {
+      win.webContents.openDevTools({ mode: 'detach' });
+    }
   } else {
     void win.loadFile(path.join(__dirname, '..', 'client', 'dist', 'index.html'));
   }

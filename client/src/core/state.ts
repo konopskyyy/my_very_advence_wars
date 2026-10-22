@@ -1,5 +1,4 @@
-import type { HexCoord } from './hex';
-import type { GameMap } from './map';
+import type { GameMap, HexCoord } from './map';
 import type { FactionId, Unit, UnitKind } from './units';
 import { createUnit } from './units';
 
