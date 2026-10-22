@@ -13,7 +13,7 @@ ADMINER_PORT ?= 18081
 
 .PHONY: help up up-tools down stop restart ps logs logs-server logs-client \
         shell console composer cache-clear db-shell build rebuild client-install \
-        install electron electron-build clean clean-all test lint env
+        install electron electron-build clean clean-all test lint env run
 
 ## ——— Pomoc ————————————————————————————————————————————————
 
@@ -93,6 +93,8 @@ install: ## Skopiuj .env.example -> .env (jeśli brak) i postaw środowisko
 
 electron: ## Uruchom Electrona (dev: ładuje Vite z kontenera)
 	$(ELECTRON) start --prefix electron
+
+run: electron ## Uruchom Electrona (alias make electron)
 
 electron-build: ## Zbuduj klienta i paczkę Electrona
 	cd client && npm run build

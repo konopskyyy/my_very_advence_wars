@@ -1,31 +1,22 @@
 # Zadania
 
-Zadania projektowe, pogrupowane według kategorii. Status aktualizujemy na bieżąco.
+## GRA-001: Edytor mapy
+- **Status:** Zrobione
+- **Opis:** Edytor mapy na siatce heksagonalnej z malowaniem terenu. Mapa jest zbiorem kafelków o absolutnych współrzędnych, więc teren można malować także poza pierwotnym prostokątem — na czarnym tle. Z edytora da się wyjść do menu (`ESC`) i na pole bitwy (`B`).
+- **Kryteria:** Klikanie/przeciąganie LPM maluje wybrany teren, PPM usuwa kafelek, klawisze 1-7 zmieniają pędzel, X czyści mapę, kamera pan/zoom działa i rośnie wraz z mapą.
+- **Powiązane:** ADR-003, ADR-004, ADR-005, INTERF-003
 
-Legenda: `[ ]` do zrobienia · `[x]` zrobione
+## GRA-002: Model jednostek
+- **Status:** W toku
+- **Opis:** Zdefiniować model jednostek wg ADR-003 (dane, unie dyskryminowane, tabele definicji). Operacje na stanie gry jako czyste funkcje.
+- **Powiązane:** ADR-003
 
----
+## GRA-003: Zapis i wczytywanie map
+- **Status:** Do zrobienia
+- **Opis:** Serializacja mapy (zapis do pliku / API) i wczytywanie jej do edytora oraz na pole bitwy.
+- **Powiązane:** ADR-005, INTERF-003
 
-## Infrastruktura
-
-| Kod       | Nazwa                             | Opis                                                                                                                                  | Ukończone | Szczegóły                |
-| --------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | :-------: | ------------------------ |
-| INFRA-001 | Środowisko deweloperskie (Docker) | `docker-compose.yml` z serwisami: `client` (Vite + Phaser), `server` (nginx + PHP-FPM), `db` (MySQL 8.4), `adminer` (profil `tools`). |    [x]    | [[ADR#ADR-001\|ADR-001]] |
-
-## Backend
-
-| Kod         | Nazwa                            | Opis                                                                                                                                        | Ukończone | Szczegóły         |
-| ----------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | :-------: | ----------------- |
-| BACKEND-001 | Szkielet Symfony + kontroler     | Pusty serwis Symfony 8.1 (php-fpm) z kontrolerem `HomeController` zwracającym JSON — smoke-test nginx → php-fpm → Symfony.                   |    [x]    | [[ADR#ADR-001\|ADR-001]] |
-
-## Desktop (Electron)
-
-| Kod         | Nazwa                 | Opis                                                                                                                                     | Ukończone | Szczegóły                |
-| ----------- | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | :-------: | ------------------------ |
-| DESKTOP-001 | Placeholder Electrona | `electron/` z `main.cjs` (okno ładuje Vite dev albo `client/dist`) i `preload.cjs` (contextIsolation). Budowany na hoście, poza compose. |    [x]    | [[ADR#ADR-001\|ADR-001]] |
-
-## Gra
-
-| Kod  | Nazwa | Opis | Ukończone | Szczegóły |
-| ---- | ----- | ---- | :-------: | --------- |
-| GRA- |       |      |           |           |
+## INFRA-001: Środowisko Docker
+- **Status:** Zrobione
+- **Opis:** docker-compose + Makefile + usługi client/server/nginx/db/adminer.
+- **Powiązane:** `specification/Infrastruktura.md`

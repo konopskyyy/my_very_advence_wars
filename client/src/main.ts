@@ -1,44 +1,20 @@
 import Phaser from 'phaser';
-
-const TILE = 32;
-
-class Battlefield extends Phaser.Scene {
-  constructor() {
-    super('battlefield');
-  }
-
-  create(): void {
-    const width = this.scale.width;
-    const height = this.scale.height;
-
-    for (let y = 0; y < height; y += TILE) {
-      for (let x = 0; x < width; x += TILE) {
-        const dark = (x / TILE + y / TILE) % 2 === 0;
-        this.add.rectangle(x, y, TILE, TILE, dark ? 0x3d6b4f : 0x4d8261)
-          .setOrigin(0, 0);
-      }
-    }
-
-    this.add.text(width / 2, height / 2, 'My Very Advance Wars', {
-      fontFamily: 'monospace',
-      fontSize: '28px',
-      color: '#ffffff',
-      backgroundColor: '#00000088',
-      padding: { x: 12, y: 8 },
-    }).setOrigin(0.5);
-  }
-}
+import { BattlefieldScene } from './scenes/BattlefieldScene';
+import { MapEditorScene } from './scenes/MapEditorScene';
+import { MenuScene } from './scenes/MenuScene';
 
 new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'app',
   backgroundColor: '#0b0b0b',
-  pixelArt: true,
+  antialias: true,
+  roundPixels: false,
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
-    width: 480,
-    height: 270,
+    width: 640,
+    height: 480,
   },
-  scene: [Battlefield],
+  disableContextMenu: true,
+  scene: [MenuScene, MapEditorScene, BattlefieldScene],
 });

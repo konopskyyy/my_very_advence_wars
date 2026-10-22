@@ -234,6 +234,7 @@ Dlatego uruchamiasz i budujesz go **na hoście**:
 
 ```bash
 make electron        # dev: ładuje Vite z kontenera (localhost:18573)
+make run             # alias make electron
 make electron-build  # buduje client/dist i paczkę do electron/release
 ```
 
@@ -275,6 +276,7 @@ Compose bezpośrednio też działa — poniżej oba warianty.
 | MySQL CLI                                | `make db-shell`       | —                                                         |
 | Rebuild backendu (po Dockerfile)         | `make rebuild`        | `docker compose build --no-cache && docker compose up -d` |
 | Uruchom Electrona (dev)                  | `make electron`       | `npm start --prefix electron`                             |
+| Uruchom Electrona (alias)                | `make run`            | `npm start --prefix electron`                             |
 | Build klienta + Electrona                | `make electron-build` | —                                                         |
 | Testy klienta (Vitest)                   | `make test`           | `cd client && npm test`                                   |
 | Typy klienta                             | `make lint`           | `cd client && npx tsc --noEmit`                           |

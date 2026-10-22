@@ -29,6 +29,8 @@ function createWindow() {
   } else {
     void win.loadFile(path.join(__dirname, '..', 'client', 'dist', 'index.html'));
   }
+
+  return win;
 }
 
 app.whenReady().then(() => {
