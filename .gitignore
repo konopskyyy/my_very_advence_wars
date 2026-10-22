@@ -18,6 +18,9 @@ var/
 .env.local
 *.local
 
+# IDE (JetBrains)
+.idea/
+
 # Systemy
 .DS_Store
 Thumbs.db
