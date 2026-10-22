@@ -1,7 +1,5 @@
 import Phaser from 'phaser';
-import { hexCorners, hexToPixel, type HexCoord } from '../core/hex';
-import type { GameMap } from '../core/map';
-import { cellCoord } from '../core/map';
+import { cellCoord, hexCorners, hexToPixel, type GameMap, type HexCoord } from '../core/map';
 import { TERRAIN_DEFS, TERRAIN_IDS, type TerrainId } from '../core/terrain';
 
 export const HEX_SIZE = 22;
@@ -108,33 +106,6 @@ export function createHexSprite(
   return scene.add.image(0, 0, hexTextureKey(size), terrain);
 }
 
-export function mapPixelBounds(
-  map: GameMap,
-  size: number,
-): { left: number; top: number; right: number; bottom: number } | undefined {
-  const halfWidth = (Math.sqrt(3) / 2) * size;
-
-  let left = Infinity;
-  let top = Infinity;
-  let right = -Infinity;
-  let bottom = -Infinity;
-
-  for (const key of Object.keys(map.cells)) {
-    const center = hexToPixel(cellCoord(key), size);
-
-    left = Math.min(left, center.x - halfWidth);
-    top = Math.min(top, center.y - size);
-    right = Math.max(right, center.x + halfWidth);
-    bottom = Math.max(bottom, center.y + size);
-  }
-
-  if (left === Infinity) {
-    return undefined;
-  }
-
-  return { left, top, right, bottom };
-}
-
 export class HexMapView {
   private readonly sprites = new Map<string, Phaser.GameObjects.Image>();
 
@@ -148,6 +119,10 @@ export class HexMapView {
     this.map = map;
     hexTexture(scene, size);
     this.sync();
+  }
+
+  get tileCount(): number {
+    return this.sprites.size;
   }
 
   center(coord: HexCoord): { x: number; y: number } {

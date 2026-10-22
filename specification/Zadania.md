@@ -1,28 +1,24 @@
 # Zadania
 
-## GRA-001: Edytor mapy
-- **Status:** Zrobione
-- **Opis:** Edytor mapy na siatce heksagonalnej z malowaniem terenu. Mapa jest zbiorem kafelków o absolutnych współrzędnych, więc teren można malować także poza pierwotnym prostokątem — na czarnym tle. Z edytora da się wyjść do menu (`ESC`) i na pole bitwy (`B`).
-- **Kryteria:** Klikanie/przeciąganie LPM maluje wybrany teren, PPM usuwa kafelek, klawisze 1-7 zmieniają pędzel, X czyści mapę, kamera pan/zoom działa i rośnie wraz z mapą.
-- **Powiązane:** ADR-003, ADR-004, ADR-005, INTERF-003
+Zadania spoza tej listy się nie robi — nową pracę dopisuj do tabeli poniżej
+(zasady w `AGENTS.md`). Tabela to skrót; rozszerzone opisy i kryteria są
+w [[Zadania-opisy]] — nowe zadanie zakładasz w obu miejscach.
 
-## GRA-002: Model jednostek
-- **Status:** W toku
-- **Opis:** Zdefiniować model jednostek wg ADR-003 (dane, unie dyskryminowane, tabele definicji). Operacje na stanie gry jako czyste funkcje.
-- **Powiązane:** ADR-003
+Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
 
-## GRA-003: Zapis i wczytywanie map
-- **Status:** Do zrobienia
-- **Opis:** Serializacja mapy (zapis do pliku / API) i wczytywanie jej do edytora oraz na pole bitwy.
-- **Powiązane:** ADR-005, INTERF-003
+## Przegląd
 
-## GRA-004: Podstawa budowy mapek
-- **Status:** Zrobione
-- **Opis:** Zamrożenie stanu po zakończeniu edytora map jako punktu odniesienia dla dalszej pracy nad budową map. Podstawa obejmuje: model terenu i komórek mapy (`core/terrain.ts`, `core/map.ts`), siatkę heksagonalną (`core/hex.ts`), widok heksów (`view/hexGrid.ts`), edytor z menu (`scenes/MapEditorScene.ts`, `scenes/MenuScene.ts`) oraz testy modelu.
-- **Kryteria:** Model mapy jest niezależny od silnika i przetestowany; edytor pozwala malować teren poza pierwotnym prostokątem; stan można cofnąć do tego punktu (`10a2cfd`).
-- **Powiązane:** ADR-004, ADR-005, GRA-001, GRA-003, INTERF-003
-
-## INFRA-001: Środowisko Docker
-- **Status:** Zrobione
-- **Opis:** docker-compose + Makefile + usługi client/server/nginx/db/adminer.
-- **Powiązane:** `specification/Infrastruktura.md`
+| ID | Zadanie | Status | Powiązane |
+| --- | --- | --- | --- |
+| [[Zadania-opisy#GRA-001: Edytor mapy\|GRA-001]] | Edytor mapy | ✅ | ADR-003, ADR-004, ADR-005, INTERF-003 |
+| [[Zadania-opisy#GRA-002: Model jednostek\|GRA-002]] | Model jednostek | 🚧 | ADR-003 |
+| [[Zadania-opisy#GRA-003: Zapis i wczytywanie map\|GRA-003]] | Zapis i wczytywanie map | ⬜ | ADR-005, INTERF-003 |
+| [[Zadania-opisy#GRA-004: Podstawa budowy mapek\|GRA-004]] | Podstawa budowy mapek | ✅ | ADR-004, ADR-005, GRA-001, GRA-003, INTERF-003 |
+| [[Zadania-opisy#GRA-005: Punkt bazowy — stan po ostatnim commicie\|GRA-005]] | Punkt bazowy — stan po ostatnim commicie | ✅ | GRA-001, GRA-004, ADR-004, ADR-005 |
+| [[Zadania-opisy#GRA-006: Rozbudowa generatora map\|GRA-006]] | Rozbudowa generatora map | ✅ | GRA-001, GRA-003, GRA-004, GRA-005, ADR-004, ADR-005, INTERF-003 |
+| [[Zadania-opisy#GRA-007: Moduł mapy i algorytm układu heks\|GRA-007]] | Moduł mapy i algorytm układu heks | ✅ | GRA-004, GRA-005, GRA-006, ADR-004, ADR-005, ADR-006, INTERF-003, INTERF-004 |
+| [[Zadania-opisy#GRA-008: Narzędzia deweloperskie i dev bar mapy\|GRA-008]] | Narzędzia deweloperskie i dev bar mapy | ✅ | GRA-006, ADR-007, INTERF-003 |
+| [[Zadania-opisy#GRA-009: Menu bez pola bitwy, z wyjściem z gry\|GRA-009]] | Menu bez pola bitwy, z wyjściem z gry | ✅ | GRA-001, INTERF-001, INTERF-002, INTERF-003 |
+| [[Zadania-opisy#GRA-010: Strona gry bez paska przewijania\|GRA-010]] | Strona gry bez paska przewijania | ✅ | GRA-009, INTERF-001 |
+| [[Zadania-opisy#GRA-011: Podwojone kolumny w odczycie edytora\|GRA-011]] | Podwojone kolumny w odczycie edytora | ✅ | ADR-004, ADR-005, GRA-001, INTERF-003 |
+| [[Zadania-opisy#INFRA-001: Środowisko Docker\|INFRA-001]] | Środowisko Docker | ✅ | `specification/Infrastruktura.md` |

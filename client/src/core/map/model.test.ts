@@ -4,10 +4,11 @@ import {
   createMap,
   fillMap,
   mapBounds,
+  mapDoubledBounds,
   removeTerrain,
   setTerrain,
   terrainAt,
-} from './map';
+} from './model';
 
 describe('createMap', () => {
   it('wypełnia prostokąt terenem bazowym', () => {
@@ -83,6 +84,29 @@ describe('mapBounds', () => {
 
   it('zwraca undefined dla pustej mapy', () => {
     expect(mapBounds({ cells: {} })).toBeUndefined();
+  });
+});
+
+describe('mapDoubledBounds', () => {
+  it('liczy zasięg w kolumnach podwojonych', () => {
+    const bounds = mapDoubledBounds(createMap(2, 2));
+
+    expect(bounds?.minCol).toBe(0);
+    expect(bounds?.maxCol).toBe(3);
+    expect(bounds?.minRow).toBe(0);
+    expect(bounds?.maxRow).toBe(1);
+  });
+
+  it('obejmuje kafelek dodany poza mapą', () => {
+    const map = setTerrain(createMap(2, 2), { col: -1, row: -1 }, 'road');
+    const bounds = mapDoubledBounds(map);
+
+    expect(bounds?.minCol).toBe(-1);
+    expect(bounds?.minRow).toBe(-1);
+  });
+
+  it('zwraca undefined dla pustej mapy', () => {
+    expect(mapDoubledBounds({ cells: {} })).toBeUndefined();
   });
 });
 

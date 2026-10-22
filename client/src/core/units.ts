@@ -1,4 +1,4 @@
-import type { HexCoord } from './hex';
+import type { HexCoord } from './map';
 
 export type UnitKind = 'infantry' | 'tank' | 'artillery' | 'scout';
 

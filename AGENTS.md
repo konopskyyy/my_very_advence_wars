@@ -27,6 +27,20 @@ Kolejność poprawki: najpierw sekcje „Mapa sieci i portów" i „Codzienna pr
 w „Rozwiązywanie problemów" (stare porty i polecenia). Nie zostawiaj
 nieaktualnych numerów portów — czytelnik wpisze je do terminala.
 
+## Przebudowa aplikacji po zmianach — obowiązek
+
+Po **każdej** zmianie w `client/` przebuduj aplikację, żeby użytkownik widział
+aktualny stan:
+
+```bash
+cd client && npm run build      # odświeża client/dist (Electron ładuje ten katalog)
+docker compose restart client   # Vite rozwiązuje importy od nowa
+```
+
+HMR nie nadąża po zmianie struktury modułów (`core/map.ts` → `core/map/`), a
+`client/dist` bywa starszy od kodu. Bez tego przeglądarka pokazuje starą
+wersję, a diagnoza zachowania jest myląca.
+
 ## Komentarze — tylko gdy wnoszą wiedzę
 
 Domyślnie **nie pisz komentarzy**. Kod ma się tłumaczyć sam nazwami. Komentarz
@@ -48,9 +62,21 @@ Sekcje w `docker-compose.yml`/`Makefile` dzielone komentarzem są OK — ale kr�
 i tylko tam, gdzie naprawdę pomagają nawigować. Przy edycji istniejącego kodu
 usuń komentarze, które przestały być prawdą.
 
+## Git — nie merguj do `master`
+
+- `master` przyjmuje wyłącznie commity użytkownika. Pracuj na osobnym branchu
+  (`feat/…`, `fix/…`, `chore/…`) i zostaw go do ręcznego merge.
+- **Nigdy nie merguj do `master`** — ani przez `git merge`, ani przez fast-forward,
+  ani przez `git pull --no-ff`. Nie pushuj `master` zdalnie.
+- Nie resetuj i nie usuwaj historii `master` (`git reset --hard`, `git push --force`).
+- Commity po polsku, styl conventional (`feat:`, `fix:`, `chore:`).
+
 ## Inne konwencje
 
+- **Najpierw dokumentacja, potem kod.** Zadania, których nie ma w
+  `specification/Zadania.md` (albo interfejsu, którego nie ma w
+  `specification/Interfejs.md`), nie się robi. Nową pracę zaczynaj od wpisu
+  w dokumentacji, a potem implementuj — inaczej kod wyprzedza specyfikację.
 - Kod gry (logika `core/` bez zależności od Phasera) — patrz ADR-001 w
   `specification/ADR.md`. Nie wiąż logiki gry z silnikiem.
-- Commity po polsku, styl conventional (`feat:`, `fix:`, `chore:`).
 - Nie commituj sekretów: `.env` i `server/.env` są w `.gitignore` i mają tam zostać.
