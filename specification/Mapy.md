@@ -335,8 +335,13 @@ Konsekwencje:
   bazę w pamięci, a `persistDatabase()` dopiero potem eksportuje całość. Błąd
   `localStorage.setItem` oznacza, że zmiana zostaje tylko w pamięci do końca
   sesji.
-- **Brak migracji:** schemat używa `CREATE TABLE IF NOT EXISTS`. Zmiana kolumn
-  wymaga osobnej migracji lub nowego klucza bazy.
+- **Brak systemu migracji (jak Doctrine Migrations):** nie ma tabeli
+  `schema_migrations`, numeru wersji ani CLI. `ensureMapsSchema()` wykonuje
+  tylko `CREATE TABLE IF NOT EXISTS`, więc nowa kolumna nie pojawi się w
+  istniejącej bazie. Backend Symfony w tym repo nie ma jeszcze Doctrine, a
+  nawet po jego dodaniu migracje dotyczyłyby MySQL, nie `localStorage`.
+  Zmiana schematu SQLite wymaga własnego, wersjonowanego mechanizmu po stronie
+  klienta albo nowego klucza bazy.
 - **Brak współdzielenia:** dwie karty/okna tego samego originu mogą mieć własne
   instancje `sql.js`; ostatni zapis wygrywa. Nie ma blokad ani merge'u.
 - **Brak uwierzytelniania i szyfrowania:** dane są jawne w profilu użytkownika.
