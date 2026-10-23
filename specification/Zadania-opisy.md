@@ -69,7 +69,7 @@ Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
 - **Status:** ✅ zrobione
 - **Opis:** Menu główne ma zyskać wyjście z gry, a scena zastępcza pola bitwy ma zniknąć z kodu razem ze skrótem otwierającym ją z edytora. Wpis `INTERF-002` zostaje w dokumentacji jako planowany interfejs.
 - **Kryteria:**
-  - **Menu:** wpisy „Edytor map”, „Mapy” i „Wyjście”; po wyjściu przeglądarka zamyka okno, a gdy przeglądarka tego nie pozwala — gra wyjaśnia, jak zakończyć pracę.
+  - **Menu:** wpisy „Edytor map” i „Wyjście”; po wyjściu przeglądarka zamyka okno, a gdy przeglądarka tego nie pozwala — gra wyjaśnia, jak zakończyć pracę.
   - **Pole bitwy:** `BattlefieldScene` usuwa się z kodu i z listy scen, skrót `B` znika z edytora, a `INTERF-002` w `specification/Interfejs.md` zostaje jako pozycja zaplanowana (bez plików i bez statusu „zaimplementowane”).
 - **Powiązane:** GRA-001, INTERF-001, INTERF-002, INTERF-003
 
@@ -142,6 +142,16 @@ Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
   - **Wyróżnienie:** wybrany kafelek ma jaśniejszą obwódkę, a kafelek pod kursorem reaguje na hover.
   - **Bez klawiatury:** wybór terenu, jednostki i strony nie wymaga klawiatury; klawisze pozostają tylko dla kamery, czyszczenia mapy, rozszerzania krawędzi i wyjścia.
 - **Powiązane:** GRA-012, ADR-011, ADR-012, INTERF-003
+
+## GRA-017: Wybór mapy przy wejściu do edytora
+- **Status:** ✅ zrobione
+- **Opis:** Menu główne prowadzi do edytora przez wybór mapy, tak samo jak wyjście z edytora. Zamiast dwóch ścieżek („Edytor map” startujący od razu nową mapę i „Mapy” z listą) zostaje jedno wejście „Edytor map”, które otwiera menu map. Menu map dostaje pozycję „Nowa mapa” dla pustej mapy generatora, obok wbudowanych map i ich szkiców.
+- **Kryteria:**
+  - **Jedno wejście:** w menu głównym jest „Edytor map” i „Wyjście”; „Edytor map” otwiera menu map, a nie od razu edytor.
+  - **Nowa mapa:** menu map ma pozycję „Nowa mapa”, która uruchamia edytor z nową mapą generatora.
+  - **Wybór mapy:** kliknięcie wbudowanej mapy otwiera ją w edytorze; szkic z `registry` wraca razem z jednostkami.
+  - **Spójność wyjścia:** `ESC`/„MENU MAP” w edytorze wraca do menu map, a `ESC` w menu map wraca do menu głównego.
+- **Powiązane:** GRA-006, GRA-009, ADR-013, INTERF-001, INTERF-004
 
 ## INFRA-001: Środowisko Docker
 - **Status:** ✅ zrobione

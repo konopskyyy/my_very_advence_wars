@@ -75,3 +75,9 @@
 - **Kontekst:** Wybór terenu i jednostki klawiszami `1`–`7`/`1`–`4` oraz `U` był niewidoczny dla nowego użytkownika, a skróty mieszały się z klawiszami kamery. W edytorze potrzebny jest czytelny panel z podglądem dostępnych narzędzi.
 - **Decyzja:** Lewy panel edytora zawiera kafelki terenu, kafelki jednostek i przyciski strony (niebieska/czerwona). Kliknięcie kafelka ustawia tryb i narzędzie, a wybór jest wyróżniony obwódką; kafelek pod kursorem reaguje na hover. Klawiatura obsługuje wyłącznie kamerę, czyszczenie mapy, rozszerzanie krawędzi, narzędzia deweloperskie i wyjście — nie wybór narzędzi.
 - **Konsekwencje:** Wszystkie tereny i jednostki są widoczne bez zgadywania skrótów, a wybór jest jednoznaczny. Panel jest wyższy niż dawny pasek podglądu i na małych ekranach zajmuje więcej miejsca; HUD i przyciski menu nadal rozszerzają panel w dół.
+
+## ADR-013: Menu map jako wejście do edytora
+- **Status:** Zaakceptowany
+- **Kontekst:** Menu główne miało dwa wejścia do edycji: „Edytor map” od razu uruchamiał nową mapę, a „Mapy” otwierało listę. Wyjście z edytora prowadziło do listy, więc wejście i wyjście kończyły się w różnych miejscach. Użytkownik nie miał szansy wybrać mapy przed rozpoczęciem pracy.
+- **Decyzja:** „Edytor map” w menu głównym otwiera menu map. Menu map zawiera „Nową mapę” oraz listę map wbudowanych i ich szkiców. Osobny wpis „Mapy” znika, żeby nie duplikować tej samej ścieżki. `ESC` w edytorze wraca do menu map, a `ESC` w menu map — do menu głównego.
+- **Konsekwencje:** Wejście i wyjście z edytora prowadzą przez to samo miejsce, a wybór mapy jest zawsze świadomy. Nowa mapa wymaga jednego kliknięcia więcej, ale nie miesza się z listą istniejących map.
