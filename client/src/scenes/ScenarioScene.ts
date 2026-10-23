@@ -1,26 +1,16 @@
 import Phaser from 'phaser';
-import {
-  hexCorners,
-  mapPixelBounds,
-  pixelToHex,
-  toDoubled,
-  type HexCoord,
-} from '../core/map';
+import { mapTileCount, terrainAt, toDoubled, type HexCoord } from '../core/map';
 import { BUILT_IN_SCENARIOS, type ScenarioDefinition } from '../core/scenario';
-import { findUnitAt, type GameState } from '../core/state';
+import { countUnits, findUnitAt, type GameState } from '../core/state';
 import { TERRAIN_DEFS } from '../core/terrain';
 import { FACTION_DEFS, UNIT_DEFS, type Unit } from '../core/units';
-import { HEX_SIZE, HexMapView, tracePolygon } from '../view/hexGrid';
+import { HexMapView, outlineHex } from '../view/hexGrid';
+import { MapViewport } from '../view/mapViewport';
 import { UnitLayer } from '../view/unitLayer';
 
 const PANEL_X = 0;
 const PANEL_Y = 8;
 const PANEL_WIDTH = 304;
-const ZOOM_MIN = 0.6;
-const ZOOM_MAX = 2.5;
-const START_ZOOM = 0.9;
-const PAN_SPEED = 420;
-const CAMERA_MARGIN = HEX_SIZE * 8;
 
 interface ScenarioData {
   readonly definition?: ScenarioDefinition;
@@ -33,9 +23,8 @@ export class ScenarioScene extends Phaser.Scene {
 
   private hover: HexCoord | null = null;
   private selected: Unit | null = null;
-  private panning = false;
-  private panAnchor = { x: 0, y: 0, scrollX: 0, scrollY: 0 };
 
+  private viewport!: MapViewport;
   private mapView!: HexMapView;
   private panel!: Phaser.GameObjects.Rectangle;
   private hud!: Phaser.GameObjects.Text;
@@ -54,13 +43,15 @@ export class ScenarioScene extends Phaser.Scene {
     this.state = this.scenario.state;
     this.hover = null;
     this.selected = null;
-    this.panning = false;
   }
 
   create(): void {
-    const camera = this.cameras.main;
+    this.viewport = new MapViewport(this, this.state.map, {
+      zoomMin: 0.6,
+      zoomMax: 2.5,
+      startZoom: 0.9,
+    });
 
-    camera.setZoom(START_ZOOM);
     this.mapView = new HexMapView(this, this.state.map);
     new UnitLayer(this, this.state.units);
 
@@ -139,31 +130,19 @@ export class ScenarioScene extends Phaser.Scene {
       keyboard.on('keydown', this.onKeyDown, this);
     }
 
-    this.updateCameraBounds();
-
     const start = this.state.units.find((unit) => unit.faction === 'blue')?.pos ?? { col: 5, row: 13 };
-    const center = this.mapView.center(start);
-    camera.centerOn(center.x, center.y);
 
+    this.viewport.centerOn(start);
     this.refreshHud();
   }
 
   update(_time: number, delta: number): void {
-    const camera = this.cameras.main;
-    const step = (PAN_SPEED * delta) / 1000;
-
-    let dx = 0;
-    let dy = 0;
-
-    if (this.cursors?.left.isDown || this.isDown('A')) dx -= 1;
-    if (this.cursors?.right.isDown || this.isDown('D')) dx += 1;
-    if (this.cursors?.up.isDown || this.isDown('W')) dy -= 1;
-    if (this.cursors?.down.isDown || this.isDown('S')) dy += 1;
-
-    if (dx !== 0 || dy !== 0) {
-      camera.scrollX += dx * step;
-      camera.scrollY += dy * step;
-    }
+    this.viewport.update(delta, {
+      left: (this.cursors?.left.isDown ?? false) || this.isDown('A'),
+      right: (this.cursors?.right.isDown ?? false) || this.isDown('D'),
+      up: (this.cursors?.up.isDown ?? false) || this.isDown('W'),
+      down: (this.cursors?.down.isDown ?? false) || this.isDown('S'),
+    });
   }
 
   private makePanelButton(label: string, action: () => void): Phaser.GameObjects.Text {
@@ -185,14 +164,7 @@ export class ScenarioScene extends Phaser.Scene {
   }
 
   private onPointerDown(pointer: Phaser.Input.Pointer): void {
-    if (pointer.button === 1) {
-      this.panning = true;
-      this.panAnchor = {
-        x: pointer.x,
-        y: pointer.y,
-        scrollX: this.cameras.main.scrollX,
-        scrollY: this.cameras.main.scrollY,
-      };
+    if (this.viewport.startPan(pointer)) {
       return;
     }
 
@@ -200,14 +172,11 @@ export class ScenarioScene extends Phaser.Scene {
       return;
     }
 
-    this.selectAt(this.hexUnderPointer(pointer));
+    this.selectAt(this.viewport.hexAt(pointer));
   }
 
   private onPointerMove(pointer: Phaser.Input.Pointer): void {
-    if (this.panning) {
-      const camera = this.cameras.main;
-      camera.scrollX = this.panAnchor.scrollX - (pointer.x - this.panAnchor.x);
-      camera.scrollY = this.panAnchor.scrollY - (pointer.y - this.panAnchor.y);
+    if (this.viewport.movePan(pointer)) {
       return;
     }
 
@@ -221,7 +190,7 @@ export class ScenarioScene extends Phaser.Scene {
       return;
     }
 
-    const coord = this.hexUnderPointer(pointer);
+    const coord = this.viewport.hexAt(pointer);
 
     if (coord.col === this.hover?.col && coord.row === this.hover?.row) {
       return;
@@ -233,7 +202,7 @@ export class ScenarioScene extends Phaser.Scene {
   }
 
   private onPointerUp(): void {
-    this.panning = false;
+    this.viewport.endPan();
   }
 
   private onWheel(
@@ -246,9 +215,7 @@ export class ScenarioScene extends Phaser.Scene {
       return;
     }
 
-    const camera = this.cameras.main;
-    const zoom = camera.zoom + (deltaY > 0 ? -0.15 : 0.15);
-    camera.setZoom(Phaser.Math.Clamp(zoom, ZOOM_MIN, ZOOM_MAX));
+    this.viewport.zoom(deltaY);
   }
 
   private onKeyDown(event: KeyboardEvent): void {
@@ -266,9 +233,7 @@ export class ScenarioScene extends Phaser.Scene {
     this.selection.clear();
 
     if (this.selected) {
-      tracePolygon(this.selection, hexCorners(this.mapView.center(this.selected.pos), HEX_SIZE));
-      this.selection.lineStyle(3, 0xf2d35c, 1);
-      this.selection.strokePath();
+      outlineHex(this.selection, this.mapView.center(this.selected.pos), 0xf2d35c, 3);
     }
 
     this.refreshHud();
@@ -281,9 +246,7 @@ export class ScenarioScene extends Phaser.Scene {
       return;
     }
 
-    tracePolygon(this.cursor, hexCorners(this.mapView.center(this.hover), HEX_SIZE));
-    this.cursor.lineStyle(2, 0xffffff, 0.9);
-    this.cursor.strokePath();
+    outlineHex(this.cursor, this.mapView.center(this.hover), 0xffffff, 2);
   }
 
   private pointerOverPanel(pointer: Phaser.Input.Pointer): boolean {
@@ -295,27 +258,6 @@ export class ScenarioScene extends Phaser.Scene {
     );
   }
 
-  private hexUnderPointer(pointer: Phaser.Input.Pointer): HexCoord {
-    const world = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
-
-    return pixelToHex(world.x, world.y, HEX_SIZE);
-  }
-
-  private updateCameraBounds(): void {
-    const bounds = mapPixelBounds(this.state.map, HEX_SIZE);
-
-    if (!bounds) {
-      return;
-    }
-
-    this.cameras.main.setBounds(
-      bounds.left - CAMERA_MARGIN,
-      bounds.top - CAMERA_MARGIN,
-      bounds.right - bounds.left + CAMERA_MARGIN * 2,
-      bounds.bottom - bounds.top + CAMERA_MARGIN * 2,
-    );
-  }
-
   private refreshHud(): void {
     const lines: string[] = [];
 
@@ -323,14 +265,13 @@ export class ScenarioScene extends Phaser.Scene {
     lines.push(this.scenario.description);
     lines.push('');
 
-    const blue = this.state.units.filter((unit) => unit.faction === 'blue').length;
-    const red = this.state.units.filter((unit) => unit.faction === 'red').length;
+    const counts = countUnits(this.state.units);
 
-    lines.push(`Jednostki: ${blue} niebieskich · ${red} czerwonych`);
-    lines.push(`Kafle: ${Object.keys(this.state.map.cells).length}`);
+    lines.push(`Jednostki: ${counts.blue} niebieskich · ${counts.red} czerwonych`);
+    lines.push(`Kafle: ${mapTileCount(this.state.map)}`);
 
     if (this.hover) {
-      const terrain = this.state.map.cells[`${this.hover.col},${this.hover.row}`];
+      const terrain = terrainAt(this.state.map, this.hover);
       const doubled = toDoubled(this.hover);
       const unit = findUnitAt(this.state, this.hover);
       const terrainLabel = terrain ? TERRAIN_DEFS[terrain].label : 'pusto';
@@ -375,9 +316,8 @@ export class ScenarioScene extends Phaser.Scene {
   }
 
   private factionLine(): string {
-    const blue = this.state.units.filter((unit) => unit.faction === 'blue').length;
-    const red = this.state.units.filter((unit) => unit.faction === 'red').length;
+    const counts = countUnits(this.state.units);
 
-    return `NIEBIESKA — gracz (${blue})   CZERWONA — przeciwnik (${red})`;
+    return `NIEBIESKA — gracz (${counts.blue})   CZERWONA — przeciwnik (${counts.red})`;
   }
 }

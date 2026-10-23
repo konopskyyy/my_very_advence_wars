@@ -1,4 +1,5 @@
 import type { Database } from 'sql.js';
+import { mapTileCount } from '../core/map';
 import type { GameState } from '../core/state';
 import { openDatabase, persistDatabase } from './database';
 import { deserializeGameState, serializeGameState } from './mapSerialization';
@@ -60,7 +61,7 @@ export function upsertMap(
       input.name,
       input.description,
       serializeGameState(input.state),
-      Object.keys(input.state.map.cells).length,
+      mapTileCount(input.state.map),
       input.state.units.length,
       updatedAt,
       updatedAt,

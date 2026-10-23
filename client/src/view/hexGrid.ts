@@ -32,6 +32,18 @@ export function colorToCss(color: number): string {
   return `#${color.toString(16).padStart(6, '0')}`;
 }
 
+export function outlineHex(
+  graphics: Phaser.GameObjects.Graphics,
+  center: { x: number; y: number },
+  color: number,
+  width: number,
+  size: number = HEX_SIZE,
+): void {
+  tracePolygon(graphics, hexCorners(center, size));
+  graphics.lineStyle(width, color, 1);
+  graphics.strokePath();
+}
+
 export function hexTextureKey(size: number): string {
   return `hex-${size}`;
 }

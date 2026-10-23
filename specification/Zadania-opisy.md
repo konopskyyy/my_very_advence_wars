@@ -200,6 +200,29 @@ Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
   - **Testy:** `tests/storage/mapSerialization.test.ts` sprawdza round-trip i walidację, a `tests/storage/maps.test.ts` — schemat, zapis, aktualizację i odczyt na prawdziwej bazie `sql.js`.
 - **Powiązane:** GRA-003, GRA-020, ADR-017, INTERF-004, INTERF-005, INTERF-006
 
+## GRA-022: Wspólny moduł widoku mapy
+- **Status:** ✅ zrobione
+- **Opis:** Kamera, zoom, przeciąganie, granice mapy i tłumaczenie kursora na heks są wspólne dla edytora i scenariusza. Karty map oraz liczniki i rozstawianie jednostek nie są już kopiowane w każdej scenie.
+- **Kryteria:**
+  - **Widok:** `client/src/view/mapViewport.ts` obsługuje zoom, przesuwanie kamery, przeciąganie środkowym przyciskiem, granice mapy i `pixelToHex`.
+  - **Karty:** `client/src/view/mapCard.ts` tworzy kartę z miniaturą, tytułem, opisem i metadanymi; korzystają z niej menu map i menu scenariuszy.
+  - **Model:** `mapTileCount` w `client/src/core/map/model.ts` oraz `deployUnits` i `countUnits` w `client/src/core/state.ts`.
+  - **Sceny:** `MapEditorScene` i `ScenarioScene` używają wspólnego widoku zamiast własnych kopii logiki kamery i kursora.
+  - **Bez regresji:** edytor nadal maluje, stawia jednostki, rośnie na krawędziach i zapisuje mapę; scenariusz nadal wybiera jednostki i pokazuje statystyki.
+  - **Testy:** `tests/core/map/model.test.ts` i `tests/core/state.test.ts` pokrywają nowe funkcje `core/`.
+- **Powiązane:** GRA-007, GRA-020, ADR-001, ADR-018, INTERF-003, INTERF-005
+
+## GRA-023: Przewijane listy map i scenariuszy
+- **Status:** ✅ zrobione
+- **Opis:** Listy w menu map i menu scenariuszy mieszczą się na ekranie 1280×720 i przewijają się kółkiem myszy. Wszystkie zapisane mapy są widoczne na liście, także wtedy, gdy jest ich więcej niż miejsce na ekranie.
+- **Kryteria:**
+  - **Lista:** `client/src/view/scrollList.ts` ogranicza widoczny obszar nakładkami, przewija kółkiem myszy i rysuje pasek przewijania.
+  - **Menu map:** „Nowa mapa”, mapy wbudowane i wszystkie mapy z SQLite tworzą jedną przewijaną listę.
+  - **Menu scenariuszy:** scenariusze wbudowane i wszystkie zapisane mapy tworzą jedną przewijaną listę.
+  - **Bez limitu:** znika obcinanie zapisanych map do sześciu wpisów.
+  - **Czytelność:** tytuł menu i przycisk powrotu pozostają nieruchome; przewija się tylko zawartość.
+- **Powiązane:** GRA-017, GRA-020, ADR-018, INTERF-004, INTERF-005
+
 ## INFRA-001: Środowisko Docker
 - **Status:** ✅ zrobione
 - **Opis:** docker-compose + Makefile + usługi client/server/nginx/db/adminer.

@@ -31,13 +31,14 @@
 - **Mapa to zbiór kafelków**, nie prostokąt: można malować **poza pierwotnym prostokątem** — na czarnym tle. Współrzędne heksów są absolutne, więc kafelki mogą leżeć także po osi `0` (ujemne `col`/`row`). Zasięg kamery rośnie razem z mapą.
 - **Stan edycji:** edytor przechowuje `GameState` (mapa + jednostki + licznik), a szkic w `registry` obejmuje jednostki — po powrocie z menu map wracają na swoje heksy.
 - **Odczyt współrzędnych:** HUD podaje pozycję heksa jako `kolumna, wiersz` w **kolumnach podwojonych** (ADR-004): kolumna `2q + r`, więc sąsiednie hexy w wierszu różnią się o 2, a parzystość kolumny zdradza parzystość wiersza. Ten sam zapis dotyczy zasięgu mapy.
-- **Pliki:** `client/src/scenes/MapEditorScene.ts`, `client/src/view/hexGrid.ts`, `client/src/view/unitLayer.ts`, `client/src/view/devBar.ts`, `client/src/devTools.ts`, `client/src/core/map/layout.ts`, `client/src/core/map/model.ts`, `client/src/core/map/generator.ts`, `client/src/core/map/metrics.ts`, `client/src/core/state.ts`, `client/src/core/units.ts`, `client/src/core/terrain.ts`, `client/src/storage/database.ts`, `client/src/storage/maps.ts`
+- **Pliki:** `client/src/scenes/MapEditorScene.ts`, `client/src/view/mapViewport.ts`, `client/src/view/hexGrid.ts`, `client/src/view/unitLayer.ts`, `client/src/view/devBar.ts`, `client/src/devTools.ts`, `client/src/core/map/layout.ts`, `client/src/core/map/model.ts`, `client/src/core/map/generator.ts`, `client/src/core/map/metrics.ts`, `client/src/core/state.ts`, `client/src/core/units.ts`, `client/src/core/terrain.ts`, `client/src/storage/database.ts`, `client/src/storage/maps.ts`
 
 ## INTERF-004: Menu map
 - **Status:** Zaimplementowane
 - **Opis:** Menu map jest wejściem do edytora. Zawiera pozycję „Nowa mapa” (pusta mapa generatora) oraz listę map wbudowanych z miniaturą i opisem. Kliknięcie mapy otwiera ją w edytorze do dalszej edycji. `ESC` wraca do menu głównego. Wbudowane mapy: „Dolina” (rzeka, lasy, miasto) i „Wzgórza” (grzbiet gór, jezioro, droga przez bagno) — obie o kształcie nieregularnym (z kafelkami dodanymi na krawędziach). Poprawki w edytorze są zachowywane w sesji (schowek `registry`) i wracają po otwarciu menu map.
 - **Zapisane mapy:** pod listą wbudowaną pojawia się sekcja „ZAPISANE MAPY (SQLite)” z mapami zapisanymi przyciskiem „ZAPISZ” w edytorze. Wpis pokazuje nazwę, liczbę kafli, jednostek i datę zapisu; kliknięcie otwiera mapę w edytorze. Sekcja pojawia się dopiero, gdy w bazie są zapisane mapy.
-- **Pliki:** `client/src/scenes/MapMenuScene.ts`, `client/src/view/mapPreview.ts`, `client/src/core/map/catalog.ts`, `client/src/core/map/generator.ts`, `client/src/storage/maps.ts`
+- **Przewijanie:** wszystkie pozycje (nowa mapa, mapy wbudowane i zapisane) leżą na jednej liście. Gdy nie mieszczą się na ekranie, kółko myszy przewija zawartość, a pasek po prawej pokazuje pozycję. Tytuł i przycisk powrotu są nieruchome.
+- **Pliki:** `client/src/scenes/MapMenuScene.ts`, `client/src/view/scrollList.ts`, `client/src/view/mapCard.ts`, `client/src/view/mapPreview.ts`, `client/src/core/map/catalog.ts`, `client/src/core/map/generator.ts`, `client/src/storage/maps.ts`
 
 ## INTERF-005: Scenariusze
 - **Status:** Zaimplementowane
@@ -45,7 +46,8 @@
 - **Sterowanie:** LPM wybiera jednostkę (jej statystyki pojawiają się w HUD-zie), kursor pokazuje teren i jednostkę pod heksem, strzałki/`WASD` przesuwają kamerę, środkowy przycisk przeciąga, kółko zmienia zoom, `ESC` wraca do menu scenariuszy, a `Shift+ESC` do menu głównego.
 - **Scenariusz wbudowany:** „Front Wschodni” — mapa 48×28 (1344 kafle, około 3,8× więcej niż „Dolina”) ze wszystkimi rodzajami terenu i po 10 jednostek każdej strony (piechota, czołgi, artyleria, zwiad).
 - **Zapisane mapy:** jeśli w SQLite są mapy z edytora, menu scenariuszy pokazuje je pod scenariuszem wbudowanym jako dodatkowe mapy testowe.
-- **Pliki:** `client/src/scenes/ScenarioMenuScene.ts`, `client/src/scenes/ScenarioScene.ts`, `client/src/core/scenario.ts`, `client/src/view/unitLayer.ts`, `client/src/storage/maps.ts`
+- **Przewijanie:** scenariusze wbudowane i wszystkie zapisane mapy tworzą jedną listę przewijaną kółkiem myszy, z paskiem pozycji po prawej. Tytuł i przycisk powrotu pozostają nieruchome.
+- **Pliki:** `client/src/scenes/ScenarioMenuScene.ts`, `client/src/scenes/ScenarioScene.ts`, `client/src/view/scrollList.ts`, `client/src/view/mapCard.ts`, `client/src/view/mapViewport.ts`, `client/src/core/scenario.ts`, `client/src/view/unitLayer.ts`, `client/src/storage/maps.ts`
 
 ## INTERF-006: Wewnętrzna baza map (SQLite)
 - **Status:** Zaimplementowane

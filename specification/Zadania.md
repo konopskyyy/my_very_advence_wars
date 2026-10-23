@@ -31,4 +31,6 @@ Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
 | [[Zadania-opisy#GRA-019: Pełny ekran 16:9\|GRA-019]] | Pełny ekran 16:9 | ✅ | GRA-016, ADR-015, INTERF-003 |
 | [[Zadania-opisy#GRA-020: Menu scenariuszy i duża mapa testowa\|GRA-020]] | Menu scenariuszy i duża mapa testowa | ✅ | GRA-012, ADR-016, INTERF-001, INTERF-005 |
 | [[Zadania-opisy#GRA-021: Zapis map w wewnętrznym SQLite\|GRA-021]] | Zapis map w wewnętrznym SQLite | ✅ | GRA-003, GRA-020, ADR-017, INTERF-004, INTERF-005, INTERF-006 |
+| [[Zadania-opisy#GRA-022: Wspólny moduł widoku mapy\|GRA-022]] | Wspólny moduł widoku mapy | ✅ | GRA-007, GRA-020, ADR-001, ADR-018, INTERF-003, INTERF-005 |
+| [[Zadania-opisy#GRA-023: Przewijane listy map i scenariuszy\|GRA-023]] | Przewijane listy map i scenariuszy | ✅ | GRA-017, GRA-020, ADR-018, INTERF-004, INTERF-005 |
 | [[Zadania-opisy#INFRA-001: Środowisko Docker\|INFRA-001]] | Środowisko Docker | ✅ | `specification/Infrastruktura.md` |

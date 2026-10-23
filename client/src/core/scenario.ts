@@ -1,6 +1,10 @@
 import { generateMap, paintRect, type GameMap } from './map';
-import { createInitialState, placeUnit, type GameState } from './state';
-import type { FactionId, UnitKind } from './units';
+import {
+  createInitialState,
+  deployUnits,
+  type GameState,
+  type UnitDeployment,
+} from './state';
 
 export interface ScenarioDefinition {
   readonly id: string;
@@ -12,32 +16,30 @@ export interface ScenarioDefinition {
 export const SCENARIO_COLS = 48;
 export const SCENARIO_ROWS = 28;
 
-type Deployment = readonly (readonly [UnitKind, number, number])[];
-
-const PLAYER_DEPLOYMENT: Deployment = [
-  ['infantry', 4, 12],
-  ['infantry', 6, 15],
-  ['infantry', 10, 12],
-  ['infantry', 12, 15],
-  ['tank', 5, 13],
-  ['tank', 9, 17],
-  ['artillery', 7, 15],
-  ['artillery', 12, 13],
-  ['scout', 2, 11],
-  ['scout', 3, 24],
+const PLAYER_DEPLOYMENT: readonly UnitDeployment[] = [
+  { kind: 'infantry', col: 4, row: 12 },
+  { kind: 'infantry', col: 6, row: 15 },
+  { kind: 'infantry', col: 10, row: 12 },
+  { kind: 'infantry', col: 12, row: 15 },
+  { kind: 'tank', col: 5, row: 13 },
+  { kind: 'tank', col: 9, row: 17 },
+  { kind: 'artillery', col: 7, row: 15 },
+  { kind: 'artillery', col: 12, row: 13 },
+  { kind: 'scout', col: 2, row: 11 },
+  { kind: 'scout', col: 3, row: 24 },
 ];
 
-const OPPONENT_DEPLOYMENT: Deployment = [
-  ['infantry', 43, 12],
-  ['infantry', 40, 15],
-  ['infantry', 37, 13],
-  ['infantry', 44, 18],
-  ['tank', 42, 13],
-  ['tank', 39, 17],
-  ['artillery', 44, 15],
-  ['artillery', 36, 14],
-  ['scout', 46, 11],
-  ['scout', 39, 20],
+const OPPONENT_DEPLOYMENT: readonly UnitDeployment[] = [
+  { kind: 'infantry', col: 43, row: 12 },
+  { kind: 'infantry', col: 40, row: 15 },
+  { kind: 'infantry', col: 37, row: 13 },
+  { kind: 'infantry', col: 44, row: 18 },
+  { kind: 'tank', col: 42, row: 13 },
+  { kind: 'tank', col: 39, row: 17 },
+  { kind: 'artillery', col: 44, row: 15 },
+  { kind: 'artillery', col: 36, row: 14 },
+  { kind: 'scout', col: 46, row: 11 },
+  { kind: 'scout', col: 39, row: 20 },
 ];
 
 function buildFrontMap(): GameMap {
@@ -81,13 +83,6 @@ function buildFrontMap(): GameMap {
   map = paintRect(map, 12, 22, 2, 2, 'city');
 
   return map;
-}
-
-function deployUnits(state: GameState, faction: FactionId, deployment: Deployment): GameState {
-  return deployment.reduce(
-    (next, [kind, col, row]) => placeUnit(next, kind, { col, row }, faction),
-    state,
-  );
 }
 
 function buildFrontState(): GameState {

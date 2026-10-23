@@ -1,19 +1,25 @@
 import Phaser from 'phaser';
 import { BUILT_IN_MAPS, type MapDefinition } from '../core/map';
 import type { GameState } from '../core/state';
-import { listSavedMaps, loadSavedMap, type SavedMapSummary } from '../storage/maps';
-import { drawMapPreview, previewLayout } from '../view/mapPreview';
+import {
+  listSavedMaps,
+  loadSavedMap,
+  type SavedMapSummary,
+} from '../storage/maps';
+import { formatTimestamp } from '../view/format';
+import { createMapCard } from '../view/mapCard';
+import { ScrollList } from '../view/scrollList';
 
 const PREVIEW_SIZE = 4;
-const PREVIEW_PADDING = 8;
-const CARD_GAP = 10;
 const TITLE_Y = 30;
+const LIST_X = 80;
 const LIST_Y = 64;
-const TEXT_WIDTH = 190;
-const SAVED_MAP_LIMIT = 6;
-const SAVED_ROW_HEIGHT = 42;
+const LIST_BOTTOM_MARGIN = 56;
 
 export class MapMenuScene extends Phaser.Scene {
+  private list!: ScrollList;
+  private listWidth = 0;
+
   constructor() {
     super('map-menu');
   }
@@ -21,22 +27,39 @@ export class MapMenuScene extends Phaser.Scene {
   create(): void {
     const { width, height } = this.scale;
 
+    this.listWidth = width - LIST_X * 2;
+    this.list = new ScrollList(this, {
+      x: LIST_X,
+      y: LIST_Y,
+      width: this.listWidth,
+      height: height - LIST_Y - LIST_BOTTOM_MARGIN,
+    });
+
     this.add
       .text(width / 2, TITLE_Y, 'Edytor map', {
         fontFamily: 'monospace',
         fontSize: '22px',
         color: '#d8e2dc',
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setDepth(10);
 
-    let y = LIST_Y;
-    y += this.addNewMapCard(y);
+    this.add
+      .text(width - LIST_X, TITLE_Y, 'Kółko myszy — przewijanie', {
+        fontFamily: 'monospace',
+        fontSize: '11px',
+        color: '#9fb0a5',
+      })
+      .setOrigin(1, 0.5)
+      .setDepth(10);
+
+    this.addNewMapCard();
 
     for (const definition of BUILT_IN_MAPS) {
-      y += this.addCard(definition, y);
+      this.addCard(definition);
     }
 
-    void this.addSavedMaps(y);
+    void this.addSavedMaps();
 
     const back = this.add
       .text(width / 2, height - 26, '> Menu główne <', {
@@ -45,6 +68,7 @@ export class MapMenuScene extends Phaser.Scene {
         color: '#ffffff',
       })
       .setOrigin(0.5)
+      .setDepth(10)
       .setInteractive({ useHandCursor: true });
 
     back.on('pointerover', () => back.setColor('#a6f4c5'));
@@ -58,105 +82,38 @@ export class MapMenuScene extends Phaser.Scene {
     });
   }
 
-  private addNewMapCard(y: number): number {
-    const cardWidth = 360;
-    const cardHeight = 64;
-    const cardX = (this.scale.width - cardWidth) / 2;
-
-    const card = this.add.rectangle(cardX, y, cardWidth, cardHeight, 0x0b0f14, 0.85);
-    card.setOrigin(0, 0);
-    card.setStrokeStyle(1, 0x3d6b4f, 1);
-
-    const name = this.add
-      .text(cardX + 20, y + 22, '> Nowa mapa <', {
-        fontFamily: 'monospace',
-        fontSize: '16px',
-        color: '#ffffff',
-      })
-      .setOrigin(0, 0.5);
-
-    this.add
-      .text(cardX + 20, y + 44, 'Pusta mapa 22×14 — zacznij od zera', {
-        fontFamily: 'monospace',
-        fontSize: '11px',
-        color: '#9fb0a5',
-      })
-      .setOrigin(0, 0.5);
-
-    const open = (): void => {
-      this.scene.start('map-editor');
-    };
-
-    card.setInteractive({ useHandCursor: true });
-    card.on('pointerover', () => name.setColor('#a6f4c5'));
-    card.on('pointerout', () => name.setColor('#ffffff'));
-    card.on('pointerdown', open);
-
-    return cardHeight + CARD_GAP;
-  }
-
-  private addCard(definition: MapDefinition, y: number): number {
-    const draft = this.draftFor(definition);
-    const map = draft?.map ?? definition.map;
-    const layout = previewLayout(map, PREVIEW_SIZE, PREVIEW_PADDING);
-
-    const cardWidth = layout.width + PREVIEW_PADDING * 2 + TEXT_WIDTH + 20;
-    const cardHeight = Math.max(layout.height + PREVIEW_PADDING * 2, 96);
-    const cardX = (this.scale.width - cardWidth) / 2;
-
-    const card = this.add.rectangle(cardX, y, cardWidth, cardHeight, 0x0b0f14, 0.85);
-    card.setOrigin(0, 0);
-    card.setStrokeStyle(1, 0x3d6b4f, 1);
-
-    drawMapPreview(this, map, PREVIEW_SIZE, {
-      x: cardX + layout.origin.x,
-      y: y + layout.origin.y,
+  private addNewMapCard(): void {
+    const card = createMapCard(this, {
+      title: '> Nowa mapa <',
+      description: 'Pusta mapa 22×14 — zacznij od zera',
+      width: 360,
+      height: 64,
+      onOpen: () => this.scene.start('map-editor'),
     });
 
-    const textX = cardX + layout.width + PREVIEW_PADDING * 2;
-
-    const name = this.add
-      .text(textX, y + cardHeight / 2 - 18, `> ${definition.name} <`, {
-        fontFamily: 'monospace',
-        fontSize: '16px',
-        color: '#ffffff',
-      })
-      .setOrigin(0, 0.5)
-      .setInteractive({ useHandCursor: true });
-
-    const description = this.add
-      .text(textX, y + cardHeight / 2 + 10, definition.description, {
-        fontFamily: 'monospace',
-        fontSize: '11px',
-        color: '#9fb0a5',
-        wordWrap: { width: TEXT_WIDTH },
-      })
-      .setOrigin(0, 0.5);
-
-    const open = (): void => {
-      this.scene.start('map-editor', {
-        definition: { ...definition, map },
-        state: draft,
-      });
-    };
-
-    name.on('pointerover', () => name.setColor('#a6f4c5'));
-    name.on('pointerout', () => name.setColor('#ffffff'));
-    name.on('pointerdown', open);
-
-    description.on('pointerover', () => name.setColor('#a6f4c5'));
-    description.on('pointerout', () => name.setColor('#ffffff'));
-    description.on('pointerdown', open);
-
-    card.setInteractive({ useHandCursor: true });
-    card.on('pointerover', () => name.setColor('#a6f4c5'));
-    card.on('pointerout', () => name.setColor('#ffffff'));
-    card.on('pointerdown', open);
-
-    return cardHeight + CARD_GAP;
+    this.list.addRow(card.container, card.height, (this.listWidth - card.width) / 2);
   }
 
-  private async addSavedMaps(startY: number): Promise<void> {
+  private addCard(definition: MapDefinition): void {
+    const draft = this.draftFor(definition);
+    const map = draft?.map ?? definition.map;
+    const card = createMapCard(this, {
+      title: `> ${definition.name} <`,
+      description: definition.description,
+      map,
+      previewSize: PREVIEW_SIZE,
+      onOpen: () => {
+        this.scene.start('map-editor', {
+          definition: { ...definition, map },
+          state: draft,
+        });
+      },
+    });
+
+    this.list.addRow(card.container, card.height, (this.listWidth - card.width) / 2);
+  }
+
+  private async addSavedMaps(): Promise<void> {
     let maps: SavedMapSummary[];
 
     try {
@@ -166,28 +123,13 @@ export class MapMenuScene extends Phaser.Scene {
       return;
     }
 
-    if (!this.scene.isActive()) {
+    if (!this.scene.isActive() || maps.length === 0) {
       return;
     }
 
-    if (maps.length === 0) {
-      return;
-    }
+    this.addSection('ZAPISANE MAPY (SQLite)');
 
-    const cardX = 80;
-    const cardWidth = this.scale.width - cardX * 2;
-
-    this.add
-      .text(cardX, startY + 4, 'ZAPISANE MAPY (SQLite)', {
-        fontFamily: 'monospace',
-        fontSize: '11px',
-        color: '#9fb0a5',
-      })
-      .setOrigin(0, 0.5);
-
-    let y = startY + 24;
-
-    for (const summary of maps.slice(0, SAVED_MAP_LIMIT)) {
+    for (const summary of maps) {
       try {
         const saved = await loadSavedMap(summary.id);
 
@@ -204,65 +146,37 @@ export class MapMenuScene extends Phaser.Scene {
           map: state.map,
         };
 
-        const background = this.add.rectangle(
-          cardX,
-          y,
-          cardWidth,
-          SAVED_ROW_HEIGHT,
-          0x0b0f14,
-          0.85,
-        );
-        background.setOrigin(0, 0);
-        background.setStrokeStyle(1, 0x3d6b4f, 1);
-        background.setInteractive({ useHandCursor: true });
+        const card = createMapCard(this, {
+          title: `> ${saved.name} <`,
+          description: `${saved.tiles} kafli · ${saved.units} jedn. · ${formatTimestamp(saved.updatedAt)}`,
+          width: this.listWidth,
+          height: 42,
+          textWidth: this.listWidth - 32,
+          onOpen: () => this.scene.start('map-editor', { definition, state }),
+        });
 
-        const name = this.add
-          .text(cardX + 16, y + 13, `> ${saved.name} <`, {
-            fontFamily: 'monospace',
-            fontSize: '13px',
-            color: '#ffffff',
-          })
-          .setOrigin(0, 0.5);
-
-        this.add
-          .text(
-            cardX + 16,
-            y + 30,
-            `${saved.tiles} kafli · ${saved.units} jedn. · ${formatSavedDate(saved.updatedAt)}`,
-            {
-              fontFamily: 'monospace',
-              fontSize: '10px',
-              color: '#9fb0a5',
-            },
-          )
-          .setOrigin(0, 0.5);
-
-        const open = (): void => {
-          this.scene.start('map-editor', { definition, state });
-        };
-
-        background.on('pointerover', () => name.setColor('#a6f4c5'));
-        background.on('pointerout', () => name.setColor('#ffffff'));
-        background.on('pointerdown', open);
-        name.setInteractive({ useHandCursor: true });
-        name.on('pointerover', () => name.setColor('#a6f4c5'));
-        name.on('pointerout', () => name.setColor('#ffffff'));
-        name.on('pointerdown', open);
-
-        y += SAVED_ROW_HEIGHT + 6;
+        this.list.addRow(card.container, card.height);
       } catch (error) {
         console.error(`Nie udało się wczytać mapy ${summary.id}`, error);
       }
     }
   }
 
+  private addSection(label: string): void {
+    const container = this.add.container(0, 0);
+    const text = this.add
+      .text(0, 11, label, {
+        fontFamily: 'monospace',
+        fontSize: '11px',
+        color: '#9fb0a5',
+      })
+      .setOrigin(0, 0.5);
+
+    container.add(text);
+    this.list.addRow(container, 22);
+  }
+
   private draftFor(definition: MapDefinition): GameState | undefined {
     return this.registry.get(`map:draft:${definition.id}`) as GameState | undefined;
   }
-}
-
-function formatSavedDate(iso: string): string {
-  const date = new Date(iso);
-
-  return Number.isNaN(date.getTime()) ? iso : date.toLocaleString('pl-PL');
 }

@@ -1,19 +1,25 @@
 import Phaser from 'phaser';
+import { mapTileCount } from '../core/map';
 import { BUILT_IN_SCENARIOS, type ScenarioDefinition } from '../core/scenario';
-import { listSavedMaps, loadSavedMap, type SavedMap, type SavedMapSummary } from '../storage/maps';
-import { drawMapPreview, previewLayout } from '../view/mapPreview';
+import { countUnits } from '../core/state';
+import {
+  listSavedMaps,
+  loadSavedMap,
+  type SavedMapSummary,
+} from '../storage/maps';
+import { formatTimestamp } from '../view/format';
+import { createMapCard } from '../view/mapCard';
+import { ScrollList } from '../view/scrollList';
 
 const PREVIEW_SIZE = 3;
-const PREVIEW_PADDING = 8;
-const CARD_GAP = 10;
 const TITLE_Y = 30;
+const LIST_X = 80;
 const LIST_Y = 64;
-const TEXT_WIDTH = 220;
-const SAVED_MAP_LIMIT = 6;
-const SAVED_ROW_HEIGHT = 42;
+const LIST_BOTTOM_MARGIN = 56;
 
 export class ScenarioMenuScene extends Phaser.Scene {
-  private nextY = LIST_Y;
+  private list!: ScrollList;
+  private listWidth = 0;
 
   constructor() {
     super('scenario-menu');
@@ -22,7 +28,13 @@ export class ScenarioMenuScene extends Phaser.Scene {
   create(): void {
     const { width, height } = this.scale;
 
-    this.nextY = LIST_Y;
+    this.listWidth = width - LIST_X * 2;
+    this.list = new ScrollList(this, {
+      x: LIST_X,
+      y: LIST_Y,
+      width: this.listWidth,
+      height: height - LIST_Y - LIST_BOTTOM_MARGIN,
+    });
 
     this.add
       .text(width / 2, TITLE_Y, 'Scenariusze', {
@@ -30,10 +42,20 @@ export class ScenarioMenuScene extends Phaser.Scene {
         fontSize: '22px',
         color: '#d8e2dc',
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setDepth(10);
+
+    this.add
+      .text(width - LIST_X, TITLE_Y, 'Kółko myszy — przewijanie', {
+        fontFamily: 'monospace',
+        fontSize: '11px',
+        color: '#9fb0a5',
+      })
+      .setOrigin(1, 0.5)
+      .setDepth(10);
 
     for (const scenario of BUILT_IN_SCENARIOS) {
-      this.addCard(scenario, this.nextY);
+      this.addCard(scenario);
     }
 
     void this.addSavedMaps();
@@ -45,6 +67,7 @@ export class ScenarioMenuScene extends Phaser.Scene {
         color: '#ffffff',
       })
       .setOrigin(0.5)
+      .setDepth(10)
       .setInteractive({ useHandCursor: true });
 
     back.on('pointerover', () => back.setColor('#a6f4c5'));
@@ -58,6 +81,21 @@ export class ScenarioMenuScene extends Phaser.Scene {
     });
   }
 
+  private addCard(definition: ScenarioDefinition): void {
+    const counts = countUnits(definition.state.units);
+    const card = createMapCard(this, {
+      title: `> ${definition.name} <`,
+      description: definition.description,
+      meta: `${mapTileCount(definition.state.map)} kafli · ${counts.blue} vs ${counts.red} jednostek`,
+      map: definition.state.map,
+      previewSize: PREVIEW_SIZE,
+      minHeight: 104,
+      onOpen: () => this.scene.start('scenario', { definition }),
+    });
+
+    this.list.addRow(card.container, card.height, (this.listWidth - card.width) / 2);
+  }
+
   private async addSavedMaps(): Promise<void> {
     let maps: SavedMapSummary[];
 
@@ -68,25 +106,13 @@ export class ScenarioMenuScene extends Phaser.Scene {
       return;
     }
 
-    if (!this.scene.isActive()) {
+    if (!this.scene.isActive() || maps.length === 0) {
       return;
     }
 
-    if (maps.length === 0) {
-      return;
-    }
+    this.addSection('ZAPISANE MAPY (SQLite)');
 
-    this.add
-      .text(80, this.nextY + 4, 'ZAPISANE MAPY (SQLite)', {
-        fontFamily: 'monospace',
-        fontSize: '11px',
-        color: '#9fb0a5',
-      })
-      .setOrigin(0, 0.5);
-
-    this.nextY += 24;
-
-    for (const summary of maps.slice(0, SAVED_MAP_LIMIT)) {
+    for (const summary of maps) {
       try {
         const saved = await loadSavedMap(summary.id);
 
@@ -94,147 +120,40 @@ export class ScenarioMenuScene extends Phaser.Scene {
           continue;
         }
 
-        this.addSavedRow(saved, this.nextY);
-      } catch (error) {
-        console.error(`Nie udało się wczytać mapy ${summary.id}`, error);
-      }
-    }
-
-    if (maps.length > SAVED_MAP_LIMIT) {
-      this.add
-        .text(
-          this.scale.width / 2,
-          this.nextY,
-          `Pozostałe ${maps.length - SAVED_MAP_LIMIT} mapy są w menu edytora`,
-          {
-            fontFamily: 'monospace',
-            fontSize: '11px',
-            color: '#9fb0a5',
-          },
-        )
-        .setOrigin(0.5, 0);
-    }
-  }
-
-  private addSavedRow(saved: SavedMap, y: number): void {
-    const cardX = 80;
-    const cardWidth = this.scale.width - cardX * 2;
-    const background = this.add.rectangle(cardX, y, cardWidth, SAVED_ROW_HEIGHT, 0x0b0f14, 0.85);
-
-    background.setOrigin(0, 0);
-    background.setStrokeStyle(1, 0x3d6b4f, 1);
-    background.setInteractive({ useHandCursor: true });
-
-    const name = this.add
-      .text(cardX + 16, y + 13, `> ${saved.name} <`, {
-        fontFamily: 'monospace',
-        fontSize: '13px',
-        color: '#ffffff',
-      })
-      .setOrigin(0, 0.5);
-
-    this.add
-      .text(
-        cardX + 16,
-        y + 30,
-        `${saved.tiles} kafli · ${saved.units} jedn. · ${formatDate(saved.updatedAt)}`,
-        {
-          fontFamily: 'monospace',
-          fontSize: '10px',
-          color: '#9fb0a5',
-        },
-      )
-      .setOrigin(0, 0.5);
-
-    const open = (): void => {
-      this.scene.start('scenario', {
-        definition: {
+        const definition: ScenarioDefinition = {
           id: saved.id,
           name: saved.name,
           description: saved.description || 'Mapa zapisana w edytorze',
           state: saved.state,
-        },
-      });
-    };
+        };
 
-    background.on('pointerover', () => name.setColor('#a6f4c5'));
-    background.on('pointerout', () => name.setColor('#ffffff'));
-    background.on('pointerdown', open);
-    name.setInteractive({ useHandCursor: true });
-    name.on('pointerover', () => name.setColor('#a6f4c5'));
-    name.on('pointerout', () => name.setColor('#ffffff'));
-    name.on('pointerdown', open);
+        const card = createMapCard(this, {
+          title: `> ${saved.name} <`,
+          description: `${saved.tiles} kafli · ${saved.units} jedn. · ${formatTimestamp(saved.updatedAt)}`,
+          width: this.listWidth,
+          height: 42,
+          textWidth: this.listWidth - 32,
+          onOpen: () => this.scene.start('scenario', { definition }),
+        });
 
-    this.nextY += SAVED_ROW_HEIGHT + 6;
+        this.list.addRow(card.container, card.height);
+      } catch (error) {
+        console.error(`Nie udało się wczytać mapy ${summary.id}`, error);
+      }
+    }
   }
 
-  private addCard(definition: ScenarioDefinition, y: number): void {
-    const map = definition.state.map;
-    const layout = previewLayout(map, PREVIEW_SIZE, PREVIEW_PADDING);
-    const cardWidth = layout.width + PREVIEW_PADDING * 2 + TEXT_WIDTH + 20;
-    const cardHeight = Math.max(layout.height + PREVIEW_PADDING * 2, 104);
-    const cardX = (this.scale.width - cardWidth) / 2;
-
-    const card = this.add.rectangle(cardX, y, cardWidth, cardHeight, 0x0b0f14, 0.85);
-    card.setOrigin(0, 0);
-    card.setStrokeStyle(1, 0x3d6b4f, 1);
-
-    drawMapPreview(this, map, PREVIEW_SIZE, {
-      x: cardX + layout.origin.x,
-      y: y + layout.origin.y,
-    });
-
-    const textX = cardX + layout.width + PREVIEW_PADDING * 2;
-    const blue = definition.state.units.filter((unit) => unit.faction === 'blue').length;
-    const red = definition.state.units.filter((unit) => unit.faction === 'red').length;
-
-    const name = this.add
-      .text(textX, y + 28, `> ${definition.name} <`, {
-        fontFamily: 'monospace',
-        fontSize: '16px',
-        color: '#ffffff',
-      })
-      .setOrigin(0, 0.5);
-
-    const description = this.add
-      .text(textX, y + 52, definition.description, {
+  private addSection(label: string): void {
+    const container = this.add.container(0, 0);
+    const text = this.add
+      .text(0, 11, label, {
         fontFamily: 'monospace',
         fontSize: '11px',
         color: '#9fb0a5',
-        wordWrap: { width: TEXT_WIDTH },
       })
-      .setOrigin(0, 0);
-
-    this.add
-      .text(
-        textX,
-        y + cardHeight - 16,
-        `${Object.keys(map.cells).length} kafli · ${blue} vs ${red} jednostek`,
-        {
-          fontFamily: 'monospace',
-          fontSize: '10px',
-          color: '#7fa08b',
-        },
-      )
       .setOrigin(0, 0.5);
 
-    const open = (): void => {
-      this.scene.start('scenario', { definition });
-    };
-
-    for (const target of [card, name, description]) {
-      target.setInteractive({ useHandCursor: true });
-      target.on('pointerover', () => name.setColor('#a6f4c5'));
-      target.on('pointerout', () => name.setColor('#ffffff'));
-      target.on('pointerdown', open);
-    }
-
-    this.nextY += cardHeight + CARD_GAP;
+    container.add(text);
+    this.list.addRow(container, 22);
   }
-}
-
-function formatDate(iso: string): string {
-  const date = new Date(iso);
-
-  return Number.isNaN(date.getTime()) ? iso : date.toLocaleString('pl-PL');
 }
