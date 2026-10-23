@@ -51,7 +51,7 @@
 
 ## INTERF-006: Wewnętrzna baza map (SQLite)
 - **Status:** Zaimplementowane
-- **Opis:** Klient uruchamia SQLite w WebAssembly (`sql.js`) i trzyma bazę w `localStorage` pod kluczem `mvaw:sqlite`. Baza działa bez backendu, również w Electronie. Tabela `maps` przechowuje nazwę, opis, cały stan gry (teren + jednostki) i liczniki; zapis tego samego identyfikatora aktualizuje wpis.
-- **Zakres:** zapis z edytora, odczyt w menu map i menu scenariuszy. Brak synchronizacji między urządzeniami — to magazyn lokalny przypisany do originu i profilu. Wyczyszczenie danych przeglądarki/Electrona usuwa zapisane mapy. Mapy z edytora nie są przechowywane w MySQL.
+- **Opis:** Klient uruchamia SQLite w WebAssembly (`sql.js`) i trzyma bazę w `localStorage` pod kluczem `mvaw:sqlite`. Baza działa bez backendu, również w Electronie. Tabela `maps` przechowuje nazwę, opis, cały stan gry (teren + jednostki), liczniki i źródło (`editor`/`builtin`); zapis tego samego identyfikatora aktualizuje wpis. Schemat jest wersjonowany przez `schema_migrations`, a migracja `003-seed-maps` importuje mapy z pliku `client/src/storage/seed/maps.json`.
+- **Zakres:** zapis z edytora, odczyt w menu map i menu scenariuszy, migracje przy otwarciu bazy. Brak synchronizacji między urządzeniami — to magazyn lokalny przypisany do originu i profilu. Wyczyszczenie danych przeglądarki/Electrona usuwa zapisane mapy. Mapy z edytora nie są przechowywane w MySQL.
 - **Szczegóły:** [[Mapy]] — model, schemat, format JSON, limity, kopie i diagnostyka.
 - **Pliki:** `client/src/storage/database.ts`, `client/src/storage/mapSerialization.ts`, `client/src/storage/maps.ts`, `client/package.json`

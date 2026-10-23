@@ -245,6 +245,20 @@ Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
   - **Bez regresji:** mapy spoza katalogu wbudowanego nadal trafiają do sekcji zapisanych map; szkic z bieżącej sesji ma pierwszeństwo przed stanem z bazy.
 - **Powiązane:** GRA-017, GRA-021, GRA-023, INTERF-004
 
+## GRA-026: Migracje SQLite i seed map
+- **Status:** 🚧 w toku
+- **Opis:** Klient uruchamia wersjonowane migracje SQLite przy otwarciu bazy, zamiast tworzyć schemat pojedynczym `CREATE TABLE IF NOT EXISTS`. Migracje obejmują początkowy schemat, pole `source` odróżniające mapy wbudowane od zapisanych przez użytkownika oraz seed map z pliku JSON. Dzięki temu zmiana schematu i danych startowych jest powtarzalna i nie wymaga ręcznego SQL.
+- **Kryteria:**
+  - **Runner:** `client/src/storage/migrations.ts` tworzy tabelę `schema_migrations` i wykonuje migracje w kolejności wersji; każda migracja działa w transakcji, a ponowne uruchomienie nie powtarza zastosowanych wersji.
+  - **Migracje:** `001-initial` tworzy tabelę `maps`, `002-map-source` dodaje `source`, a `003-seed-maps` wstawia mapy z pliku seed tylko wtedy, gdy danego `id` jeszcze nie ma.
+  - **Pola:** `maps` ma `id`, `name`, `description`, `state`, `tiles`, `units`, `source`, `created_at`, `updated_at`; `source` przyjmuje `editor` lub `builtin`.
+  - **Seed:** `client/src/storage/seed/maps.json` zawiera wersję i listę map (`id`, `name`, `description`, `source`, `state`); migracja waliduje stan przez `deserializeGameState()`.
+  - **Menu:** wiersz seedowany jako `builtin` jest scalany z kafelkiem mapy wbudowanej i nie dostaje dopisku „zapisana”; zapis z edytora zmienia `source` na `editor`, a menu scenariuszy pokazuje wyłącznie mapy użytkownika.
+  - **Bez utraty danych:** seed używa `ON CONFLICT(id) DO NOTHING`, więc nie nadpisuje zapisanej wersji mapy wbudowanej ani map użytkownika.
+  - **Testy:** `tests/storage/migrations.test.ts` sprawdza pustą bazę, ponowne uruchomienie, bazę w starym schemacie i zachowanie danych użytkownika; testy `storage/maps` działają po migracjach.
+  - **Dokumentacja:** [[Mapy]] opisuje wersje migracji, format pliku seed i sposób dodawania map.
+- **Powiązane:** GRA-021, GRA-025, ADR-017, ADR-019, INTERF-006
+
 ## INFRA-001: Środowisko Docker
 - **Status:** ✅ zrobione
 - **Opis:** docker-compose + Makefile + usługi client/server/nginx/db/adminer.

@@ -1,9 +1,10 @@
 # Mapy i baza SQLite
 
 > [!info] Co opisuje ta notatka
-> Model mapy, format zapisu, schemat tabeli `maps`, trwałość danych w przeglądarce
-> i Electronie oraz sposoby diagnostyki. Infrastruktura uruchomieniowa jest
-> w [[Infrastruktura]], a decyzja o wyborze SQLite — w [[ADR#ADR-017: Wewnętrzna baza map w SQLite (sql.js)|ADR-017]].
+> Model mapy, format zapisu, schemat tabeli `maps`, migracje i seed, trwałość
+> danych w przeglądarce i Electronie oraz sposoby diagnostyki. Infrastruktura
+> uruchomieniowa jest w [[Infrastruktura]], a decyzja o wyborze SQLite —
+> w [[ADR#ADR-017: Wewnętrzna baza map w SQLite (sql.js)|ADR-017]].
 
 > [!warning] To nie jest baza MySQL z backendu
 > Mapy z edytora **nie trafiają do MySQL** ani do wolumenu `db_data`. MySQL
@@ -16,13 +17,14 @@
 > 2. [[#Model mapy]]
 > 3. [[#Schemat bazy]]
 > 4. [[#Format stanu gry]]
-> 5. [[#Zapis i odczyt]]
-> 6. [[#Trwałość i lokalizacja danych]]
-> 7. [[#Identyfikatory i mapy wbudowane]]
-> 8. [[#Limity i zachowanie awaryjne]]
-> 9. [[#Diagnostyka i kopie zapasowe]]
-> 10. [[#Testy i pliki]]
-> 11. [[#Rozwiązywanie problemów]]
+> 5. [[#Migracje i seed]]
+> 6. [[#Zapis i odczyt]]
+> 7. [[#Trwałość i lokalizacja danych]]
+> 8. [[#Identyfikatory i mapy wbudowane]]
+> 9. [[#Limity i zachowanie awaryjne]]
+> 10. [[#Diagnostyka i kopie zapasowe]]
+> 11. [[#Testy i pliki]]
+> 12. [[#Rozwiązywanie problemów]]
 
 ---
 
@@ -30,8 +32,9 @@
 
 Mapy dzielą się na dwie grupy:
 
-- **wbudowane** — stałe w kodzie (`client/src/core/map/catalog.ts`), dostępne
-  bez bazy i bez zapisu,
+- **wbudowane** — generowane w kodzie (`client/src/core/map/catalog.ts`) i
+  dodatkowo seedowane do bazy przy pierwszej migracji; kod jest fallbackiem,
+  gdy wpisu w bazie nie ma,
 - **zapisane** — tworzone lub modyfikowane w edytorze i zapisywane przyciskiem
   `ZAPISZ` do lokalnej bazy SQLite.
 
@@ -39,13 +42,13 @@ Baza jest **lokalna dla profilu i originu**. Nie ma synchronizacji między
 urządzeniami, przeglądarkami ani profilami Electrona. To świadoma decyzja z
 ADR-017 — gra ma działać bez backendu.
 
-> [!important] Mapy wbudowane nie są migrowane do bazy
+> [!important] Mapy wbudowane są seedowane, ale nie nadpisują zapisów
 > `dolina` i `wzgorza` są generowane w kodzie (`client/src/core/map/catalog.ts`)
-> i **nie mają wierszy w SQLite** od pierwszego uruchomienia. Wpis w `maps`
-> powstaje dopiero wtedy, gdy użytkownik otworzy mapę w edytorze i kliknie
-> `ZAPISZ`. Zapisana wersja ma to samo `id` co mapa wbudowana, więc menu map
-> scala ją z kafelkiem wbudowanym zamiast pokazywać duplikat. Usunięcie wiersza
-> z bazy przywraca wersję z kodu.
+> i migracja `003-seed-maps` wstawia ich stan startowy do SQLite. Wpis ma
+> `source = builtin` i nie jest oznaczany w menu jako „zapisana”. Jeżeli wpis
+> już istnieje (np. użytkownik zapisał swoją wersję), migracja go nie rusza.
+> Zapis z edytora zmienia `source` na `editor`; usunięcie wiersza przywraca
+> wersję z kodu.
 
 ```mermaid
 flowchart LR
@@ -64,9 +67,10 @@ flowchart LR
 Przepływ zapisu:
 
 1. `MapEditorScene` składa `GameState` (mapa + jednostki + licznik).
-2. `saveMap()` woła `openDatabase()` i `ensureMapsSchema()`.
+2. `saveMap()` woła `openDatabase()`, które uruchamia migracje (`runMigrations()`).
 3. `upsertMap()` robi `INSERT ... ON CONFLICT(id) DO UPDATE`, więc kolejny zapis
-   tego samego `id` aktualizuje wpis zamiast go dublować.
+   tego samego `id` aktualizuje wpis zamiast go dublować; zapis użytkownika
+   ustawia `source = editor`.
 4. `persistDatabase()` eksportuje całą bazę przez `db.export()`, koduje do
    base64 i zapisuje w `localStorage`.
 5. Menu map i menu scenariuszy odczytują wpisy przez `listSavedMaps()` oraz
@@ -134,10 +138,12 @@ Strony: `blue`, `red`, `neutral`. W edytorze dostępne są niebieska i czerwona;
 
 ## Schemat bazy
 
-Schemat tworzy `client/src/storage/maps.ts`:
+Schemat tworzą migracje w `client/src/storage/migrations/`:
+`001-initial.ts` zakłada tabelę, a `002-map-source.ts` dodaje `source`.
+Pełny stan po migracjach:
 
 ```sql
-CREATE TABLE IF NOT EXISTS maps (
+CREATE TABLE maps (
   id          TEXT PRIMARY KEY,
   name        TEXT NOT NULL,
   description TEXT NOT NULL DEFAULT '',
@@ -145,7 +151,8 @@ CREATE TABLE IF NOT EXISTS maps (
   tiles       INTEGER NOT NULL,
   units       INTEGER NOT NULL,
   created_at  TEXT NOT NULL,
-  updated_at  TEXT NOT NULL
+  updated_at  TEXT NOT NULL,
+  source      TEXT NOT NULL DEFAULT 'editor'
 );
 ```
 
@@ -159,9 +166,12 @@ CREATE TABLE IF NOT EXISTS maps (
 | `units`       | Liczba jednostek w `state.units`; liczona przy zapisie. |
 | `created_at`  | Data pierwszego zapisu, ISO 8601 UTC. |
 | `updated_at`  | Data ostatniego zapisu, ISO 8601 UTC; aktualizowana przy upsercie. |
+| `source`      | `builtin` dla wpisu z seeda, `editor` dla zapisu użytkownika. |
 
 `created_at` nie jest nadpisywane przy kolejnym zapisie tego samego `id`.
-`updated_at` jest ustawiane przez `upsertMap()` na czas bieżący.
+`updated_at` jest ustawiane przez `upsertMap()` na czas bieżący. Zapis z edytora
+zmienia `source` na `editor`, więc seedowana mapa wbudowana staje się zwykłą
+zapisaną mapą.
 
 Przykładowy wiersz (`state` skrócony):
 
@@ -171,6 +181,7 @@ name       = Moja mapa
 description= Mapa zapisana w edytorze
 tiles      = 48
 units      = 1
+source     = editor
 created_at = 2026-10-23T12:28:08.666Z
 updated_at = 2026-10-23T12:28:08.666Z
 state      = {"map":{"cells":{"0,0":"plain","1,0":"forest"}},"units":[...],"nextUnitSeq":2}
@@ -223,6 +234,78 @@ kończy się błędem, a reszta listy może się pokazać.
 
 ---
 
+## Migracje i seed
+
+### Runner
+
+`client/src/storage/migrations.ts` prowadzi wersjonowanie schematu:
+
+1. tworzy tabelę `schema_migrations` (`version`, `name`, `applied_at`),
+2. odczytuje zastosowane wersje,
+3. wykonuje brakujące migracje po kolei, każdą w transakcji,
+4. zapisuje wersję dopiero po udanym `up()`,
+5. przy błędzie robi `ROLLBACK` i przerywa otwarcie bazy.
+
+Migracje są idempotentne: ponowne otwarcie bazy nie powtarza już zapisanych
+wersji. Kolejność i unikalność wersji pilnuje test
+`tests/storage/migrations.test.ts`.
+
+### Wersje
+
+| Wersja | Plik | Co robi |
+| -----: | ---- | ------- |
+| 1 | `001-initial.ts` | Tworzy tabelę `maps` i jej podstawowe kolumny. |
+| 2 | `002-map-source.ts` | Dodaje `source` z wartością domyślną `editor`; sprawdza `PRAGMA table_info`, więc działa też na bazie ze starego schematu. |
+| 3 | `003-seed-maps.ts` | Wstawia mapy z pliku seed przez `ON CONFLICT(id) DO NOTHING`. |
+
+> [!note] Brak rollbacku i CLI
+> Runner jest celowo minimalny: nie ma `down()`, komendy `make migrate` ani
+> wywołania z PHP. Migracje uruchamiają się w kliencie przy otwarciu bazy.
+> Doctrine Migrations z backendu nie mają tu zastosowania, bo baza żyje
+> w profilu przeglądarki/Electrona, a nie w MySQL.
+
+### Plik seed
+
+Dane startowe leżą w `client/src/storage/seed/maps.json`:
+
+```json
+{
+  "version": 1,
+  "maps": [
+    {
+      "id": "dolina",
+      "name": "Dolina",
+      "description": "Rzeka przez łąki, lasy i jedno miasto.",
+      "source": "builtin",
+      "createdAt": "2026-10-23T00:00:00.000Z",
+      "updatedAt": "2026-10-23T00:00:00.000Z",
+      "state": {
+        "map": { "cells": { "0,0": "plain" } },
+        "units": [],
+        "nextUnitSeq": 1
+      }
+    }
+  ]
+}
+```
+
+Zasady:
+
+- `state` jest walidowany przez `deserializeGameState()`; nie można wstawić
+  nieznanego terenu ani niepoprawnej jednostki,
+- `source` w seedzie powinien być `builtin`; zapis z edytora i tak ustawi
+  `editor`,
+- migracja nie nadpisuje istniejącego `id` — dzięki temu zapisana wersja mapy
+  wbudowanej i mapy użytkownika są bezpieczne,
+- aby dodać mapę startową, dopisz ją do `maps` i dodaj nową migrację (np.
+  `004-seed-maps-v2.ts`) albo wyczyść bazę przed ponownym uruchomieniem;
+  sama zmiana JSON-a nie uruchomi już zastosowanej wersji 3.
+
+Aktualny seed zawiera `dolina` i `wzgorza`. Kod w `core/map/catalog.ts` nadal
+jest źródłem tych map, gdy w bazie nie ma ich wierszy.
+
+---
+
 ## Zapis i odczyt
 
 ### Zapis z edytora
@@ -230,6 +313,8 @@ kończy się błędem, a reszta listy może się pokazać.
 - `ZAPISZ` w `MapEditorScene` woła `saveCurrentMap()`.
 - Nowa mapa dostaje `local-<base36>`; mapa wbudowana zachowuje swoje `id`
   (`dolina`/`wzgorza`), więc zapis nadpisuje jej zapisaną wersję.
+- Zapis ustawia `source = editor`; dzięki temu seedowana mapa wbudowana staje
+  się zwykłą mapą użytkownika i może pojawić się w menu scenariuszy.
 - Po udanym zapisie przycisk pokazuje `ZAPISANO`; przy błędzie `BŁĄD ZAPISU`.
 - Samo wyjście `ESC` **nie zapisuje do bazy**. Dla mapy, która ma już
   `mapId` (wbudowana albo wcześniej zapisana), `leaveTo()` odkłada szkic w
@@ -242,13 +327,16 @@ kończy się błędem, a reszta listy może się pokazać.
 
 - Menu map pokazuje „Nowa mapa”, mapy wbudowane i sekcję
   „ZAPISANE MAPY (SQLite)”.
-- Zapisana wersja mapy wbudowanej jest **scalana z kafelkiem mapy wbudowanej**:
-  kafelek ma dopisek „zapisana” i otwiera stan z bazy. Dzięki temu kliknięcie
-  „Wzgórza” po restarcie nie otwiera po cichu pierwotnej wersji.
+- Wpis `source = builtin` jest **scalany z kafelkiem mapy wbudowanej** i nie
+  dostaje dopisku „zapisana”; otwiera stan z seeda, a gdy wpisu nie ma — stan
+  z kodu.
+- Zapisana wersja mapy wbudowanej (`source = editor`) jest scalana z kafelkiem
+  mapy wbudowanej i ma dopisek „zapisana”. Dzięki temu kliknięcie „Wzgórza” po
+  restarcie nie otwiera po cichu pierwotnej wersji.
 - Szkic z bieżącej sesji ma pierwszeństwo przed stanem z bazy i jest oznaczony
   dopiskiem „szkic”.
-- Menu scenariuszy pokazuje wszystkie zapisane mapy jako dodatkowe scenariusze
-  testowe — także zapisaną wersję mapy wbudowanej.
+- Menu scenariuszy pokazuje wyłącznie mapy ze `source = editor`; seedowane mapy
+  wbudowane nie są tam duplikowane.
 
 ### Cykl życia bazy
 
@@ -259,11 +347,14 @@ czas życia strony. Pierwsze otwarcie:
 2. czyta `localStorage['mvaw:sqlite']`,
 3. dekoduje base64 do `Uint8Array`,
 4. tworzy `new SQL.Database(bytes)`,
-5. wykonuje `CREATE TABLE IF NOT EXISTS maps`.
+5. uruchamia `runMigrations()` — tworzy `schema_migrations`, wykonuje brakujące
+   migracje i seed, a jeśli coś zastosowano, od razu zapisuje bazę do
+   `localStorage`.
 
 Jeżeli zapisany bajtowo plik jest uszkodzony, `createDatabase()` usuwa klucz z
 `localStorage` i tworzy pustą bazę. Oznacza to **utratę poprzednich map** — nie
-ma automatycznego backupu ani migracji.
+ma automatycznego backupu. Migracje chronią schemat przed zmianami, ale nie
+ratują uszkodzonego pliku.
 
 ---
 
@@ -311,18 +402,19 @@ plików LevelDB ręcznie — korzystaj z DevTools albo eksportu base64.
 
 | `id` | Skąd | Zachowanie przy zapisie |
 | ---- | ---- | ----------------------- |
-| `dolina` | `BUILT_IN_MAPS` | Zapis tworzy/aktualizuje wiersz `dolina`; menu map scala go z kafelkiem wbudowanym. |
-| `wzgorza` | `BUILT_IN_MAPS` | Jak wyżej. |
+| `dolina` | `BUILT_IN_MAPS` + seed | Migracja 003 wstawia wersję `source = builtin`; zapis użytkownika zmienia `source` na `editor`. |
+| `wzgorza` | `BUILT_IN_MAPS` + seed | Jak wyżej. |
 | `local-<base36>` | `createSavedMapId()` | Nowy unikalny identyfikator dla „Nowej mapy”; kolejne zapisy aktualizują ten sam wiersz. |
 
 Konsekwencje:
 
-- zapis mapy wbudowanej nie tworzy drugiej mapy o innym `id` — to ta sama
-  tożsamość, tylko z zapisanym stanem,
+- seed mapy wbudowanej nie tworzy drugiej mapy o innym `id` — to ta sama
+  tożsamość; menu scala ją z kafelkiem wbudowanym,
+- zapis mapy wbudowanej nie tworzy duplikatu; zmienia `source` na `editor`,
 - usunięcie wiersza z bazy przywraca pierwotną mapę wbudowaną (nie ma
   mechanizmu „przywróć” w UI),
-- `created_at` pozostaje z pierwszego zapisu, `updated_at` zmienia się przy
-  każdym kolejnym.
+- `created_at` pozostaje z pierwszego wpisu (seed ma stałą datę), `updated_at`
+  zmienia się przy każdym zapisie użytkownika.
 
 ---
 
@@ -335,13 +427,15 @@ Konsekwencje:
   bazę w pamięci, a `persistDatabase()` dopiero potem eksportuje całość. Błąd
   `localStorage.setItem` oznacza, że zmiana zostaje tylko w pamięci do końca
   sesji.
-- **Brak systemu migracji (jak Doctrine Migrations):** nie ma tabeli
-  `schema_migrations`, numeru wersji ani CLI. `ensureMapsSchema()` wykonuje
-  tylko `CREATE TABLE IF NOT EXISTS`, więc nowa kolumna nie pojawi się w
-  istniejącej bazie. Backend Symfony w tym repo nie ma jeszcze Doctrine, a
-  nawet po jego dodaniu migracje dotyczyłyby MySQL, nie `localStorage`.
-  Zmiana schematu SQLite wymaga własnego, wersjonowanego mechanizmu po stronie
-  klienta albo nowego klucza bazy.
+- **Migracje bez rollbacku:** schemat jest wersjonowany przez
+  `schema_migrations`, a każda migracja działa w transakcji. Nie ma jednak
+  `down()` ani CLI; nieudana migracja zostawia bazę bez nowej wersji i
+  zatrzymuje otwarcie. Backend Symfony nie ma tu Doctrine — a nawet po jego
+  dodaniu migracje dotyczyłyby MySQL, nie `localStorage`.
+- **Seed tylko dla brakujących `id`:** `003-seed-maps` używa
+  `ON CONFLICT(id) DO NOTHING`, więc nie nadpisuje istniejących map. Zmiana
+  pliku JSON po pierwszym uruchomieniu wymaga nowej wersji migracji albo
+  wyczyszczenia bazy.
 - **Brak współdzielenia:** dwie karty/okna tego samego originu mogą mieć własne
   instancje `sql.js`; ostatni zapis wygrywa. Nie ma blokad ani merge'u.
 - **Brak uwierzytelniania i szyfrowania:** dane są jawne w profilu użytkownika.
@@ -381,7 +475,8 @@ Następnie w terminalu (Linux/macOS):
 
 ```bash
 base64 -d mapy.b64 > mapy.sqlite
-sqlite3 mapy.sqlite "SELECT id, name, tiles, units, updated_at FROM maps;"
+sqlite3 mapy.sqlite "SELECT id, name, source, tiles, units, updated_at FROM maps;"
+sqlite3 mapy.sqlite "SELECT version, name, applied_at FROM schema_migrations ORDER BY version;"
 ```
 
 `sqlite3` nie jest wymagany do działania gry — to tylko narzędzie diagnostyczne.
@@ -417,14 +512,20 @@ Node.
 
 | Plik | Rola |
 | ---- | ---- |
-| `client/src/storage/database.ts` | `sql.js`, WASM, odczyt/zapis `localStorage`, base64. |
-| `client/src/storage/maps.ts` | schemat `maps`, `upsertMap`, `listMaps`, `readMap`, `saveMap`, `listSavedMaps`, `loadSavedMap`, `createSavedMapId`. |
+| `client/src/storage/database.ts` | `sql.js`, WASM, odczyt/zapis `localStorage`, base64, uruchomienie migracji. |
+| `client/src/storage/migrations.ts` | runner `schema_migrations`, transakcje i lista migracji. |
+| `client/src/storage/migrations/001-initial.ts` | Początkowy schemat `maps`. |
+| `client/src/storage/migrations/002-map-source.ts` | Kolumna `source` i migracja starego schematu. |
+| `client/src/storage/migrations/003-seed-maps.ts` | Import map z pliku seed. |
+| `client/src/storage/seed/maps.json` | Edytowalne dane startowe map. |
+| `client/src/storage/maps.ts` | `upsertMap`, `listMaps`, `readMap`, `saveMap`, `listSavedMaps`, `loadSavedMap`, `createSavedMapId`. |
 | `client/src/storage/mapSerialization.ts` | serializacja i walidacja `GameState`. |
 | `client/src/core/map/model.ts` | model `GameMap`, klucze komórek, liczniki, granice. |
 | `client/src/core/state.ts` | `GameState`, jednostki, `nextUnitSeq`. |
 | `client/src/core/terrain.ts` | lista `TerrainId` i statystyki terenu. |
 | `client/src/core/units.ts` | rodzaje jednostek, strony, amunicja. |
-| `client/tests/storage/maps.test.ts` | schemat, zapis, upsert, odczyt, ID. |
+| `client/tests/storage/migrations.test.ts` | pusta baza, idempotencja, stary schemat, seed i transakcje. |
+| `client/tests/storage/maps.test.ts` | zapis, upsert, odczyt, źródło i ID po migracjach. |
 | `client/tests/storage/mapSerialization.test.ts` | round-trip i odrzucanie uszkodzonych danych. |
 
 Uruchamianie:
@@ -462,6 +563,12 @@ Testy `storage/` używają prawdziwego `sql.js` w pamięci, bez `localStorage`.
 > odrzucany i zastępowany pustą bazą. Jeśli masz kopię base64, przywróć ją i
 > przeładuj stronę. Bez kopii dane są tracone.
 
+> [!question]- Dodałem mapę do `maps.json`, ale jej nie widzę
+> Seed jest migracją wersji 3 i uruchamia się tylko raz. Zmiana samego JSON-a
+> nie powtórzy zastosowanej migracji. Dodaj nową wersję migracji (np.
+> `004-seed-maps-v2.ts`), usuń `mvaw:sqlite` i przeładuj stronę, albo zaimportuj
+> dane ręcznie do bazy. Migracja nie nadpisuje istniejących `id`.
+
 > [!question]- Czy mapy są w MySQL/Adminerze?
 > Nie. MySQL i Adminer dotyczą backendu Symfony. Mapy z edytora są wyłącznie w
 > SQLite w `localStorage` klienta.
@@ -471,5 +578,7 @@ Testy `storage/` używają prawdziwego `sql.js` w pamięci, bez `localStorage`.
 > [!success] Powiązane
 > - [[Infrastruktura]] — porty, Compose, Electron i profile.
 > - [[Interfejs#INTERF-006: Wewnętrzna baza map (SQLite)|INTERF-006]] — kontrakt UI.
-> - [[ADR#ADR-017: Wewnętrzna baza map w SQLite (sql.js)|ADR-017]] — decyzja i konsekwencje.
-> - [[Zadania-opisy#GRA-021: Zapis map w wewnętrznym SQLite|GRA-021]] — zakres zadania.
+> - [[ADR#ADR-017: Wewnętrzna baza map w SQLite (sql.js)|ADR-017]] — decyzja o SQLite.
+> - [[ADR#ADR-019: Migracje SQLite i seed map|ADR-019]] — decyzja o migracjach i seedzie.
+> - [[Zadania-opisy#GRA-021: Zapis map w wewnętrznym SQLite|GRA-021]] — zapis map.
+> - [[Zadania-opisy#GRA-026: Migracje SQLite i seed map|GRA-026]] — migracje i plik seed.

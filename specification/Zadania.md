@@ -35,4 +35,5 @@ Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
 | [[Zadania-opisy#GRA-023: Przewijane listy map i scenariuszy\|GRA-023]] | Przewijane listy map i scenariuszy | ✅ | GRA-017, GRA-020, ADR-018, INTERF-004, INTERF-005 |
 | [[Zadania-opisy#GRA-024: Przewijanie kamery krawędzią ekranu\|GRA-024]] | Przewijanie kamery krawędzią ekranu | ✅ | GRA-022, ADR-018, INTERF-003, INTERF-005 |
 | [[Zadania-opisy#GRA-025: Zapisana wersja mapy wbudowanej w menu map\|GRA-025]] | Zapisana wersja mapy wbudowanej w menu map | ✅ | GRA-017, GRA-021, GRA-023, INTERF-004 |
+| [[Zadania-opisy#GRA-026: Migracje SQLite i seed map\|GRA-026]] | Migracje SQLite i seed map | 🚧 | GRA-021, GRA-025, ADR-019, INTERF-006 |
 | [[Zadania-opisy#INFRA-001: Środowisko Docker\|INFRA-001]] | Środowisko Docker | ✅ | `specification/Infrastruktura.md` |
