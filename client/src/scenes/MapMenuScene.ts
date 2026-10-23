@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { BUILT_IN_MAPS, type MapDefinition } from '../core/map';
 import type { GameState } from '../core/state';
+import { listSavedMaps, loadSavedMap, type SavedMapSummary } from '../storage/maps';
 import { drawMapPreview, previewLayout } from '../view/mapPreview';
 
 const PREVIEW_SIZE = 4;
@@ -9,6 +10,8 @@ const CARD_GAP = 10;
 const TITLE_Y = 30;
 const LIST_Y = 64;
 const TEXT_WIDTH = 190;
+const SAVED_MAP_LIMIT = 6;
+const SAVED_ROW_HEIGHT = 42;
 
 export class MapMenuScene extends Phaser.Scene {
   constructor() {
@@ -32,6 +35,8 @@ export class MapMenuScene extends Phaser.Scene {
     for (const definition of BUILT_IN_MAPS) {
       y += this.addCard(definition, y);
     }
+
+    void this.addSavedMaps(y);
 
     const back = this.add
       .text(width / 2, height - 26, '> Menu główne <', {
@@ -151,7 +156,113 @@ export class MapMenuScene extends Phaser.Scene {
     return cardHeight + CARD_GAP;
   }
 
+  private async addSavedMaps(startY: number): Promise<void> {
+    let maps: SavedMapSummary[];
+
+    try {
+      maps = await listSavedMaps();
+    } catch (error) {
+      console.error('Nie udało się odczytać map z SQLite', error);
+      return;
+    }
+
+    if (!this.scene.isActive()) {
+      return;
+    }
+
+    if (maps.length === 0) {
+      return;
+    }
+
+    const cardX = 80;
+    const cardWidth = this.scale.width - cardX * 2;
+
+    this.add
+      .text(cardX, startY + 4, 'ZAPISANE MAPY (SQLite)', {
+        fontFamily: 'monospace',
+        fontSize: '11px',
+        color: '#9fb0a5',
+      })
+      .setOrigin(0, 0.5);
+
+    let y = startY + 24;
+
+    for (const summary of maps.slice(0, SAVED_MAP_LIMIT)) {
+      try {
+        const saved = await loadSavedMap(summary.id);
+
+        if (!saved) {
+          continue;
+        }
+
+        const draft = this.registry.get(`map:draft:${saved.id}`) as GameState | undefined;
+        const state = draft ?? saved.state;
+        const definition: MapDefinition = {
+          id: saved.id,
+          name: saved.name,
+          description: saved.description || 'Mapa zapisana w edytorze',
+          map: state.map,
+        };
+
+        const background = this.add.rectangle(
+          cardX,
+          y,
+          cardWidth,
+          SAVED_ROW_HEIGHT,
+          0x0b0f14,
+          0.85,
+        );
+        background.setOrigin(0, 0);
+        background.setStrokeStyle(1, 0x3d6b4f, 1);
+        background.setInteractive({ useHandCursor: true });
+
+        const name = this.add
+          .text(cardX + 16, y + 13, `> ${saved.name} <`, {
+            fontFamily: 'monospace',
+            fontSize: '13px',
+            color: '#ffffff',
+          })
+          .setOrigin(0, 0.5);
+
+        this.add
+          .text(
+            cardX + 16,
+            y + 30,
+            `${saved.tiles} kafli · ${saved.units} jedn. · ${formatSavedDate(saved.updatedAt)}`,
+            {
+              fontFamily: 'monospace',
+              fontSize: '10px',
+              color: '#9fb0a5',
+            },
+          )
+          .setOrigin(0, 0.5);
+
+        const open = (): void => {
+          this.scene.start('map-editor', { definition, state });
+        };
+
+        background.on('pointerover', () => name.setColor('#a6f4c5'));
+        background.on('pointerout', () => name.setColor('#ffffff'));
+        background.on('pointerdown', open);
+        name.setInteractive({ useHandCursor: true });
+        name.on('pointerover', () => name.setColor('#a6f4c5'));
+        name.on('pointerout', () => name.setColor('#ffffff'));
+        name.on('pointerdown', open);
+
+        y += SAVED_ROW_HEIGHT + 6;
+      } catch (error) {
+        console.error(`Nie udało się wczytać mapy ${summary.id}`, error);
+      }
+    }
+  }
+
   private draftFor(definition: MapDefinition): GameState | undefined {
     return this.registry.get(`map:draft:${definition.id}`) as GameState | undefined;
   }
+}
+
+function formatSavedDate(iso: string): string {
+  const date = new Date(iso);
+
+  return Number.isNaN(date.getTime()) ? iso : date.toLocaleString('pl-PL');
 }

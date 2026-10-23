@@ -111,6 +111,9 @@ czyli **dev serwer Vite na żywo** z podpiętym kodem z `./client`.
 - `node_modules` siedzi w **wymianowym woluminie** `client_node_modules`, nie na
   hoście — inaczej montowanie `./client` zasłoniłoby moduły zainstalowane w
   kontenerze (host nie ma ich w tej samej wersji/architekturze).
+- Klient zawiera `sql.js` (SQLite w WebAssembly). Build emituje plik
+  `dist/assets/sql-wasm-*.wasm`, a baza map jest trzymana lokalnie w
+  `localStorage` przeglądarki/Electrona — nie w MySQL i bez nowego portu.
 
 ### `nginx` — front HTTP backendu
 

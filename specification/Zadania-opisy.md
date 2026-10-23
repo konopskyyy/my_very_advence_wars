@@ -175,6 +175,31 @@ Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
   - **16:9:** na monitorze 16:9 canvas wypełnia cały ekran; inne proporcje mogą mieć pasy.
 - **Powiązane:** GRA-016, ADR-015, INTERF-003
 
+## GRA-020: Menu scenariuszy i duża mapa testowa
+- **Status:** ✅ zrobione
+- **Opis:** Menu główne ma osobny wpis „Scenariusze”, który prowadzi do listy scenariuszy testowych. Pierwszy scenariusz to duża mapa 48×28 (1344 kafle, około 3,8× więcej niż największa mapa wbudowana — „Dolina” ma 352 kafle), z wszystkimi rodzajami terenu i rozstawionymi jednostkami niebieskiej strony gracza oraz czerwonego przeciwnika.
+- **Kryteria:**
+  - **Wejście:** menu główne zawiera „Scenariusze”, „Edytor map” i „Wyjście”; `ESC` w menu scenariuszy wraca do menu głównego.
+  - **Scenariusz:** `client/src/core/scenario.ts` przechowuje `ScenarioDefinition` z pełnym `GameState` (mapa + jednostki), niezależnie od Phasera; katalog zawiera scenariusz „Front Wschodni”.
+  - **Mapa:** 48×28 kafli, wszystkie siedem terenów (łąka, las, woda, góry, bagno, droga, miasto), nieregularne pasma gór, rzeka, jeziora, bagna, lasy, drogi i miasta.
+  - **Jednostki:** po 10 jednostek na stronę, wszystkie cztery rodzaje (piechota, czołg, artyleria, zwiad); każda jednostka stoi na istniejącym kaflu.
+  - **Scena:** `ScenarioScene` rysuje mapę i jednostki, pokazuje podgląd heksa pod kursorem, wybraną jednostkę ze statystykami, liczbę jednostek obu stron i obsługuje kamerę (strzałki/WASD, środkowy przycisk, kółko), `ESC` — menu scenariuszy, `Shift+ESC` — menu główne.
+  - **Menu scenariuszy:** lista scenariuszy z miniaturą, opisem i licznikami; zapisane mapy z SQLite są widoczne jako dodatkowe mapy testowe.
+  - **Testy:** `tests/core/scenario.test.ts` pilnuje rozmiaru mapy (3–4× największej wbudowanej), obecności wszystkich terenów, jednostek obu stron i postawienia ich na kaflach.
+- **Powiązane:** GRA-012, ADR-016, INTERF-001, INTERF-005
+
+## GRA-021: Zapis map w wewnętrznym SQLite
+- **Status:** ✅ zrobione
+- **Opis:** Edytor map zapisuje teren i jednostki w wewnętrznej bazie SQLite działającej w kliencie (WASM), bez zależności od backendu. Baza przeżywa przeładowanie strony i jest wspólna dla przeglądarki oraz Electrona w obrębie profilu użytkownika.
+- **Kryteria:**
+  - **Baza:** `client/src/storage/database.ts` uruchamia `sql.js` i trzyma plik bazy w `localStorage` pod kluczem `mvaw:sqlite`.
+  - **Schemat:** tabela `maps` przechowuje `id`, `name`, `description`, `state` (JSON całego `GameState`), `tiles`, `units`, `created_at`, `updated_at`; zapis tego samego `id` aktualizuje wpis.
+  - **Zapis:** przycisk „ZAPISZ” w edytorze zapisuje mapę i jednostki do SQLite; nowa mapa dostaje identyfikator `local-…`, a kolejne zapisy aktualizują ten sam wpis.
+  - **Odczyt:** menu map pokazuje sekcję „ZAPISANE MAPY (SQLite)” i otwiera zapisaną mapę w edytorze; menu scenariuszy pokazuje zapisane mapy jako scenariusze testowe.
+  - **Serializacja:** `client/src/storage/mapSerialization.ts` zapisuje i waliduje `GameState` (teren, jednostki, amunicja, licznik) — uszkodzony JSON i nieznany teren są odrzucane.
+  - **Testy:** `tests/storage/mapSerialization.test.ts` sprawdza round-trip i walidację, a `tests/storage/maps.test.ts` — schemat, zapis, aktualizację i odczyt na prawdziwej bazie `sql.js`.
+- **Powiązane:** GRA-003, GRA-020, ADR-017, INTERF-004, INTERF-005, INTERF-006
+
 ## INFRA-001: Środowisko Docker
 - **Status:** ✅ zrobione
 - **Opis:** docker-compose + Makefile + usługi client/server/nginx/db/adminer.

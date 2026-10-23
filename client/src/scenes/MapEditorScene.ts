@@ -27,6 +27,7 @@ import {
 import { TERRAIN_DEFS, TERRAIN_IDS, type TerrainId } from '../core/terrain';
 import { FACTION_DEFS, UNIT_DEFS, UNIT_KINDS, type FactionId, type UnitKind } from '../core/units';
 import { devToolsEnabled } from '../devTools';
+import { createSavedMapId, saveMap } from '../storage/maps';
 import { DevBar } from '../view/devBar';
 import { createHexSprite, HEX_SIZE, HexMapView, tracePolygon } from '../view/hexGrid';
 import {
@@ -125,6 +126,7 @@ export class MapEditorScene extends Phaser.Scene {
   private mapCpuMs = 0;
   private lastOperationMs = 0;
   private mapBytes = 0;
+  private saving = false;
 
   private mapView!: HexMapView;
   private unitView!: UnitLayer;
@@ -132,6 +134,7 @@ export class MapEditorScene extends Phaser.Scene {
   private devBar?: DevBar;
   private panel!: Phaser.GameObjects.Rectangle;
   private cursor!: Phaser.GameObjects.Graphics;
+  private saveButton!: Phaser.GameObjects.Text;
   private mapButton!: Phaser.GameObjects.Text;
   private menuButton!: Phaser.GameObjects.Text;
   private terrainTiles: TerrainTile[] = [];
@@ -233,7 +236,7 @@ export class MapEditorScene extends Phaser.Scene {
     }
 
     this.mapButton = this.add
-      .text(PANEL_X + 12, HUD_Y, 'MENU MAP', {
+      .text(PANEL_X + 90, HUD_Y, 'MENU MAP', {
         fontFamily: 'monospace',
         fontSize: '11px',
         color: '#ffffff',
@@ -247,7 +250,7 @@ export class MapEditorScene extends Phaser.Scene {
     this.mapButton.on('pointerdown', () => this.leaveTo('map-menu'));
 
     this.menuButton = this.add
-      .text(PANEL_X + 140, HUD_Y, 'MENU GŁÓWNE', {
+      .text(PANEL_X + 160, HUD_Y, 'MENU GŁÓWNE', {
         fontFamily: 'monospace',
         fontSize: '11px',
         color: '#ffffff',
@@ -259,6 +262,20 @@ export class MapEditorScene extends Phaser.Scene {
     this.menuButton.on('pointerover', () => this.menuButton.setColor('#a6f4c5'));
     this.menuButton.on('pointerout', () => this.menuButton.setColor('#ffffff'));
     this.menuButton.on('pointerdown', () => this.leaveTo('menu'));
+
+    this.saveButton = this.add
+      .text(PANEL_X + 12, HUD_Y, 'ZAPISZ', {
+        fontFamily: 'monospace',
+        fontSize: '11px',
+        color: '#a6f4c5',
+      })
+      .setScrollFactor(0)
+      .setDepth(11)
+      .setInteractive({ useHandCursor: true });
+
+    this.saveButton.on('pointerover', () => this.saveButton.setColor('#ffffff'));
+    this.saveButton.on('pointerout', () => this.saveButton.setColor('#a6f4c5'));
+    this.saveButton.on('pointerdown', () => void this.saveCurrentMap());
 
     this.input.on('pointerdown', this.onPointerDown, this);
     this.input.on('pointermove', this.onPointerMove, this);
@@ -454,6 +471,7 @@ export class MapEditorScene extends Phaser.Scene {
     this.mapCpuMs = 0;
     this.lastOperationMs = 0;
     this.mapBytes = 0;
+    this.saving = false;
   }
 
   update(_time: number, delta: number): void {
@@ -657,6 +675,40 @@ export class MapEditorScene extends Phaser.Scene {
     this.scene.start(target);
   }
 
+  private async saveCurrentMap(): Promise<void> {
+    if (this.saving) {
+      return;
+    }
+
+    this.saving = true;
+
+    const id = this.mapId ?? createSavedMapId();
+    const name = this.mapName === 'nowa' ? 'Mapa lokalna' : this.mapName;
+
+    try {
+      await saveMap({
+        id,
+        name,
+        description: 'Mapa zapisana w edytorze',
+        state: this.state,
+      });
+
+      this.mapId = id;
+      this.mapName = name;
+      this.saveButton.setText('ZAPISANO');
+      this.refreshHud();
+
+      this.time.delayedCall(1400, () => this.saveButton.setText('ZAPISZ'));
+    } catch (error) {
+      console.error('Nie udało się zapisać mapy w SQLite', error);
+      this.saveButton.setText('BŁĄD ZAPISU');
+
+      this.time.delayedCall(1800, () => this.saveButton.setText('ZAPISZ'));
+    } finally {
+      this.saving = false;
+    }
+  }
+
   private pointerOverPanel(pointer: Phaser.Input.Pointer): boolean {
     return (
       pointer.x >= PANEL_X &&
@@ -784,6 +836,7 @@ export class MapEditorScene extends Phaser.Scene {
     lines.push('Shift+strzałki — wzrost mapy');
     lines.push('Kamera: strzałki/WASD');
     lines.push('Kółko — zoom');
+    lines.push('ZAPISZ — mapa do SQLite');
     lines.push('ESC — mapy · Shift+ESC — menu');
 
     this.hud.setText(lines.join('\n'));
@@ -798,6 +851,7 @@ export class MapEditorScene extends Phaser.Scene {
   private drawButtons(): void {
     const y = HUD_Y + this.hud.height + 4;
 
+    this.saveButton.setY(y);
     this.mapButton.setY(y);
     this.menuButton.setY(y);
 
