@@ -19,6 +19,7 @@ commicie**. Za „zmianę infrastruktury" uznaj:
 - `docker-compose.yml` — serwisy, porty, woluminy, zmienne środowiskowe,
 - `docker/php/Dockerfile` i `docker/nginx/default.conf`,
 - `Makefile` — nowe/usunięte cele,
+- `.github/workflows/` — zakres, wyzwalacze i kroki pipeline'u CI,
 - `electron/` — sposób uruchamiania i budowania,
 - `.env.example` — nowe zmienne.
 

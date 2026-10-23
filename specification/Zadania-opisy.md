@@ -101,6 +101,16 @@ Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
   - **Dokumentacja:** zasady i przykłady opisuje [[Konwencje]], decyzję — ADR-008.
 - **Powiązane:** ADR-008, `specification/Konwencje.md`
 
+## GRA-014: CI typów TypeScript
+- **Status:** ✅ zrobione
+- **Opis:** Pull requesty i pushe na `master` przechodzą wspólny check typów TypeScript. Pipeline GitHub Actions instaluje zależności klienta i uruchamia `tsc --noEmit`; nie buduje aplikacji, nie uruchamia testów i nie wymaga Dockera ani sekretów.
+- **Kryteria:**
+  - **Wyzwalacze:** workflow `.github/workflows/ci.yml` startuje przy pushu na `master`, przy pull requeście i ręcznie (`workflow_dispatch`).
+  - **Zakres:** Node 22, `npm ci` z cache opartym na `client/package-lock.json` i `npx tsc --noEmit` w `client/` — bez Vitest, `vite build` i Dockera.
+  - **Uprawnienia:** tylko odczyt repozytorium (`contents: read`).
+  - **Dokumentacja:** sekcja [[Infrastruktura#CI (GitHub Actions)]] opisuje pipeline, a ADR-009 uzasadnia zakres.
+- **Powiązane:** ADR-009, `specification/Infrastruktura.md`
+
 ## INFRA-001: Środowisko Docker
 - **Status:** ✅ zrobione
 - **Opis:** docker-compose + Makefile + usługi client/server/nginx/db/adminer.

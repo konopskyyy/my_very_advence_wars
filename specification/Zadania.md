@@ -22,4 +22,5 @@ Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
 | [[Zadania-opisy#GRA-010: Strona gry bez paska przewijania\|GRA-010]] | Strona gry bez paska przewijania | ✅ | GRA-009, INTERF-001 |
 | [[Zadania-opisy#GRA-011: Podwojone kolumny w odczycie edytora\|GRA-011]] | Podwojone kolumny w odczycie edytora | ✅ | ADR-004, ADR-005, GRA-001, INTERF-003 |
 | [[Zadania-opisy#GRA-013: Testy klienta w lustrzanym drzewie\|GRA-013]] | Testy klienta w lustrzanym drzewie | ✅ | ADR-008, `specification/Konwencje.md` |
+| [[Zadania-opisy#GRA-014: CI typów TypeScript\|GRA-014]] | CI typów TypeScript | ✅ | ADR-009, `specification/Infrastruktura.md` |
 | [[Zadania-opisy#INFRA-001: Środowisko Docker\|INFRA-001]] | Środowisko Docker | ✅ | `specification/Infrastruktura.md` |

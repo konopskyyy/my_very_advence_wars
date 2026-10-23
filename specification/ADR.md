@@ -51,3 +51,9 @@
 - **Kontekst:** Testy leżały obok modułów w `client/src/`, więc katalog kodu produkcyjnego mieszał się z testowym, a granica „kod vs testy” była widoczna tylko po nazwie pliku. Chcieliśmy jednym spojrzeniem oddzielić jedno od drugiego, nie tracąc powiązania testu z modułem.
 - **Decyzja:** Testy leżą w `client/tests/`, a drzewo katalogów jest lustrem `client/src/`: moduł `src/core/map/model.ts` ma test `tests/core/map/model.test.ts` (ta sama nazwa plus `.test.ts`). Importy w testach są względne (`../../../src/...`), bez aliasów. Reguły pilnuje `tests/structure.test.ts`: każdy plik testowy musi mieć odpowiednik w `src/`, a w `src/` nie może być plików `*.test.ts`. Szczegóły i przykłady: [[Konwencje]].
 - **Konsekwencje:** `src/` zawiera wyłącznie kod produkcyjny, a dodanie testu sprowadza się do odtworzenia ścieżki w `tests/`. Vitest ma zawężony `test.include` i nie zbiera przypadkowych plików, a `tsc --noEmit` sprawdza również testy. Koszt: dłuższe ścieżki importów i obowiązek utrzymania lustra — wymusza go test struktury.
+
+## ADR-009: CI sprawdza typy TypeScript
+- **Status:** Zaakceptowany
+- **Kontekst:** Błąd typu w kliencie wychodził dopiero przy lokalnym buildzie. Pull requesty nie miały wspólnego, powtarzalnego checku, więc każdy weryfikował typy po swojemu.
+- **Decyzja:** GitHub Actions uruchamia `.github/workflows/ci.yml` przy pushu na `master`, przy pull requeście i ręcznie (`workflow_dispatch`). Pipeline używa Node 22, instaluje zależności przez `npm ci` i uruchamia `npx tsc --noEmit` w `client/`. Zakres to wyłącznie typy — bez Vitest, bez `vite build` i bez Dockera.
+- **Konsekwencje:** Szybki feedback bez sekretów i bez budowania obrazów. Testy i build pozostają poza CI do czasu osobnej decyzji; lokalnie odpowiadają im `make test` i `npm run build`. Stan pipeline'u opisuje [[Infrastruktura]].
