@@ -43,7 +43,7 @@
 ## INTERF-005: Scenariusze
 - **Status:** Zaimplementowane
 - **Opis:** Menu scenariuszy jest poligonem testowym gry. Lista pokazuje scenariusze wbudowane z miniaturą, opisem i licznikiem kafli oraz jednostek. Kliknięcie otwiera scenę scenariusza: mapa z terenem i jednostkami niebieskiej strony gracza oraz czerwonego przeciwnika.
-- **Sterowanie:** LPM wybiera jednostkę (jej statystyki pojawiają się w HUD-zie), kursor pokazuje teren i jednostkę pod heksem, strzałki/`WASD` przesuwają kamerę, środkowy przycisk przeciąga, kółko zmienia zoom, `ESC` wraca do menu scenariuszy, a `Shift+ESC` do menu głównego.
+- **Sterowanie:** LPM wybiera jednostkę (jej statystyki pojawiają się w HUD-zie), kursor pokazuje teren i jednostkę pod heksem, strzałki/`WASD` przesuwają kamerę, najechanie myszą na krawędź ekranu przewija mapę, środkowy przycisk przeciąga, kółko zmienia zoom, `ESC` wraca do menu scenariuszy, a `Shift+ESC` do menu głównego. Przewijanie krawędzią działa w tym samym `MapViewport`, co w edytorze map, i jest wyłączone nad lewym panelem oraz przy wciśniętym przycisku myszy.
 - **Scenariusz wbudowany:** „Front Wschodni” — mapa 48×28 (1344 kafle, około 3,8× więcej niż „Dolina”) ze wszystkimi rodzajami terenu i po 10 jednostek każdej strony (piechota, czołgi, artyleria, zwiad).
 - **Zapisane mapy:** jeśli w SQLite są mapy z edytora, menu scenariuszy pokazuje je pod scenariuszem wbudowanym jako dodatkowe mapy testowe.
 - **Przewijanie:** scenariusze wbudowane i wszystkie zapisane mapy tworzą jedną listę przewijaną kółkiem myszy, z paskiem pozycji po prawej. Tytuł i przycisk powrotu pozostają nieruchome.

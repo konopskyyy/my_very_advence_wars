@@ -153,6 +153,7 @@ export class MapEditorScene extends Phaser.Scene {
     this.viewport = new MapViewport(this, this.state.map, {
       zoomMin: 0.75,
       zoomMax: 2.5,
+      edgePanBlocked: (pointer) => this.pointerOverPanel(pointer),
     });
 
     const renderStarted = performance.now();
@@ -680,6 +681,10 @@ export class MapEditorScene extends Phaser.Scene {
   }
 
   private pointerOverPanel(pointer: Phaser.Input.Pointer): boolean {
+    if (!this.panel) {
+      return false;
+    }
+
     return (
       pointer.x >= PANEL_X &&
       pointer.x <= PANEL_X + this.panel.width &&
@@ -786,7 +791,7 @@ export class MapEditorScene extends Phaser.Scene {
     lines.push('Klik — wybór w menu po lewej');
     lines.push('X — czyść mapę');
     lines.push('Shift+strzałki — wzrost mapy');
-    lines.push('Kamera: strzałki/WASD');
+    lines.push('Kamera: strzałki/WASD lub krawędź');
     lines.push('Kółko — zoom');
     lines.push('ZAPISZ — mapa do SQLite');
     lines.push('ESC — mapy · Shift+ESC — menu');

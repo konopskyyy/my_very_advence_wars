@@ -13,6 +13,9 @@ export interface MapViewportOptions {
   readonly zoomMax: number;
   readonly startZoom?: number;
   readonly panSpeed?: number;
+  readonly edgePanSpeed?: number;
+  readonly edgePanMargin?: number;
+  readonly edgePanBlocked?: (pointer: Phaser.Input.Pointer) => boolean;
   readonly margin?: number;
   readonly size?: number;
 }
@@ -25,7 +28,11 @@ export interface CameraAxis {
 }
 
 const DEFAULT_PAN_SPEED = 420;
+const DEFAULT_EDGE_PAN_SPEED = 620;
+const DEFAULT_EDGE_PAN_MARGIN = 24;
 const DEFAULT_MARGIN = HEX_SIZE * 8;
+
+const NO_AXIS: CameraAxis = { left: false, right: false, up: false, down: false };
 
 export class MapViewport {
   private map: GameMap;
@@ -57,17 +64,17 @@ export class MapViewport {
 
   update(delta: number, axis: CameraAxis): void {
     const camera = this.scene.cameras.main;
-    const step = ((this.options.panSpeed ?? DEFAULT_PAN_SPEED) * delta) / 1000;
+    const keyStep = ((this.options.panSpeed ?? DEFAULT_PAN_SPEED) * delta) / 1000;
+    const edgeStep =
+      ((this.options.edgePanSpeed ?? DEFAULT_EDGE_PAN_SPEED) * delta) / 1000;
+    const edge = this.edgeAxis();
     const dx = Number(axis.right) - Number(axis.left);
     const dy = Number(axis.down) - Number(axis.up);
+    const edgeDx = Number(edge.right) - Number(edge.left);
+    const edgeDy = Number(edge.down) - Number(edge.up);
 
-    if (dx !== 0) {
-      camera.scrollX += dx * step;
-    }
-
-    if (dy !== 0) {
-      camera.scrollY += dy * step;
-    }
+    camera.scrollX += dx * keyStep + edgeDx * edgeStep;
+    camera.scrollY += dy * keyStep + edgeDy * edgeStep;
   }
 
   startPan(pointer: Phaser.Input.Pointer): boolean {
@@ -126,6 +133,31 @@ export class MapViewport {
     const center = this.center(coord);
 
     this.scene.cameras.main.centerOn(center.x, center.y);
+  }
+
+  private edgeAxis(): CameraAxis {
+    const margin = this.options.edgePanMargin ?? DEFAULT_EDGE_PAN_MARGIN;
+
+    if (margin <= 0 || this.panning || !this.scene.input.isOver) {
+      return NO_AXIS;
+    }
+
+    const pointer = this.scene.input.activePointer;
+
+    if (pointer.isDown) {
+      return NO_AXIS;
+    }
+
+    const left = pointer.x <= margin;
+    const right = pointer.x >= this.scene.scale.width - margin;
+    const up = pointer.y <= margin;
+    const down = pointer.y >= this.scene.scale.height - margin;
+
+    if ((!left && !right && !up && !down) || this.options.edgePanBlocked?.(pointer)) {
+      return NO_AXIS;
+    }
+
+    return { left, right, up, down };
   }
 
   private applyBounds(): void {

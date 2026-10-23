@@ -50,6 +50,7 @@ export class ScenarioScene extends Phaser.Scene {
       zoomMin: 0.6,
       zoomMax: 2.5,
       startZoom: 0.9,
+      edgePanBlocked: (pointer) => this.pointerOverPanel(pointer),
     });
 
     this.mapView = new HexMapView(this, this.state.map);
@@ -105,7 +106,7 @@ export class ScenarioScene extends Phaser.Scene {
       .text(
         this.scale.width - 20,
         this.scale.height - 18,
-        'LPM — wybór jednostki · kółko — zoom · ESC — scenariusze',
+        'Krawędź ekranu — przewijanie · LPM — wybór · kółko — zoom · ESC — scenariusze',
         {
           fontFamily: 'monospace',
           fontSize: '10px',
@@ -250,6 +251,10 @@ export class ScenarioScene extends Phaser.Scene {
   }
 
   private pointerOverPanel(pointer: Phaser.Input.Pointer): boolean {
+    if (!this.panel) {
+      return false;
+    }
+
     return (
       pointer.x >= PANEL_X &&
       pointer.x <= PANEL_X + this.panel.width &&
@@ -298,7 +303,7 @@ export class ScenarioScene extends Phaser.Scene {
     }
 
     lines.push('');
-    lines.push('Strzałki/WASD — kamera');
+    lines.push('Strzałki/WASD lub krawędź — kamera');
     lines.push('Środkowy — przeciąganie');
     lines.push('ESC — scenariusze · Shift+ESC — menu');
 

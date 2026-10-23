@@ -183,7 +183,7 @@ Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
   - **Scenariusz:** `client/src/core/scenario.ts` przechowuje `ScenarioDefinition` z pełnym `GameState` (mapa + jednostki), niezależnie od Phasera; katalog zawiera scenariusz „Front Wschodni”.
   - **Mapa:** 48×28 kafli, wszystkie siedem terenów (łąka, las, woda, góry, bagno, droga, miasto), nieregularne pasma gór, rzeka, jeziora, bagna, lasy, drogi i miasta.
   - **Jednostki:** po 10 jednostek na stronę, wszystkie cztery rodzaje (piechota, czołg, artyleria, zwiad); każda jednostka stoi na istniejącym kaflu.
-  - **Scena:** `ScenarioScene` rysuje mapę i jednostki, pokazuje podgląd heksa pod kursorem, wybraną jednostkę ze statystykami, liczbę jednostek obu stron i obsługuje kamerę (strzałki/WASD, środkowy przycisk, kółko), `ESC` — menu scenariuszy, `Shift+ESC` — menu główne.
+  - **Scena:** `ScenarioScene` rysuje mapę i jednostki, pokazuje podgląd heksa pod kursorem, wybraną jednostkę ze statystykami, liczbę jednostek obu stron i obsługuje kamerę (strzałki/WASD, najechanie na krawędź ekranu, środkowy przycisk, kółko), `ESC` — menu scenariuszy, `Shift+ESC` — menu główne.
   - **Menu scenariuszy:** lista scenariuszy z miniaturą, opisem i licznikami; zapisane mapy z SQLite są widoczne jako dodatkowe mapy testowe.
   - **Testy:** `tests/core/scenario.test.ts` pilnuje rozmiaru mapy (3–4× największej wbudowanej), obecności wszystkich terenów, jednostek obu stron i postawienia ich na kaflach.
 - **Powiązane:** GRA-012, ADR-016, INTERF-001, INTERF-005
@@ -202,12 +202,13 @@ Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
 
 ## GRA-022: Wspólny moduł widoku mapy
 - **Status:** ✅ zrobione
-- **Opis:** Kamera, zoom, przeciąganie, granice mapy i tłumaczenie kursora na heks są wspólne dla edytora i scenariusza. Karty map oraz liczniki i rozstawianie jednostek nie są już kopiowane w każdej scenie.
+- **Opis:** Kamera, zoom, przeciąganie, przewijanie krawędzią ekranu, granice mapy i tłumaczenie kursora na heks są wspólne dla edytora i scenariusza. Karty map oraz liczniki i rozstawianie jednostek nie są już kopiowane w każdej scenie.
 - **Kryteria:**
   - **Widok:** `client/src/view/mapViewport.ts` obsługuje zoom, przesuwanie kamery, przeciąganie środkowym przyciskiem, granice mapy i `pixelToHex`.
   - **Karty:** `client/src/view/mapCard.ts` tworzy kartę z miniaturą, tytułem, opisem i metadanymi; korzystają z niej menu map i menu scenariuszy.
   - **Model:** `mapTileCount` w `client/src/core/map/model.ts` oraz `deployUnits` i `countUnits` w `client/src/core/state.ts`.
   - **Sceny:** `MapEditorScene` i `ScenarioScene` używają wspólnego widoku zamiast własnych kopii logiki kamery i kursora.
+  - **Krawędź ekranu:** gdy kursor myszy znajdzie się w pasie 24 px od górnej, dolnej, lewej lub prawej krawędzi, kamera przesuwa się w tę stronę. Przewijanie jest wyłączone nad lewym panelem i przy wciśniętym przycisku myszy, żeby nie kolidować z malowaniem i wyborem jednostek.
   - **Bez regresji:** edytor nadal maluje, stawia jednostki, rośnie na krawędziach i zapisuje mapę; scenariusz nadal wybiera jednostki i pokazuje statystyki.
   - **Testy:** `tests/core/map/model.test.ts` i `tests/core/state.test.ts` pokrywają nowe funkcje `core/`.
 - **Powiązane:** GRA-007, GRA-020, ADR-001, ADR-018, INTERF-003, INTERF-005
