@@ -4,7 +4,7 @@ import type { GameState } from '../core/state';
 import {
   listSavedMaps,
   loadSavedMap,
-  type SavedMapSummary,
+  type SavedMap,
 } from '../storage/maps';
 import { formatTimestamp } from '../view/format';
 import { createMapCard } from '../view/mapCard';
@@ -53,13 +53,7 @@ export class MapMenuScene extends Phaser.Scene {
       .setOrigin(1, 0.5)
       .setDepth(10);
 
-    this.addNewMapCard();
-
-    for (const definition of BUILT_IN_MAPS) {
-      this.addCard(definition);
-    }
-
-    void this.addSavedMaps();
+    void this.buildList();
 
     const back = this.add
       .text(width / 2, height - 26, '> Menu główne <', {
@@ -82,6 +76,57 @@ export class MapMenuScene extends Phaser.Scene {
     });
   }
 
+  private async buildList(): Promise<void> {
+    const savedMaps = await this.loadSavedMaps();
+
+    if (!this.scene.isActive()) {
+      return;
+    }
+
+    const savedById = new Map(savedMaps.map((map) => [map.id, map]));
+
+    this.addNewMapCard();
+
+    for (const definition of BUILT_IN_MAPS) {
+      this.addCard(definition, savedById.get(definition.id));
+      savedById.delete(definition.id);
+    }
+
+    if (savedById.size === 0) {
+      return;
+    }
+
+    this.addSection('ZAPISANE MAPY (SQLite)');
+
+    for (const saved of savedById.values()) {
+      this.addSavedCard(saved);
+    }
+  }
+
+  private async loadSavedMaps(): Promise<SavedMap[]> {
+    const maps: SavedMap[] = [];
+
+    try {
+      const summaries = await listSavedMaps();
+
+      for (const summary of summaries) {
+        try {
+          const saved = await loadSavedMap(summary.id);
+
+          if (saved) {
+            maps.push(saved);
+          }
+        } catch (error) {
+          console.error(`Nie udało się wczytać mapy ${summary.id}`, error);
+        }
+      }
+    } catch (error) {
+      console.error('Nie udało się odczytać map z SQLite', error);
+    }
+
+    return maps;
+  }
+
   private addNewMapCard(): void {
     const card = createMapCard(this, {
       title: '> Nowa mapa <',
@@ -94,18 +139,29 @@ export class MapMenuScene extends Phaser.Scene {
     this.list.addRow(card.container, card.height, (this.listWidth - card.width) / 2);
   }
 
-  private addCard(definition: MapDefinition): void {
+  private addCard(definition: MapDefinition, saved?: SavedMap): void {
     const draft = this.draftFor(definition);
-    const map = draft?.map ?? definition.map;
+    const state = draft ?? saved?.state;
+    const map = state?.map ?? definition.map;
+    const title = draft
+      ? `> ${definition.name} · szkic <`
+      : saved
+        ? `> ${definition.name} · zapisana <`
+        : `> ${definition.name} <`;
+    const description =
+      saved && !draft
+        ? `${saved.tiles} kafli · ${saved.units} jedn. · ${formatTimestamp(saved.updatedAt)}`
+        : definition.description;
+
     const card = createMapCard(this, {
-      title: `> ${definition.name} <`,
-      description: definition.description,
+      title,
+      description,
       map,
       previewSize: PREVIEW_SIZE,
       onOpen: () => {
         this.scene.start('map-editor', {
           definition: { ...definition, map },
-          state: draft,
+          state,
         });
       },
     });
@@ -113,53 +169,27 @@ export class MapMenuScene extends Phaser.Scene {
     this.list.addRow(card.container, card.height, (this.listWidth - card.width) / 2);
   }
 
-  private async addSavedMaps(): Promise<void> {
-    let maps: SavedMapSummary[];
+  private addSavedCard(saved: SavedMap): void {
+    const draft = this.registry.get(`map:draft:${saved.id}`) as GameState | undefined;
+    const state = draft ?? saved.state;
+    const definition: MapDefinition = {
+      id: saved.id,
+      name: saved.name,
+      description: saved.description || 'Mapa zapisana w edytorze',
+      map: state.map,
+    };
+    const title = draft ? `> ${saved.name} · szkic <` : `> ${saved.name} <`;
 
-    try {
-      maps = await listSavedMaps();
-    } catch (error) {
-      console.error('Nie udało się odczytać map z SQLite', error);
-      return;
-    }
+    const card = createMapCard(this, {
+      title,
+      description: `${saved.tiles} kafli · ${saved.units} jedn. · ${formatTimestamp(saved.updatedAt)}`,
+      width: this.listWidth,
+      height: 42,
+      textWidth: this.listWidth - 32,
+      onOpen: () => this.scene.start('map-editor', { definition, state }),
+    });
 
-    if (!this.scene.isActive() || maps.length === 0) {
-      return;
-    }
-
-    this.addSection('ZAPISANE MAPY (SQLite)');
-
-    for (const summary of maps) {
-      try {
-        const saved = await loadSavedMap(summary.id);
-
-        if (!saved) {
-          continue;
-        }
-
-        const draft = this.registry.get(`map:draft:${saved.id}`) as GameState | undefined;
-        const state = draft ?? saved.state;
-        const definition: MapDefinition = {
-          id: saved.id,
-          name: saved.name,
-          description: saved.description || 'Mapa zapisana w edytorze',
-          map: state.map,
-        };
-
-        const card = createMapCard(this, {
-          title: `> ${saved.name} <`,
-          description: `${saved.tiles} kafli · ${saved.units} jedn. · ${formatTimestamp(saved.updatedAt)}`,
-          width: this.listWidth,
-          height: 42,
-          textWidth: this.listWidth - 32,
-          onOpen: () => this.scene.start('map-editor', { definition, state }),
-        });
-
-        this.list.addRow(card.container, card.height);
-      } catch (error) {
-        console.error(`Nie udało się wczytać mapy ${summary.id}`, error);
-      }
-    }
+    this.list.addRow(card.container, card.height);
   }
 
   private addSection(label: string): void {

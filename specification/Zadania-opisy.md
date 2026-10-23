@@ -234,6 +234,16 @@ Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
   - **Sterowanie:** krawędź ekranu, strzałki/`WASD` i środkowy przycisk działają równolegle; kółko nadal zmienia zoom.
 - **Powiązane:** GRA-022, ADR-018, INTERF-003, INTERF-005
 
+## GRA-025: Zapisana wersja mapy wbudowanej w menu map
+- **Status:** ✅ zrobione
+- **Opis:** Zapisana w SQLite wersja mapy wbudowanej jest scalana z jej kafelkiem w menu map. Kliknięcie „Wzgórza” po restarcie otwiera zapisany stan, a nie pierwotną wersję wbudowaną; osobna sekcja zapisanych map zawiera wyłącznie mapy spoza katalogu wbudowanego.
+- **Kryteria:**
+  - **Scalanie:** kafelek mapy wbudowanej, dla której istnieje zapis o tym samym `id`, korzysta z zapisanego `GameState` i pokazuje metadane zapisu.
+  - **Oznaczenie:** kafelek zapisanej wersji ma w tytule dopisek „zapisana”, a kafelek ze szkicem z `registry` — „szkic”; dzięki temu widać, który stan zostanie otwarty.
+  - **Bez duplikatu:** zapisana wersja mapy wbudowanej nie pojawia się ponownie w sekcji „ZAPISANE MAPY (SQLite)”.
+  - **Bez regresji:** mapy spoza katalogu wbudowanego nadal trafiają do sekcji zapisanych map; szkic z bieżącej sesji ma pierwszeństwo przed stanem z bazy.
+- **Powiązane:** GRA-017, GRA-021, GRA-023, INTERF-004
+
 ## INFRA-001: Środowisko Docker
 - **Status:** ✅ zrobione
 - **Opis:** docker-compose + Makefile + usługi client/server/nginx/db/adminer.
