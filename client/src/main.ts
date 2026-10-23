@@ -2,6 +2,8 @@ import Phaser from 'phaser';
 import { MapEditorScene } from './scenes/MapEditorScene';
 import { MapMenuScene } from './scenes/MapMenuScene';
 import { MenuScene } from './scenes/MenuScene';
+import { ScenarioMenuScene } from './scenes/ScenarioMenuScene';
+import { ScenarioScene } from './scenes/ScenarioScene';
 import './style.css';
 
 new Phaser.Game({
@@ -17,5 +19,5 @@ new Phaser.Game({
     height: 720,
   },
   disableContextMenu: true,
-  scene: [MenuScene, MapMenuScene, MapEditorScene],
+  scene: [MenuScene, ScenarioMenuScene, ScenarioScene, MapMenuScene, MapEditorScene],
 });
