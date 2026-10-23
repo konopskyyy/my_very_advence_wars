@@ -103,7 +103,7 @@ export class ScrollList {
 
     cover.setOrigin(0, 0);
     cover.setDepth(5);
-    cover.setInteractive();
+    cover.setScrollFactor(0);
 
     return cover;
   }
