@@ -23,4 +23,5 @@ Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
 | [[Zadania-opisy#GRA-011: Podwojone kolumny w odczycie edytora\|GRA-011]] | Podwojone kolumny w odczycie edytora | ✅ | ADR-004, ADR-005, GRA-001, INTERF-003 |
 | [[Zadania-opisy#GRA-013: Testy klienta w lustrzanym drzewie\|GRA-013]] | Testy klienta w lustrzanym drzewie | ✅ | ADR-008, `specification/Konwencje.md` |
 | [[Zadania-opisy#GRA-014: CI typów TypeScript\|GRA-014]] | CI typów TypeScript | ✅ | ADR-009, `specification/Infrastruktura.md` |
+| [[Zadania-opisy#GRA-015: Rzeczownikowy opis commitów\|GRA-015]] | Rzeczownikowy opis commitów | ✅ | ADR-010, `AGENTS.md` |
 | [[Zadania-opisy#INFRA-001: Środowisko Docker\|INFRA-001]] | Środowisko Docker | ✅ | `specification/Infrastruktura.md` |

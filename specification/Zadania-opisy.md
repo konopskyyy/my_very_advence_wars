@@ -111,6 +111,15 @@ Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
   - **Dokumentacja:** sekcja [[Infrastruktura#CI (GitHub Actions)]] opisuje pipeline, a ADR-009 uzasadnia zakres.
 - **Powiązane:** ADR-009, `specification/Infrastruktura.md`
 
+## GRA-015: Rzeczownikowy opis commitów
+- **Status:** ✅ zrobione
+- **Opis:** Opis commita po typie conventional (`feat:`, `fix:`, `chore:`) mówi, co zostało zrobione, a nie co należy zrobić. Historia czyta się jako zapis stanu po zmianie, nie jako lista poleceń.
+- **Kryteria:**
+  - **Zasada:** cała treść po typie jest rzeczownikowa, bez trybu rozkazującego; dotyczy też dłuższych opisów.
+  - **Przykład:** `chore: wydzielenie testów klienta do tests/ z lustrzanym drzewem` zamiast `chore: wydziel testy klienta do tests/ z lustrzanym drzewem`.
+  - **Miejsce:** reguła jest w `AGENTS.md`, a uzasadnienie w ADR-010.
+- **Powiązane:** ADR-010, `AGENTS.md`
+
 ## INFRA-001: Środowisko Docker
 - **Status:** ✅ zrobione
 - **Opis:** docker-compose + Makefile + usługi client/server/nginx/db/adminer.

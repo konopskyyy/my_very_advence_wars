@@ -71,6 +71,10 @@ usuń komentarze, które przestały być prawdą.
   ani przez `git pull --no-ff`. Nie pushuj `master` zdalnie.
 - Nie resetuj i nie usuwaj historii `master` (`git reset --hard`, `git push --force`).
 - Commity po polsku, styl conventional (`feat:`, `fix:`, `chore:`).
+- Opis commita mówi **co zostało zrobione**, a nie co należy zrobić —
+  rzeczownikowo, nie w trybie rozkazującym. Dotyczy całej treści po typie.
+  - dobrze: `chore: wydzielenie testów klienta do tests/ z lustrzanym drzewem`,
+  - źle: `chore: wydziel testy klienta do tests/ z lustrzanym drzewem`.
 
 ## Inne konwencje
 

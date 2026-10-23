@@ -57,3 +57,9 @@
 - **Kontekst:** Błąd typu w kliencie wychodził dopiero przy lokalnym buildzie. Pull requesty nie miały wspólnego, powtarzalnego checku, więc każdy weryfikował typy po swojemu.
 - **Decyzja:** GitHub Actions uruchamia `.github/workflows/ci.yml` przy pushu na `master`, przy pull requeście i ręcznie (`workflow_dispatch`). Pipeline używa Node 22, instaluje zależności przez `npm ci` i uruchamia `npx tsc --noEmit` w `client/`. Zakres to wyłącznie typy — bez Vitest, bez `vite build` i bez Dockera.
 - **Konsekwencje:** Szybki feedback bez sekretów i bez budowania obrazów. Testy i build pozostają poza CI do czasu osobnej decyzji; lokalnie odpowiadają im `make test` i `npm run build`. Stan pipeline'u opisuje [[Infrastruktura]].
+
+## ADR-010: Rzeczownikowy opis commitów
+- **Status:** Zaakceptowany
+- **Kontekst:** Dotychczasowe commity opisywały czynność w trybie rozkazującym („wydziel testy klienta do tests/”), więc historia czytała się jak lista poleceń dla wykonawcy, a nie zapis tego, co już się stało. Typ conventional (`feat:`, `fix:`, `chore:`) zostaje, ale sam opis nie mówił, jaki był efekt zmiany.
+- **Decyzja:** Po typie commit opisuje **wykonaną zmianę** rzeczownikowo, nie w trybie rozkazującym. Przykład: `chore: wydzielenie testów klienta do tests/ z lustrzanym drzewem` zamiast `chore: wydziel testy klienta do tests/ z lustrzanym drzewem`. Zasada dotyczy całej treści commita, także dłuższych opisów.
+- **Konsekwencje:** Historia commitów czyta się jako opis stanu po zmianie i nie sugeruje, że coś dopiero ma zostać zrobione. Świadomie odchodzimy od imperative mood z Conventional Commits; wymaga to przepisania przyzwyczajenia przy każdym commicie.
