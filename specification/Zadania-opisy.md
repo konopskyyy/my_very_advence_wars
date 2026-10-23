@@ -9,7 +9,7 @@ Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
 ## GRA-001: Edytor mapy
 - **Status:** ✅ zrobione
 - **Opis:** Edytor mapy na siatce heksagonalnej z malowaniem terenu. Mapa jest zbiorem kafelków o absolutnych współrzędnych, więc teren można malować także poza pierwotnym prostokątem — na czarnym tle. Z edytora da się wyjść do menu (`ESC`).
-- **Kryteria:** Klikanie/przeciąganie LPM maluje wybrany teren, PPM usuwa kafelek, klawisze 1-7 zmieniają pędzel, X czyści mapę, kamera pan/zoom działa i rośnie wraz z mapą.
+- **Kryteria:** Klikanie/przeciąganie LPM maluje wybrany teren, PPM usuwa kafelek, kliknięcie kafelka w lewym menu zmienia pędzel, X czyści mapę, kamera pan/zoom działa i rośnie wraz z mapą.
 - **Powiązane:** ADR-003, ADR-004, ADR-005, INTERF-003
 
 ## GRA-002: Model jednostek
@@ -63,13 +63,14 @@ Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
   - **DevTools Electrona:** okno DevTools nie otwiera się samo — włącza się je zmienną `ELECTRON_DEVTOOLS=1`.
   - **Dev bar mapy:** w edytorze pasek pokazuje FPS, czas klatki, liczbę kafli, czas CPU poświęcony na operacje na bieżącej mapie (łącznie i ostatnia) oraz rozmiar modelu mapy w pamięci (i stertę JS, gdy przeglądarka ją udostępnia).
   - **Pomiary w `core/`:** pomiar czasu i rozmiaru modelu to czysta logika (`client/src/core/map/metrics.ts`) z testami; warstwa widoku tylko pokazuje wyniki.
+  - **Uwaga:** od GRA-018 pasek dev jest tymczasowo zawsze widoczny; kryterium „Wyłączone na starcie” opisuje stan sprzed tej zmiany. Okno DevTools Electrona nadal otwiera się tylko przez `ELECTRON_DEVTOOLS=1`.
 - **Powiązane:** GRA-006, ADR-007, INTERF-003
 
 ## GRA-009: Menu bez pola bitwy, z wyjściem z gry
 - **Status:** ✅ zrobione
 - **Opis:** Menu główne ma zyskać wyjście z gry, a scena zastępcza pola bitwy ma zniknąć z kodu razem ze skrótem otwierającym ją z edytora. Wpis `INTERF-002` zostaje w dokumentacji jako planowany interfejs.
 - **Kryteria:**
-  - **Menu:** wpisy „Edytor map”, „Mapy” i „Wyjście”; po wyjściu przeglądarka zamyka okno, a gdy przeglądarka tego nie pozwala — gra wyjaśnia, jak zakończyć pracę.
+  - **Menu:** wpisy „Edytor map” i „Wyjście”; po wyjściu przeglądarka zamyka okno, a gdy przeglądarka tego nie pozwala — gra wyjaśnia, jak zakończyć pracę.
   - **Pole bitwy:** `BattlefieldScene` usuwa się z kodu i z listy scen, skrót `B` znika z edytora, a `INTERF-002` w `specification/Interfejs.md` zostaje jako pozycja zaplanowana (bez plików i bez statusu „zaimplementowane”).
 - **Powiązane:** GRA-001, INTERF-001, INTERF-002, INTERF-003
 
@@ -89,6 +90,90 @@ Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
   - **Odczyt w HUD-zie:** pozycja heksa i zasięg mapy pokazywane są w kolumnach podwojonych: sąsiednie hexy w wierszu różnią się o 2, parzystość kolumny zdradza parzystość wiersza, a numer jest wspólny dla całej mapy (nie resetuje się co wiersz). Model mapy nadal trzyma offset odd-r (ADR-005) — zmienia się tylko odczyt.
   - **Matematyka w `core/`:** konwersje do/z kolumny podwojonej i zasięg w tej skali leżą w `client/src/core/map/` i mają testy.
 - **Powiązane:** ADR-004, ADR-005, GRA-001, INTERF-003
+
+## GRA-012: Jednostki w edytorze map
+- **Status:** ✅ zrobione
+- **Opis:** Edytor map poza malowaniem terenu ma pozwalać rozstawiać jednostki na istniejących kafelkach. Edycja obejmuje cały `GameState` (mapa + jednostki), a nie samą mapę, więc jednostki sąsiadują z terenem w jednym modelu i wracają razem z szkicem mapy.
+- **Kryteria:**
+  - **Tryb jednostek:** kliknięcie kafelka jednostki w lewym menu wybiera rodzaj (piechota, czołg, artyleria, zwiad) i włącza tryb jednostek; kliknięcie kafelka terenu wraca do malowania. Stronę wybiera się przyciskami w panelu.
+  - **Stawianie i usuwanie:** LPM stawia jednostkę wybranej strony, PPM usuwa jednostkę; jednostkę można postawić tylko na istniejącym kafelku, a nowa jednostka na zajętym heksie zastępuje poprzednią.
+  - **Widok:** jednostki są rysowane nad terenem jako tokeny w kolorze strony z ikonami rodzaju (czołg, żołnierz, działo, zwiad) zamiast liter; HUD pokazuje tryb, wybraną jednostkę i jednostkę pod kursorem.
+  - **Spójność mapy:** usunięcie kafelka usuwa stojącą na nim jednostkę, a wyczyszczenie mapy (`X`) czyści też jednostki.
+  - **Sesja:** szkic w `registry` przechowuje cały `GameState`, więc po powrocie z menu map jednostki są na swoich miejscach.
+  - **Testy:** operacje `placeUnit`, `removeUnitAt` i `clearUnits` mają testy w `tests/core/state.test.ts`; warstwa widoku pozostaje bez testów jednostkowych (ADR-001).
+- **Powiązane:** GRA-002, GRA-003, ADR-003, ADR-004, ADR-011, INTERF-003
+
+## GRA-013: Testy klienta w lustrzanym drzewie
+- **Status:** ✅ zrobione
+- **Opis:** Testy jednostkowe klienta leżą poza katalogiem kodu produkcyjnego. `client/src/` zawiera wyłącznie moduły gry, a `client/tests/` odtwarza jego drzewo: moduł `src/core/map/model.ts` ma test `tests/core/map/model.test.ts`. Regułę pilnuje test struktury, więc rozjazd nazw lub test w `src/` zatrzymuje `npm test`.
+- **Kryteria:**
+  - **Lustro ścieżek:** każdy plik `tests/**/*.test.ts` wskazuje odpowiadający mu moduł w `src/` (ta sama ścieżka bez `.test.ts`).
+  - **Kod produkcyjny bez testów:** w `src/` nie ma plików `*.test.ts`, a importy w testach są względne i wskazują dokładnie testowany moduł.
+  - **Pilnowanie reguły:** `tests/structure.test.ts` sprawdza obie strony lustra; jest jedynym testem bez odpowiednika w `src/`.
+  - **Konfiguracja:** Vitest zbiera wyłącznie `tests/**/*.test.ts`, a `tsc --noEmit` obejmuje także `tests/`.
+  - **Dokumentacja:** zasady i przykłady opisuje [[Konwencje]], decyzję — ADR-008.
+- **Powiązane:** ADR-008, `specification/Konwencje.md`
+
+## GRA-014: CI typów TypeScript
+- **Status:** ✅ zrobione
+- **Opis:** Pull requesty i pushe na `master` przechodzą wspólny check typów TypeScript. Pipeline GitHub Actions instaluje zależności klienta i uruchamia `tsc --noEmit`; nie buduje aplikacji, nie uruchamia testów i nie wymaga Dockera ani sekretów.
+- **Kryteria:**
+  - **Wyzwalacze:** workflow `.github/workflows/ci.yml` startuje przy pushu na `master`, przy pull requeście i ręcznie (`workflow_dispatch`).
+  - **Zakres:** Node 22, `npm ci` z cache opartym na `client/package-lock.json` i `npx tsc --noEmit` w `client/` — bez Vitest, `vite build` i Dockera.
+  - **Uprawnienia:** tylko odczyt repozytorium (`contents: read`).
+  - **Dokumentacja:** sekcja [[Infrastruktura#CI (GitHub Actions)]] opisuje pipeline, a ADR-009 uzasadnia zakres.
+- **Powiązane:** ADR-009, `specification/Infrastruktura.md`
+
+## GRA-015: Rzeczownikowy opis commitów
+- **Status:** ✅ zrobione
+- **Opis:** Opis commita po typie conventional (`feat:`, `fix:`, `chore:`) mówi, co zostało zrobione, a nie co należy zrobić. Historia czyta się jako zapis stanu po zmianie, nie jako lista poleceń.
+- **Kryteria:**
+  - **Zasada:** cała treść po typie jest rzeczownikowa, bez trybu rozkazującego; dotyczy też dłuższych opisów.
+  - **Przykład:** `chore: wydzielenie testów klienta do tests/ z lustrzanym drzewem` zamiast `chore: wydziel testy klienta do tests/ z lustrzanym drzewem`.
+  - **Miejsce:** reguła jest w `AGENTS.md`, a uzasadnienie w ADR-010.
+- **Powiązane:** ADR-010, `AGENTS.md`
+
+## GRA-016: Menu wyboru terenu i jednostek
+- **Status:** ✅ zrobione
+- **Opis:** Lewy panel edytora zawiera kafelki terenu i jednostek. Wybór narzędzia odbywa się kliknięciem kafelka, a nie klawiszem: kliknięcie terenu przełącza edytor w tryb terenu i ustawia pędzel, kliknięcie jednostki włącza tryb jednostek i wybiera rodzaj. Stronę jednostki wybiera się kliknięciem przycisku w panelu.
+- **Kryteria:**
+  - **Menu terenu:** wszystkie siedem terenów ma własny kafelek z podglądem heksa i nazwą; kliknięcie wybiera pędzel i tryb terenu.
+  - **Menu jednostek:** cztery rodzaje jednostek mają własne kafelki z ikoną i nazwą; kliknięcie wybiera rodzaj i tryb jednostek.
+  - **Strona:** przyciski „Niebieska” i „Czerwona” przełączają stronę jednostek; wybrana strona jest wyróżniona.
+  - **Wyróżnienie:** wybrany kafelek ma jaśniejszą obwódkę, a kafelek pod kursorem reaguje na hover.
+  - **Pozycja:** panel jest przyklejony do lewej krawędzi ekranu, ma węższe kafelki i skrócony HUD, żeby zostawić więcej miejsca na mapę i zmieścić się w pionie.
+  - **Bez klawiatury:** wybór terenu, jednostki i strony nie wymaga klawiatury; klawisze pozostają tylko dla kamery, czyszczenia mapy, rozszerzania krawędzi i wyjścia.
+- **Powiązane:** GRA-012, ADR-011, ADR-012, INTERF-003
+
+## GRA-017: Wybór mapy przy wejściu do edytora
+- **Status:** ✅ zrobione
+- **Opis:** Menu główne prowadzi do edytora przez wybór mapy, tak samo jak wyjście z edytora. Zamiast dwóch ścieżek („Edytor map” startujący od razu nową mapę i „Mapy” z listą) zostaje jedno wejście „Edytor map”, które otwiera menu map. Menu map dostaje pozycję „Nowa mapa” dla pustej mapy generatora, obok wbudowanych map i ich szkiców.
+- **Kryteria:**
+  - **Jedno wejście:** w menu głównym jest „Edytor map” i „Wyjście”; „Edytor map” otwiera menu map, a nie od razu edytor.
+  - **Nowa mapa:** menu map ma pozycję „Nowa mapa”, która uruchamia edytor z nową mapą generatora.
+  - **Wybór mapy:** kliknięcie wbudowanej mapy otwiera ją w edytorze; szkic z `registry` wraca razem z jednostkami.
+  - **Spójność wyjścia:** `ESC`/„MENU MAP” w edytorze wraca do menu map, a `ESC` w menu map wraca do menu głównego.
+- **Powiązane:** GRA-006, GRA-009, ADR-013, INTERF-001, INTERF-004
+
+## GRA-018: Tymczasowo zawsze widoczny pasek dev
+- **Status:** ✅ zrobione
+- **Opis:** Na czas prac diagnostycznych pasek dev w lewym panelu edytora (menu budowania mapy) jest widoczny od razu, bez parametru `?dev=1`. Nie ma klawisza ukrywania; po zakończeniu prac widoczność wróci na żądanie zgodnie z GRA-008.
+- **Kryteria:**
+  - **Zawsze widoczny:** edytor tworzy pasek dev od pierwszej klatki, bez sprawdzania adresu.
+  - **Miejsce:** pasek dev jest sekcją lewego panelu edytora, pod HUD-em i przyciskami wyjścia, a nie osobnym overlayem w prawym górnym rogu.
+  - **Zakres:** pasek pokazuje FPS, czas klatki, liczbę kafli, CPU mapy i pamięć mapy/heap.
+  - **Bez przełącznika:** `F` nie ukrywa paska, a HUD nie reklamuje tego skrótu.
+  - **Powrót:** przywrócenie `?dev=1` wymaga osobnej zmiany; obecny stan jest tymczasowy.
+- **Powiązane:** GRA-008, ADR-014, INTERF-003
+
+## GRA-019: Pełny ekran 16:9
+- **Status:** ✅ zrobione
+- **Opis:** Wewnętrzna scena ma proporcje 16:9 (1280×720), więc na typowym monitorze 16:9 `Scale.FIT` wypełnia zarówno szerokość, jak i wysokość. Na innych proporcjach Phaser nadal zachowuje proporcje i dodaje pasy.
+- **Kryteria:**
+  - **Proporcje:** `client/src/main.ts` ustawia 1280×720.
+  - **Skalowanie:** `Phaser.Scale.FIT` z centrowaniem skaluje scenę do okna bez zniekształceń.
+  - **16:9:** na monitorze 16:9 canvas wypełnia cały ekran; inne proporcje mogą mieć pasy.
+- **Powiązane:** GRA-016, ADR-015, INTERF-003
 
 ## INFRA-001: Środowisko Docker
 - **Status:** ✅ zrobione

@@ -17,33 +17,45 @@ export class DevBar {
   private readonly text: Phaser.GameObjects.Text;
   private readonly meter = new FrameMeter();
 
-  constructor(scene: Phaser.Scene, x: number, y: number) {
+  constructor(
+    scene: Phaser.Scene,
+    x: number,
+    y: number,
+    align: 'left' | 'right' = 'right',
+  ) {
     this.text = scene.add.text(x, y, '', {
       fontFamily: 'monospace',
       fontSize: '11px',
       color: '#a6f4c5',
-      align: 'right',
+      align,
     });
-    this.text.setOrigin(1, 0);
+    this.text.setOrigin(align === 'left' ? 0 : 1, 0);
     this.text.setScrollFactor(0);
     this.text.setDepth(11);
+  }
+
+  get y(): number {
+    return this.text.y;
+  }
+
+  get height(): number {
+    return this.text.height;
+  }
+
+  setPosition(x: number, y: number): void {
+    this.text.setPosition(x, y);
   }
 
   update(delta: number, metrics: DevBarMetrics): void {
     this.meter.update(delta);
 
-    const lines = [
-      `${this.meter.fps.toFixed(0)} FPS · ${this.meter.frameTime.toFixed(1)} ms`,
-      `kafle: ${metrics.tiles}`,
-      `CPU mapy: ${metrics.cpuMs.toFixed(1)} ms (ostatnia operacja ${metrics.lastOperationMs.toFixed(1)} ms)`,
-      `pamięć mapy: ${formatBytes(metrics.mapBytes)}`,
-    ];
-
     const heap = heapBytes();
-
-    if (heap !== undefined) {
-      lines.push(`heap: ${formatBytes(heap)}`);
-    }
+    const lines = [
+      `DEV · ${this.meter.fps.toFixed(0)} FPS · ${this.meter.frameTime.toFixed(1)} ms`,
+      `kafle: ${metrics.tiles} · CPU: ${metrics.cpuMs.toFixed(1)} ms`,
+      `mapa: ${formatBytes(metrics.mapBytes)} · heap: ${heap === undefined ? '—' : formatBytes(heap)}`,
+      `ostatnia: ${metrics.lastOperationMs.toFixed(1)} ms`,
+    ];
 
     this.text.setText(lines.join('\n'));
   }

@@ -1,5 +1,4 @@
-const DEV_PARAMETER = 'dev';
-
+// Tymczasowo diagnostyka jest zawsze włączona; docelowo wróci parametr ?dev=1.
 export function devToolsEnabled(): boolean {
-  return new URLSearchParams(window.location.search).get(DEV_PARAMETER) === '1';
+  return true;
 }

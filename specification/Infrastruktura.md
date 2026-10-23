@@ -11,6 +11,7 @@ w `docker-compose.yml`, `docker/` i `electron/`.
 > - zmiana serwisu, portu, woluminu lub zmiennej w `docker-compose.yml`,
 > - edycja `docker/php/Dockerfile` lub `docker/nginx/default.conf`,
 > - zmiana celów w `Makefile`,
+> - zmiana pipeline'u CI (`.github/workflows/`),
 > - zmiana sposobu uruchamiania Electrona (`electron/`).
 >
 > Zacznij od sekcji [[#Mapa sieci i portów]] i [[#Codzienna praca]] — to one
@@ -25,8 +26,9 @@ w `docker-compose.yml`, `docker/` i `electron/`.
 > 5. [[#Woluminy]]
 > 6. [[#Zmienne środowiskowe]]
 > 7. [[#Electron (poza Compose)]]
-> 8. [[#Codzienna praca]]
-> 9. [[#Rozwiązywanie problemów]]
+> 8. [[#CI (GitHub Actions)]]
+> 9. [[#Codzienna praca]]
+> 10. [[#Rozwiązywanie problemów]]
 
 ---
 
@@ -259,6 +261,23 @@ DevTools Electrona nie otwierają się same — włączasz je zmienną
 
 ---
 
+## CI (GitHub Actions)
+
+Pipeline `.github/workflows/ci.yml` sprawdza typy klienta. Uruchamia się przy
+pushu na `master`, przy każdym pull requeście i ręcznie (`workflow_dispatch`).
+
+- **Zakres:** `tsc --noEmit` w `client/` — ten sam check co `make lint`. Testy
+  Vitest nie są częścią pipeline'u.
+- **Środowisko:** `ubuntu-latest`, Node 22 (jak obraz `node:22-alpine` w Compose).
+- **Kroki:** checkout, `npm ci` z cache opartym na `client/package-lock.json`,
+  `npx tsc --noEmit`.
+- **Uprawnienia:** tylko odczyt repozytorium (`contents: read`).
+
+Pipeline nie buduje aplikacji ani nie uruchamia Dockera — sprawdza wyłącznie
+typy, więc trwa krótko i nie wymaga sekretów.
+
+---
+
 ## Codzienna praca
 
 Wygodnym frontem jest `Makefile` w katalogu głównym (`make help` pokazuje listę).
@@ -284,6 +303,7 @@ Compose bezpośrednio też działa — poniżej oba warianty.
 | Przebuduj klienta (po zmianach)           | —                     | `cd client && npm run build && docker compose restart client` |
 | Testy klienta (Vitest)                   | `make test`           | `cd client && npm test`                                   |
 | Typy klienta                             | `make lint`           | `cd client && npx tsc --noEmit`                           |
+| Typy klienta w CI                        | —                     | GitHub Actions: `.github/workflows/ci.yml` (push, PR)     |
 | Zatrzymaj wszystko                       | `make down`           | `docker compose down`                                     |
 | Zatrzymaj i usuń woluminy (⚠️ dane bazy) | `make clean`          | `docker compose down -v`                                  |
 

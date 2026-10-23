@@ -20,9 +20,8 @@ export class MenuScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    this.addMenuEntry(width / 2, height / 2, 'Edytor map', () => this.scene.start('map-editor'));
-    this.addMenuEntry(width / 2, height / 2 + 40, 'Mapy', () => this.scene.start('map-menu'));
-    this.addMenuEntry(width / 2, height / 2 + 80, 'Wyjście', () => this.quit());
+    this.addMenuEntry(width / 2, height / 2, 'Edytor map', () => this.scene.start('map-menu'));
+    this.addMenuEntry(width / 2, height / 2 + 40, 'Wyjście', () => this.quit());
 
     this.hint = this.add
       .text(width / 2, height - 30, 'Wskaż opcję myszką', {

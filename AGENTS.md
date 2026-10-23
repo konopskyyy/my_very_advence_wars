@@ -19,6 +19,7 @@ commicie**. Za „zmianę infrastruktury" uznaj:
 - `docker-compose.yml` — serwisy, porty, woluminy, zmienne środowiskowe,
 - `docker/php/Dockerfile` i `docker/nginx/default.conf`,
 - `Makefile` — nowe/usunięte cele,
+- `.github/workflows/` — zakres, wyzwalacze i kroki pipeline'u CI,
 - `electron/` — sposób uruchamiania i budowania,
 - `.env.example` — nowe zmienne.
 
@@ -70,6 +71,10 @@ usuń komentarze, które przestały być prawdą.
   ani przez `git pull --no-ff`. Nie pushuj `master` zdalnie.
 - Nie resetuj i nie usuwaj historii `master` (`git reset --hard`, `git push --force`).
 - Commity po polsku, styl conventional (`feat:`, `fix:`, `chore:`).
+- Opis commita mówi **co zostało zrobione**, a nie co należy zrobić —
+  rzeczownikowo, nie w trybie rozkazującym. Dotyczy całej treści po typie.
+  - dobrze: `chore: wydzielenie testów klienta do tests/ z lustrzanym drzewem`,
+  - źle: `chore: wydziel testy klienta do tests/ z lustrzanym drzewem`.
 
 ## Inne konwencje
 

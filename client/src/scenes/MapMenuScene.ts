@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { BUILT_IN_MAPS, type GameMap, type MapDefinition } from '../core/map';
+import { BUILT_IN_MAPS, type MapDefinition } from '../core/map';
+import type { GameState } from '../core/state';
 import { drawMapPreview, previewLayout } from '../view/mapPreview';
 
 const PREVIEW_SIZE = 4;
@@ -18,7 +19,7 @@ export class MapMenuScene extends Phaser.Scene {
     const { width, height } = this.scale;
 
     this.add
-      .text(width / 2, TITLE_Y, 'Mapy', {
+      .text(width / 2, TITLE_Y, 'Edytor map', {
         fontFamily: 'monospace',
         fontSize: '22px',
         color: '#d8e2dc',
@@ -26,6 +27,7 @@ export class MapMenuScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     let y = LIST_Y;
+    y += this.addNewMapCard(y);
 
     for (const definition of BUILT_IN_MAPS) {
       y += this.addCard(definition, y);
@@ -51,8 +53,46 @@ export class MapMenuScene extends Phaser.Scene {
     });
   }
 
+  private addNewMapCard(y: number): number {
+    const cardWidth = 360;
+    const cardHeight = 64;
+    const cardX = (this.scale.width - cardWidth) / 2;
+
+    const card = this.add.rectangle(cardX, y, cardWidth, cardHeight, 0x0b0f14, 0.85);
+    card.setOrigin(0, 0);
+    card.setStrokeStyle(1, 0x3d6b4f, 1);
+
+    const name = this.add
+      .text(cardX + 20, y + 22, '> Nowa mapa <', {
+        fontFamily: 'monospace',
+        fontSize: '16px',
+        color: '#ffffff',
+      })
+      .setOrigin(0, 0.5);
+
+    this.add
+      .text(cardX + 20, y + 44, 'Pusta mapa 22×14 — zacznij od zera', {
+        fontFamily: 'monospace',
+        fontSize: '11px',
+        color: '#9fb0a5',
+      })
+      .setOrigin(0, 0.5);
+
+    const open = (): void => {
+      this.scene.start('map-editor');
+    };
+
+    card.setInteractive({ useHandCursor: true });
+    card.on('pointerover', () => name.setColor('#a6f4c5'));
+    card.on('pointerout', () => name.setColor('#ffffff'));
+    card.on('pointerdown', open);
+
+    return cardHeight + CARD_GAP;
+  }
+
   private addCard(definition: MapDefinition, y: number): number {
-    const map = this.mapFor(definition);
+    const draft = this.draftFor(definition);
+    const map = draft?.map ?? definition.map;
     const layout = previewLayout(map, PREVIEW_SIZE, PREVIEW_PADDING);
 
     const cardWidth = layout.width + PREVIEW_PADDING * 2 + TEXT_WIDTH + 20;
@@ -89,7 +129,10 @@ export class MapMenuScene extends Phaser.Scene {
       .setOrigin(0, 0.5);
 
     const open = (): void => {
-      this.scene.start('map-editor', { definition: { ...definition, map } });
+      this.scene.start('map-editor', {
+        definition: { ...definition, map },
+        state: draft,
+      });
     };
 
     name.on('pointerover', () => name.setColor('#a6f4c5'));
@@ -108,9 +151,7 @@ export class MapMenuScene extends Phaser.Scene {
     return cardHeight + CARD_GAP;
   }
 
-  private mapFor(definition: MapDefinition): GameMap {
-    const draft = this.registry.get(`map:draft:${definition.id}`) as GameMap | undefined;
-
-    return draft ?? definition.map;
+  private draftFor(definition: MapDefinition): GameState | undefined {
+    return this.registry.get(`map:draft:${definition.id}`) as GameState | undefined;
   }
 }

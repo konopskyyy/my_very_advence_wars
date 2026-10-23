@@ -28,7 +28,7 @@ export function tracePolygon(
   graphics.closePath();
 }
 
-function colorToCss(color: number): string {
+export function colorToCss(color: number): string {
   return `#${color.toString(16).padStart(6, '0')}`;
 }
 
