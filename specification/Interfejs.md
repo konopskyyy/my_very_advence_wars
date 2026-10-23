@@ -15,7 +15,7 @@
 - **Opis:** Edytor map na siatce heksagonalnej. Służy do **malowania terenu** i **rozstawiania jednostek** na kafelkach.
 - **Teren:** łąka, las, woda, góry, bagno, droga, miasto.
 - **Jednostki:** piechota, czołg, artyleria, zwiad; strona niebieska lub czerwona. Token jednostki to kolorowe koło strony z ikoną rodzaju (żołnierz, czołg, działo, zwiad) zamiast litery.
-- **Menu:** lewy panel dzieli się na sekcje „TEREN” i „JEDNOSTKI”. Kliknięcie kafelka terenu wybiera pędzel i tryb terenu, kliknięcie kafelka jednostki wybiera rodzaj i tryb jednostek, a przyciski „Niebieska”/„Czerwona” wybierają stronę. Wybrany kafelek ma jaśniejszą obwódkę, a kafelek pod kursorem reaguje na hover.
+- **Menu:** lewy panel dzieli się na sekcje „TEREN” i „JEDNOSTKI”. Jest przyklejony do lewej krawędzi ekranu, a węższe kafelki i skrócony HUD zostawiają więcej miejsca na mapę. Kliknięcie kafelka terenu wybiera pędzel i tryb terenu, kliknięcie kafelka jednostki wybiera rodzaj i tryb jednostek, a przyciski „Niebieska”/„Czerwona” wybierają stronę. Wybrany kafelek ma jaśniejszą obwódkę, a kafelek pod kursorem reaguje na hover.
 - **Obsługa:**
   - w trybie terenu: LPM maluje wybranym pędzlem (można ciągnąć),
   - w trybie terenu: PPM usuwa kafelek (wraca czarne tło) razem ze stojącą na nim jednostką,
@@ -25,7 +25,7 @@
   - `Shift` + strzałki (lub `WASD`) — dokłada kafelki na krawędzi mapy (góra, dół, lewo, prawo); przytrzymanie klawisza rozszerza mapę w kółko,
   - strzałki / `WASD` — przesuwanie kamery, środkowy przycisk — przeciąganie,
   - kółko myszy — zoom,
-  - `F` — narzędzie dev: FPS, czas klatki w ms, liczba kafli, czas CPU operacji na bieżącej mapie i rozmiar modelu mapy w pamięci. Działa tylko przy włączonych narzędziach deweloperskich (`?dev=1` w adresie), inaczej HUD nie pokazuje tego skrótu,
+  - pasek dev jest zawsze widoczny: FPS, czas klatki w ms, liczba kafli, czas CPU operacji na bieżącej mapie i rozmiar modelu mapy w pamięci (tymczasowo, GRA-018),
   - `ESC` — menu map, `Shift+ESC` — menu główne; w HUD-zie są też przyciski „MENU MAP” i „MENU GŁÓWNE”.
 - **Mapa to zbiór kafelków**, nie prostokąt: można malować **poza pierwotnym prostokątem** — na czarnym tle. Współrzędne heksów są absolutne, więc kafelki mogą leżeć także po osi `0` (ujemne `col`/`row`). Zasięg kamery rośnie razem z mapą.
 - **Stan edycji:** edytor przechowuje `GameState` (mapa + jednostki + licznik), a szkic w `registry` obejmuje jednostki — po powrocie z menu map wracają na swoje heksy.

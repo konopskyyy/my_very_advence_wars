@@ -37,11 +37,11 @@ import {
 } from '../view/unitLayer';
 
 const SWATCH_RADIUS = 9;
-const PANEL_X = 8;
+const PANEL_X = 0;
 const PANEL_Y = 8;
-const PANEL_WIDTH = 268;
-const TILE_WIDTH = 60;
-const TILE_HEIGHT = 52;
+const PANEL_WIDTH = 250;
+const TILE_WIDTH = 56;
+const TILE_HEIGHT = 46;
 const TILE_GAP = 2;
 const TILE_COLUMNS = 4;
 const MENU_PADDING = 8;
@@ -53,10 +53,10 @@ const UNIT_LABEL_Y = TERRAIN_TOP + TERRAIN_ROWS * TILE_HEIGHT + 8;
 const UNIT_TOP = UNIT_LABEL_Y + 14;
 const UNIT_BOTTOM = UNIT_TOP + TILE_HEIGHT;
 const FACTION_TOP = UNIT_BOTTOM + 8;
-const FACTION_BUTTON_WIDTH = 88;
+const FACTION_BUTTON_WIDTH = 80;
 const FACTION_BUTTON_HEIGHT = 22;
-const FACTION_BUTTON_GAP = 6;
-const FACTION_BUTTONS_X = PANEL_X + 68;
+const FACTION_BUTTON_GAP = 4;
+const FACTION_BUTTONS_X = PANEL_X + 56;
 const HUD_Y = FACTION_TOP + 30;
 const BUTTONS_Y = 26;
 const ZOOM_MIN = 0.75;
@@ -121,7 +121,6 @@ export class MapEditorScene extends Phaser.Scene {
   private paintButton: number | null = null;
   private painted: { coord: HexCoord; button: number } | null = null;
   private shiftDown = false;
-  private devOverlay = false;
   private edgeGrowthMs = 0;
   private mapCpuMs = 0;
   private lastOperationMs = 0;
@@ -223,7 +222,7 @@ export class MapEditorScene extends Phaser.Scene {
 
     this.hud = this.add.text(PANEL_X + 12, HUD_Y, '', {
       fontFamily: 'monospace',
-      fontSize: '12px',
+      fontSize: '11px',
       color: '#d8e2dc',
     });
     this.hud.setScrollFactor(0);
@@ -231,7 +230,6 @@ export class MapEditorScene extends Phaser.Scene {
 
     if (this.devTools) {
       this.devBar = new DevBar(this, this.scale.width - 8, PANEL_Y);
-      this.devBar.setVisible(this.devOverlay);
     }
 
     this.mapButton = this.add
@@ -302,12 +300,12 @@ export class MapEditorScene extends Phaser.Scene {
     });
 
     const swatch = createHexSprite(this, terrain, SWATCH_RADIUS);
-    swatch.setPosition(centerX, top + 17);
+    swatch.setPosition(centerX, top + 15);
     swatch.setScrollFactor(0);
     swatch.setDepth(11);
 
     const label = this.add
-      .text(centerX, top + 40, TERRAIN_DEFS[terrain].label, {
+      .text(centerX, top + 36, TERRAIN_DEFS[terrain].label, {
         fontFamily: 'monospace',
         fontSize: '9px',
         color: '#d8e2dc',
@@ -338,12 +336,12 @@ export class MapEditorScene extends Phaser.Scene {
     });
 
     const token = createUnitToken(this, kind, this.faction);
-    token.setPosition(centerX, top + 18);
+    token.setPosition(centerX, top + 15);
     token.setScrollFactor(0);
     token.setDepth(11);
 
     const label = this.add
-      .text(centerX, top + 40, UNIT_DEFS[kind].label, {
+      .text(centerX, top + 36, UNIT_DEFS[kind].label, {
         fontFamily: 'monospace',
         fontSize: '9px',
         color: '#d8e2dc',
@@ -459,9 +457,7 @@ export class MapEditorScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number): void {
-    if (this.devOverlay) {
-      this.refreshDevBar(delta);
-    }
+    this.refreshDevBar(delta);
 
     if (this.shiftDown) {
       this.growEdge(delta);
@@ -615,13 +611,6 @@ export class MapEditorScene extends Phaser.Scene {
       return;
     }
 
-    if (key === 'f' && this.devTools) {
-      this.devOverlay = !this.devOverlay;
-      this.devBar?.setVisible(this.devOverlay);
-      this.refreshHud();
-      return;
-    }
-
     if (key === 'x') {
       this.state = this.measure(() => createInitialState(clearMap()));
       this.syncView();
@@ -756,9 +745,7 @@ export class MapEditorScene extends Phaser.Scene {
     lines.push(`Tryb: ${this.tool === 'unit' ? 'jednostki' : 'teren'}`);
 
     if (this.tool === 'unit') {
-      lines.push(
-        `Jednostka: ${UNIT_DEFS[this.unitKind].label} (${FACTION_DEFS[this.faction].label})`,
-      );
+      lines.push(`Jednostka: ${UNIT_DEFS[this.unitKind].label}`);
     } else {
       lines.push(`Pędzel: ${TERRAIN_DEFS[this.brush].label}`);
     }
@@ -771,17 +758,18 @@ export class MapEditorScene extends Phaser.Scene {
       let label = terrain ? ` — ${TERRAIN_DEFS[terrain].label}` : ' — pusto';
 
       if (unit) {
-        label += ` · ${UNIT_DEFS[unit.kind].label} (${FACTION_DEFS[unit.faction].label})`;
+        label += ` · ${UNIT_DEFS[unit.kind].label}`;
       }
 
-      lines.push(`Heks: ${hex.col}, ${hex.row}${label}`);
+      lines.push(`Heks: ${hex.col},${hex.row}${label}`);
     } else {
       lines.push('Heks: —');
     }
 
     const bounds = mapDoubledBounds(this.state.map);
-    lines.push(`Kafelki: ${Object.keys(this.state.map.cells).length}`);
-    lines.push(`Jednostki: ${this.state.units.length}`);
+    lines.push(
+      `Kafelki: ${Object.keys(this.state.map.cells).length} · Jedn.: ${this.state.units.length}`,
+    );
 
     if (bounds) {
       lines.push(`Zasięg: ${bounds.minCol}-${bounds.maxCol} × ${bounds.minRow}-${bounds.maxRow}`);
@@ -790,18 +778,13 @@ export class MapEditorScene extends Phaser.Scene {
     }
 
     lines.push('');
-    lines.push('Kolumna = 2q + r · wiersz = r');
-    lines.push('LPM — maluj / stawiaj · PPM — usuń');
+    lines.push('LPM — maluj · PPM — usuń');
     lines.push('Klik — wybór w menu po lewej');
-    lines.push('X — wyczyść mapę');
-    lines.push('Shift+strzałki — kafelki na krawędzi');
-    lines.push('Strzałki / WASD — kamera');
-    lines.push('Kółko — zoom · środkowy — przesuń');
-    lines.push('ESC — menu map · Shift+ESC — menu główne');
-
-    if (this.devTools) {
-      lines.push('F — dev (FPS, CPU, pamięć)');
-    }
+    lines.push('X — czyść mapę');
+    lines.push('Shift+strzałki — wzrost mapy');
+    lines.push('Kamera: strzałki/WASD');
+    lines.push('Kółko — zoom');
+    lines.push('ESC — mapy · Shift+ESC — menu');
 
     this.hud.setText(lines.join('\n'));
     this.panel.setSize(

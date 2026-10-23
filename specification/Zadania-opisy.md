@@ -63,6 +63,7 @@ Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
   - **DevTools Electrona:** okno DevTools nie otwiera się samo — włącza się je zmienną `ELECTRON_DEVTOOLS=1`.
   - **Dev bar mapy:** w edytorze pasek pokazuje FPS, czas klatki, liczbę kafli, czas CPU poświęcony na operacje na bieżącej mapie (łącznie i ostatnia) oraz rozmiar modelu mapy w pamięci (i stertę JS, gdy przeglądarka ją udostępnia).
   - **Pomiary w `core/`:** pomiar czasu i rozmiaru modelu to czysta logika (`client/src/core/map/metrics.ts`) z testami; warstwa widoku tylko pokazuje wyniki.
+  - **Uwaga:** od GRA-018 pasek dev jest tymczasowo zawsze widoczny; kryterium „Wyłączone na starcie” opisuje stan sprzed tej zmiany. Okno DevTools Electrona nadal otwiera się tylko przez `ELECTRON_DEVTOOLS=1`.
 - **Powiązane:** GRA-006, ADR-007, INTERF-003
 
 ## GRA-009: Menu bez pola bitwy, z wyjściem z gry
@@ -140,6 +141,7 @@ Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
   - **Menu jednostek:** cztery rodzaje jednostek mają własne kafelki z ikoną i nazwą; kliknięcie wybiera rodzaj i tryb jednostek.
   - **Strona:** przyciski „Niebieska” i „Czerwona” przełączają stronę jednostek; wybrana strona jest wyróżniona.
   - **Wyróżnienie:** wybrany kafelek ma jaśniejszą obwódkę, a kafelek pod kursorem reaguje na hover.
+  - **Pozycja:** panel jest przyklejony do lewej krawędzi ekranu, ma węższe kafelki i skrócony HUD, żeby zostawić więcej miejsca na mapę i zmieścić się w pionie.
   - **Bez klawiatury:** wybór terenu, jednostki i strony nie wymaga klawiatury; klawisze pozostają tylko dla kamery, czyszczenia mapy, rozszerzania krawędzi i wyjścia.
 - **Powiązane:** GRA-012, ADR-011, ADR-012, INTERF-003
 
@@ -152,6 +154,16 @@ Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
   - **Wybór mapy:** kliknięcie wbudowanej mapy otwiera ją w edytorze; szkic z `registry` wraca razem z jednostkami.
   - **Spójność wyjścia:** `ESC`/„MENU MAP” w edytorze wraca do menu map, a `ESC` w menu map wraca do menu głównego.
 - **Powiązane:** GRA-006, GRA-009, ADR-013, INTERF-001, INTERF-004
+
+## GRA-018: Tymczasowo zawsze widoczny pasek dev
+- **Status:** ✅ zrobione
+- **Opis:** Na czas prac diagnostycznych pasek dev w edytorze jest widoczny od razu, bez parametru `?dev=1`. Nie ma klawisza ukrywania; po zakończeniu prac widoczność wróci na żądanie zgodnie z GRA-008.
+- **Kryteria:**
+  - **Zawsze widoczny:** edytor tworzy pasek dev od pierwszej klatki, bez sprawdzania adresu.
+  - **Zakres:** pasek pokazuje FPS, czas klatki, liczbę kafli, CPU mapy i pamięć mapy/heap.
+  - **Bez przełącznika:** `F` nie ukrywa paska, a HUD nie reklamuje tego skrótu.
+  - **Powrót:** przywrócenie `?dev=1` wymaga osobnej zmiany; obecny stan jest tymczasowy.
+- **Powiązane:** GRA-008, ADR-014, INTERF-003
 
 ## INFRA-001: Środowisko Docker
 - **Status:** ✅ zrobione

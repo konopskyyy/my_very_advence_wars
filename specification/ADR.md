@@ -41,7 +41,7 @@
 - **Konsekwencje:** Jedno miejsce na geometrię heksów i jedno na model mapy; testy logiki mapy leżą w lustrzanym `tests/core/map/` (ADR-008); podgląd nie może już „przesunąć" modelu.
 
 ## ADR-007: Narzędzia deweloperskie tylko na żądanie
-- **Status:** Zaakceptowany
+- **Status:** Zastąpiony tymczasowo przez ADR-014
 - **Kontekst:** Pasek FPS w edytorze jest pomocny przy pracy nad generatorem, ale przy zwykłym uruchomieniu gry jest tylko szumem w interfejsie — a użytkownik nie powinien trafiać na klawisz, którego efekt zależy od trybu uruchomienia.
 - **Decyzja:** Narzędzia deweloperskie nie powstają, dopóki nie zostaną jawnie włączone parametrem `?dev=1` w adresie (`client/src/devTools.ts`). W edytorze działa wtedy własny dev bar (`client/src/view/devBar.ts`) z FPS, czasem klatki, liczbą kafli, czasem CPU poświęconym na operacje na bieżącej mapie i rozmiarem modelu mapy w pamięci. Pomiary są czystą logiką (`client/src/core/map/metrics.ts`), więc da się je przetestować bez silnika.
 - **Konsekwencje:** Gra startuje czysto, a diagnostyka jest dostępna na wyraźne życzenie (`http://localhost:18573/?dev=1`). HUD nie pokazuje skrótów, które nic nie robią.
@@ -74,10 +74,16 @@
 - **Status:** Zaakceptowany
 - **Kontekst:** Wybór terenu i jednostki klawiszami `1`–`7`/`1`–`4` oraz `U` był niewidoczny dla nowego użytkownika, a skróty mieszały się z klawiszami kamery. W edytorze potrzebny jest czytelny panel z podglądem dostępnych narzędzi.
 - **Decyzja:** Lewy panel edytora zawiera kafelki terenu, kafelki jednostek i przyciski strony (niebieska/czerwona). Kliknięcie kafelka ustawia tryb i narzędzie, a wybór jest wyróżniony obwódką; kafelek pod kursorem reaguje na hover. Klawiatura obsługuje wyłącznie kamerę, czyszczenie mapy, rozszerzanie krawędzi, narzędzia deweloperskie i wyjście — nie wybór narzędzi.
-- **Konsekwencje:** Wszystkie tereny i jednostki są widoczne bez zgadywania skrótów, a wybór jest jednoznaczny. Panel jest wyższy niż dawny pasek podglądu i na małych ekranach zajmuje więcej miejsca; HUD i przyciski menu nadal rozszerzają panel w dół.
+- **Konsekwencje:** Wszystkie tereny i jednostki są widoczne bez zgadywania skrótów, a wybór jest jednoznaczny. Panel jest przyklejony do lewej krawędzi ekranu i ma skrócony HUD, żeby zostawić więcej miejsca na mapę i zmieścić się w pionie.
 
 ## ADR-013: Menu map jako wejście do edytora
 - **Status:** Zaakceptowany
 - **Kontekst:** Menu główne miało dwa wejścia do edycji: „Edytor map” od razu uruchamiał nową mapę, a „Mapy” otwierało listę. Wyjście z edytora prowadziło do listy, więc wejście i wyjście kończyły się w różnych miejscach. Użytkownik nie miał szansy wybrać mapy przed rozpoczęciem pracy.
 - **Decyzja:** „Edytor map” w menu głównym otwiera menu map. Menu map zawiera „Nową mapę” oraz listę map wbudowanych i ich szkiców. Osobny wpis „Mapy” znika, żeby nie duplikować tej samej ścieżki. `ESC` w edytorze wraca do menu map, a `ESC` w menu map — do menu głównego.
 - **Konsekwencje:** Wejście i wyjście z edytora prowadzą przez to samo miejsce, a wybór mapy jest zawsze świadomy. Nowa mapa wymaga jednego kliknięcia więcej, ale nie miesza się z listą istniejących map.
+
+## ADR-014: Tymczasowo zawsze widoczny pasek dev
+- **Status:** Zaakceptowany
+- **Kontekst:** Podczas prac nad edytorem i diagnostyką mapy potrzebny jest stały wgląd w FPS, czas klatki, CPU i pamięć. Próg `?dev=1` z ADR-007 wymagał pamiętania o parametrze przy każdym uruchomieniu.
+- **Decyzja:** Na czas prac pasek dev powstaje i jest widoczny od razu w edytorze, bez `?dev=1`. Klawisz `F` nie ukrywa paska. Po zakończeniu prac widoczność wróci na żądanie zgodnie z ADR-007.
+- **Konsekwencje:** Diagnostyka jest zawsze pod ręką, ale interfejs jest bardziej zajęty. To świadomie tymczasowe odstępstwo; zakres pomiarów i docelowa zasada ADR-007 pozostają bez zmian. Okno DevTools Electrona nadal wymaga `ELECTRON_DEVTOOLS=1`.
