@@ -198,6 +198,7 @@ Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
   - **Odczyt:** menu map pokazuje sekcję „ZAPISANE MAPY (SQLite)” i otwiera zapisaną mapę w edytorze; menu scenariuszy pokazuje zapisane mapy jako scenariusze testowe.
   - **Serializacja:** `client/src/storage/mapSerialization.ts` zapisuje i waliduje `GameState` (teren, jednostki, amunicja, licznik) — uszkodzony JSON i nieznany teren są odrzucane.
   - **Testy:** `tests/storage/mapSerialization.test.ts` sprawdza round-trip i walidację, a `tests/storage/maps.test.ts` — schemat, zapis, aktualizację i odczyt na prawdziwej bazie `sql.js`.
+- **Dokumentacja:** [[Mapy]] — model, schemat, format JSON, trwałość i diagnostyka.
 - **Powiązane:** GRA-003, GRA-020, ADR-017, INTERF-004, INTERF-005, INTERF-006
 
 ## GRA-022: Wspólny moduł widoku mapy
