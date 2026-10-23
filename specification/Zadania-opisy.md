@@ -90,6 +90,17 @@ Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
   - **Matematyka w `core/`:** konwersje do/z kolumny podwojonej i zasięg w tej skali leżą w `client/src/core/map/` i mają testy.
 - **Powiązane:** ADR-004, ADR-005, GRA-001, INTERF-003
 
+## GRA-013: Testy klienta w lustrzanym drzewie
+- **Status:** ✅ zrobione
+- **Opis:** Testy jednostkowe klienta leżą poza katalogiem kodu produkcyjnego. `client/src/` zawiera wyłącznie moduły gry, a `client/tests/` odtwarza jego drzewo: moduł `src/core/map/model.ts` ma test `tests/core/map/model.test.ts`. Regułę pilnuje test struktury, więc rozjazd nazw lub test w `src/` zatrzymuje `npm test`.
+- **Kryteria:**
+  - **Lustro ścieżek:** każdy plik `tests/**/*.test.ts` wskazuje odpowiadający mu moduł w `src/` (ta sama ścieżka bez `.test.ts`).
+  - **Kod produkcyjny bez testów:** w `src/` nie ma plików `*.test.ts`, a importy w testach są względne i wskazują dokładnie testowany moduł.
+  - **Pilnowanie reguły:** `tests/structure.test.ts` sprawdza obie strony lustra; jest jedynym testem bez odpowiednika w `src/`.
+  - **Konfiguracja:** Vitest zbiera wyłącznie `tests/**/*.test.ts`, a `tsc --noEmit` obejmuje także `tests/`.
+  - **Dokumentacja:** zasady i przykłady opisuje [[Konwencje]], decyzję — ADR-008.
+- **Powiązane:** ADR-008, `specification/Konwencje.md`
+
 ## INFRA-001: Środowisko Docker
 - **Status:** ✅ zrobione
 - **Opis:** docker-compose + Makefile + usługi client/server/nginx/db/adminer.
