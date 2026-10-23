@@ -202,16 +202,15 @@ Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
 
 ## GRA-022: Wspólny moduł widoku mapy
 - **Status:** ✅ zrobione
-- **Opis:** Kamera, zoom, przeciąganie, przewijanie krawędzią ekranu, granice mapy i tłumaczenie kursora na heks są wspólne dla edytora i scenariusza. Karty map oraz liczniki i rozstawianie jednostek nie są już kopiowane w każdej scenie.
+- **Opis:** Kamera, zoom, przeciąganie, granice mapy i tłumaczenie kursora na heks są wspólne dla edytora i scenariusza. Karty map oraz liczniki i rozstawianie jednostek nie są już kopiowane w każdej scenie.
 - **Kryteria:**
   - **Widok:** `client/src/view/mapViewport.ts` obsługuje zoom, przesuwanie kamery, przeciąganie środkowym przyciskiem, granice mapy i `pixelToHex`.
   - **Karty:** `client/src/view/mapCard.ts` tworzy kartę z miniaturą, tytułem, opisem i metadanymi; korzystają z niej menu map i menu scenariuszy.
   - **Model:** `mapTileCount` w `client/src/core/map/model.ts` oraz `deployUnits` i `countUnits` w `client/src/core/state.ts`.
   - **Sceny:** `MapEditorScene` i `ScenarioScene` używają wspólnego widoku zamiast własnych kopii logiki kamery i kursora.
-  - **Krawędź ekranu:** gdy kursor myszy znajdzie się w pasie 24 px od górnej, dolnej, lewej lub prawej krawędzi, kamera przesuwa się w tę stronę. Przewijanie jest wyłączone nad lewym panelem i przy wciśniętym przycisku myszy, żeby nie kolidować z malowaniem i wyborem jednostek.
   - **Bez regresji:** edytor nadal maluje, stawia jednostki, rośnie na krawędziach i zapisuje mapę; scenariusz nadal wybiera jednostki i pokazuje statystyki.
   - **Testy:** `tests/core/map/model.test.ts` i `tests/core/state.test.ts` pokrywają nowe funkcje `core/`.
-- **Powiązane:** GRA-007, GRA-020, ADR-001, ADR-018, INTERF-003, INTERF-005
+- **Powiązane:** GRA-007, GRA-020, GRA-024, ADR-001, ADR-018, INTERF-003, INTERF-005
 
 ## GRA-023: Przewijane listy map i scenariuszy
 - **Status:** ✅ zrobione
@@ -223,6 +222,17 @@ Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
   - **Bez limitu:** znika obcinanie zapisanych map do sześciu wpisów.
   - **Czytelność:** tytuł menu i przycisk powrotu pozostają nieruchome; przewija się tylko zawartość.
 - **Powiązane:** GRA-017, GRA-020, ADR-018, INTERF-004, INTERF-005
+
+## GRA-024: Przewijanie kamery krawędzią ekranu
+- **Status:** ✅ zrobione
+- **Opis:** W scenariuszu i edytorze mapę można przesuwać myszą bez trzymania przycisku: wystarczy najechać kursorem na krawędź ekranu. Zachowanie korzysta ze wspólnego `MapViewport`, więc jest identyczne w obu scenach i działa również w Electronie. Zrealizowane w commicie `eeb3a6b`.
+- **Kryteria:**
+  - **Pas krawędzi:** kursor w odległości do 24 px od górnej, dolnej, lewej lub prawej krawędzi przewija kamerę w tę stronę z prędkością 620 px/s.
+  - **Priorytet UI:** nad lewym panelem przewijanie jest wyłączone, żeby nie kolidować z wyborem terenu, jednostek i przycisków.
+  - **Bez konfliktu z klikaniem:** przy wciśniętym przycisku myszy przewijanie krawędzią się zatrzymuje, więc wybór jednostki i malowanie działają normalnie.
+  - **Wspólny kod:** `client/src/view/mapViewport.ts` udostępnia opcje `edgePanMargin`, `edgePanSpeed` i `edgePanBlocked`; `ScenarioScene` i `MapEditorScene` tylko je włączają.
+  - **Sterowanie:** krawędź ekranu, strzałki/`WASD` i środkowy przycisk działają równolegle; kółko nadal zmienia zoom.
+- **Powiązane:** GRA-022, ADR-018, INTERF-003, INTERF-005
 
 ## INFRA-001: Środowisko Docker
 - **Status:** ✅ zrobione
