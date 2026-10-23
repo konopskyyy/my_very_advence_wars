@@ -9,7 +9,7 @@ Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
 ## GRA-001: Edytor mapy
 - **Status:** ✅ zrobione
 - **Opis:** Edytor mapy na siatce heksagonalnej z malowaniem terenu. Mapa jest zbiorem kafelków o absolutnych współrzędnych, więc teren można malować także poza pierwotnym prostokątem — na czarnym tle. Z edytora da się wyjść do menu (`ESC`).
-- **Kryteria:** Klikanie/przeciąganie LPM maluje wybrany teren, PPM usuwa kafelek, klawisze 1-7 zmieniają pędzel, X czyści mapę, kamera pan/zoom działa i rośnie wraz z mapą.
+- **Kryteria:** Klikanie/przeciąganie LPM maluje wybrany teren, PPM usuwa kafelek, kliknięcie kafelka w lewym menu zmienia pędzel, X czyści mapę, kamera pan/zoom działa i rośnie wraz z mapą.
 - **Powiązane:** ADR-003, ADR-004, ADR-005, INTERF-003
 
 ## GRA-002: Model jednostek
@@ -94,7 +94,7 @@ Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
 - **Status:** ✅ zrobione
 - **Opis:** Edytor map poza malowaniem terenu ma pozwalać rozstawiać jednostki na istniejących kafelkach. Edycja obejmuje cały `GameState` (mapa + jednostki), a nie samą mapę, więc jednostki sąsiadują z terenem w jednym modelu i wracają razem z szkicem mapy.
 - **Kryteria:**
-  - **Tryb jednostek:** `U` przełącza między malowaniem terenu a stawianiem jednostek; klawisze `1`–`4` wybierają piechotę, czołg, artylerię i zwiad, a `C` przełącza stronę (niebieska/czerwona).
+  - **Tryb jednostek:** kliknięcie kafelka jednostki w lewym menu wybiera rodzaj (piechota, czołg, artyleria, zwiad) i włącza tryb jednostek; kliknięcie kafelka terenu wraca do malowania. Stronę wybiera się przyciskami w panelu.
   - **Stawianie i usuwanie:** LPM stawia jednostkę wybranej strony, PPM usuwa jednostkę; jednostkę można postawić tylko na istniejącym kafelku, a nowa jednostka na zajętym heksie zastępuje poprzednią.
   - **Widok:** jednostki są rysowane nad terenem jako tokeny w kolorze strony z ikonami rodzaju (czołg, żołnierz, działo, zwiad) zamiast liter; HUD pokazuje tryb, wybraną jednostkę i jednostkę pod kursorem.
   - **Spójność mapy:** usunięcie kafelka usuwa stojącą na nim jednostkę, a wyczyszczenie mapy (`X`) czyści też jednostki.
@@ -131,6 +131,17 @@ Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
   - **Przykład:** `chore: wydzielenie testów klienta do tests/ z lustrzanym drzewem` zamiast `chore: wydziel testy klienta do tests/ z lustrzanym drzewem`.
   - **Miejsce:** reguła jest w `AGENTS.md`, a uzasadnienie w ADR-010.
 - **Powiązane:** ADR-010, `AGENTS.md`
+
+## GRA-016: Menu wyboru terenu i jednostek
+- **Status:** ✅ zrobione
+- **Opis:** Lewy panel edytora zawiera kafelki terenu i jednostek. Wybór narzędzia odbywa się kliknięciem kafelka, a nie klawiszem: kliknięcie terenu przełącza edytor w tryb terenu i ustawia pędzel, kliknięcie jednostki włącza tryb jednostek i wybiera rodzaj. Stronę jednostki wybiera się kliknięciem przycisku w panelu.
+- **Kryteria:**
+  - **Menu terenu:** wszystkie siedem terenów ma własny kafelek z podglądem heksa i nazwą; kliknięcie wybiera pędzel i tryb terenu.
+  - **Menu jednostek:** cztery rodzaje jednostek mają własne kafelki z ikoną i nazwą; kliknięcie wybiera rodzaj i tryb jednostek.
+  - **Strona:** przyciski „Niebieska” i „Czerwona” przełączają stronę jednostek; wybrana strona jest wyróżniona.
+  - **Wyróżnienie:** wybrany kafelek ma jaśniejszą obwódkę, a kafelek pod kursorem reaguje na hover.
+  - **Bez klawiatury:** wybór terenu, jednostki i strony nie wymaga klawiatury; klawisze pozostają tylko dla kamery, czyszczenia mapy, rozszerzania krawędzi i wyjścia.
+- **Powiązane:** GRA-012, ADR-011, ADR-012, INTERF-003
 
 ## INFRA-001: Środowisko Docker
 - **Status:** ✅ zrobione

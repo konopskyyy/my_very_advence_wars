@@ -13,17 +13,14 @@
 ## INTERF-003: Edytor map
 - **Status:** Zaimplementowane
 - **Opis:** Edytor map na siatce heksagonalnej. Służy do **malowania terenu** i **rozstawiania jednostek** na kafelkach.
-- **Teren:** łąka (1), las (2), woda (3), góry (4), bagno (5), droga (6), miasto (7).
-- **Jednostki:** piechota (1), czołg (2), artyleria (3), zwiad (4); strona niebieska lub czerwona. Token jednostki to kolorowe koło strony z ikoną rodzaju (żołnierz, czołg, działo, zwiad) zamiast litery.
+- **Teren:** łąka, las, woda, góry, bagno, droga, miasto.
+- **Jednostki:** piechota, czołg, artyleria, zwiad; strona niebieska lub czerwona. Token jednostki to kolorowe koło strony z ikoną rodzaju (żołnierz, czołg, działo, zwiad) zamiast litery.
+- **Menu:** lewy panel dzieli się na sekcje „TEREN” i „JEDNOSTKI”. Kliknięcie kafelka terenu wybiera pędzel i tryb terenu, kliknięcie kafelka jednostki wybiera rodzaj i tryb jednostek, a przyciski „Niebieska”/„Czerwona” wybierają stronę. Wybrany kafelek ma jaśniejszą obwódkę, a kafelek pod kursorem reaguje na hover.
 - **Obsługa:**
-  - `U` — przełącza tryb terenu i jednostek; wybrany tryb pokazuje HUD,
   - w trybie terenu: LPM maluje wybranym pędzlem (można ciągnąć),
   - w trybie terenu: PPM usuwa kafelek (wraca czarne tło) razem ze stojącą na nim jednostką,
-  - `1`–`7` — wybór pędzla terenu (tryb terenu),
   - w trybie jednostek: LPM stawia jednostkę na istniejącym kafelku (zastępuje poprzednią na tym heksie),
   - w trybie jednostek: PPM usuwa jednostkę,
-  - `1`–`4` — wybór rodzaju jednostki (tryb jednostek),
-  - `C` — przełącza stronę jednostki (niebieska/czerwona),
   - `X` — czyści mapę i jednostki (zostaje czarne tło),
   - `Shift` + strzałki (lub `WASD`) — dokłada kafelki na krawędzi mapy (góra, dół, lewo, prawo); przytrzymanie klawisza rozszerza mapę w kółko,
   - strzałki / `WASD` — przesuwanie kamery, środkowy przycisk — przeciąganie,
