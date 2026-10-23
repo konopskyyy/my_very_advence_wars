@@ -229,7 +229,7 @@ export class MapEditorScene extends Phaser.Scene {
     this.hud.setDepth(11);
 
     if (this.devTools) {
-      this.devBar = new DevBar(this, this.scale.width - 8, PANEL_Y);
+      this.devBar = new DevBar(this, PANEL_X + 12, HUD_Y, 'left');
     }
 
     this.mapButton = this.add
@@ -787,12 +787,12 @@ export class MapEditorScene extends Phaser.Scene {
     lines.push('ESC — mapy · Shift+ESC — menu');
 
     this.hud.setText(lines.join('\n'));
+    this.drawButtons();
     this.panel.setSize(
       Math.max(PANEL_WIDTH, this.hud.width + 24),
-      HUD_Y + this.hud.height + BUTTONS_Y - PANEL_Y,
+      this.panelContentBottom() - PANEL_Y,
     );
     this.refreshMenu();
-    this.drawButtons();
   }
 
   private drawButtons(): void {
@@ -800,6 +800,20 @@ export class MapEditorScene extends Phaser.Scene {
 
     this.mapButton.setY(y);
     this.menuButton.setY(y);
+
+    if (this.devBar) {
+      this.devBar.setPosition(PANEL_X + 12, y + 22);
+    }
+  }
+
+  private panelContentBottom(): number {
+    const buttonsBottom = HUD_Y + this.hud.height + BUTTONS_Y;
+
+    if (!this.devBar) {
+      return buttonsBottom;
+    }
+
+    return Math.max(buttonsBottom, this.devBar.y + this.devBar.height + 12);
   }
 
   private refreshDevBar(delta: number): void {
@@ -809,6 +823,11 @@ export class MapEditorScene extends Phaser.Scene {
       lastOperationMs: this.lastOperationMs,
       mapBytes: this.mapBytes,
     });
+
+    this.panel.setSize(
+      Math.max(PANEL_WIDTH, this.hud.width + 24),
+      this.panelContentBottom() - PANEL_Y,
+    );
   }
 
   private refreshMenu(): void {

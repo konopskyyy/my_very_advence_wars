@@ -157,13 +157,23 @@ Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
 
 ## GRA-018: Tymczasowo zawsze widoczny pasek dev
 - **Status:** ✅ zrobione
-- **Opis:** Na czas prac diagnostycznych pasek dev w edytorze jest widoczny od razu, bez parametru `?dev=1`. Nie ma klawisza ukrywania; po zakończeniu prac widoczność wróci na żądanie zgodnie z GRA-008.
+- **Opis:** Na czas prac diagnostycznych pasek dev w lewym panelu edytora (menu budowania mapy) jest widoczny od razu, bez parametru `?dev=1`. Nie ma klawisza ukrywania; po zakończeniu prac widoczność wróci na żądanie zgodnie z GRA-008.
 - **Kryteria:**
   - **Zawsze widoczny:** edytor tworzy pasek dev od pierwszej klatki, bez sprawdzania adresu.
+  - **Miejsce:** pasek dev jest sekcją lewego panelu edytora, pod HUD-em i przyciskami wyjścia, a nie osobnym overlayem w prawym górnym rogu.
   - **Zakres:** pasek pokazuje FPS, czas klatki, liczbę kafli, CPU mapy i pamięć mapy/heap.
   - **Bez przełącznika:** `F` nie ukrywa paska, a HUD nie reklamuje tego skrótu.
   - **Powrót:** przywrócenie `?dev=1` wymaga osobnej zmiany; obecny stan jest tymczasowy.
 - **Powiązane:** GRA-008, ADR-014, INTERF-003
+
+## GRA-019: Pełny ekran 16:9
+- **Status:** ✅ zrobione
+- **Opis:** Wewnętrzna scena ma proporcje 16:9 (1280×720), więc na typowym monitorze 16:9 `Scale.FIT` wypełnia zarówno szerokość, jak i wysokość. Na innych proporcjach Phaser nadal zachowuje proporcje i dodaje pasy.
+- **Kryteria:**
+  - **Proporcje:** `client/src/main.ts` ustawia 1280×720.
+  - **Skalowanie:** `Phaser.Scale.FIT` z centrowaniem skaluje scenę do okna bez zniekształceń.
+  - **16:9:** na monitorze 16:9 canvas wypełnia cały ekran; inne proporcje mogą mieć pasy.
+- **Powiązane:** GRA-016, ADR-015, INTERF-003
 
 ## INFRA-001: Środowisko Docker
 - **Status:** ✅ zrobione

@@ -85,5 +85,11 @@
 ## ADR-014: Tymczasowo zawsze widoczny pasek dev
 - **Status:** Zaakceptowany
 - **Kontekst:** Podczas prac nad edytorem i diagnostyką mapy potrzebny jest stały wgląd w FPS, czas klatki, CPU i pamięć. Próg `?dev=1` z ADR-007 wymagał pamiętania o parametrze przy każdym uruchomieniu.
-- **Decyzja:** Na czas prac pasek dev powstaje i jest widoczny od razu w edytorze, bez `?dev=1`. Klawisz `F` nie ukrywa paska. Po zakończeniu prac widoczność wróci na żądanie zgodnie z ADR-007.
+- **Decyzja:** Na czas prac pasek dev powstaje i jest widoczny od razu w lewym panelu edytora (menu budowania mapy), bez `?dev=1`. Klawisz `F` nie ukrywa paska. Po zakończeniu prac widoczność wróci na żądanie zgodnie z ADR-007.
 - **Konsekwencje:** Diagnostyka jest zawsze pod ręką, ale interfejs jest bardziej zajęty. To świadomie tymczasowe odstępstwo; zakres pomiarów i docelowa zasada ADR-007 pozostają bez zmian. Okno DevTools Electrona nadal wymaga `ELECTRON_DEVTOOLS=1`.
+
+## ADR-015: Wewnętrzna rozdzielczość 16:9
+- **Status:** Zaakceptowany
+- **Kontekst:** Scena 640×480 (4:3) na monitorze 16:9 była skalowana do wysokości, zostawiając czarne pasy po bokach. Użytkownik chce wykorzystać ekran także w poziomie.
+- **Decyzja:** Wewnętrzna rozdzielczość gry to 1280×720 (16:9), a Phaser nadal skaluje ją przez `Scale.FIT` z centrowaniem. Nie rozciągamy obrazu i nie zmieniamy logiki mapy; rosną tylko współrzędne sceny.
+- **Konsekwencje:** Na monitorach 16:9 gra wypełnia cały ekran bez zniekształceń. Na innych proporcjach (16:10, 21:9) pozostają pasy, bo proporcje są zachowane. UI edytora ma więcej miejsca w pionie, więc pasek dev mieści się w lewym panelu.
