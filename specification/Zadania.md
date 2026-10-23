@@ -21,6 +21,7 @@ Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
 | [[Zadania-opisy#GRA-009: Menu bez pola bitwy, z wyjściem z gry\|GRA-009]] | Menu bez pola bitwy, z wyjściem z gry | ✅ | GRA-001, INTERF-001, INTERF-002, INTERF-003 |
 | [[Zadania-opisy#GRA-010: Strona gry bez paska przewijania\|GRA-010]] | Strona gry bez paska przewijania | ✅ | GRA-009, INTERF-001 |
 | [[Zadania-opisy#GRA-011: Podwojone kolumny w odczycie edytora\|GRA-011]] | Podwojone kolumny w odczycie edytora | ✅ | ADR-004, ADR-005, GRA-001, INTERF-003 |
+| [[Zadania-opisy#GRA-012: Jednostki w edytorze map\|GRA-012]] | Jednostki w edytorze map | ✅ | GRA-002, GRA-003, ADR-003, ADR-011, INTERF-003 |
 | [[Zadania-opisy#GRA-013: Testy klienta w lustrzanym drzewie\|GRA-013]] | Testy klienta w lustrzanym drzewie | ✅ | ADR-008, `specification/Konwencje.md` |
 | [[Zadania-opisy#GRA-014: CI typów TypeScript\|GRA-014]] | CI typów TypeScript | ✅ | ADR-009, `specification/Infrastruktura.md` |
 | [[Zadania-opisy#GRA-015: Rzeczownikowy opis commitów\|GRA-015]] | Rzeczownikowy opis commitów | ✅ | ADR-010, `AGENTS.md` |

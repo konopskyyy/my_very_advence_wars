@@ -90,6 +90,18 @@ Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
   - **Matematyka w `core/`:** konwersje do/z kolumny podwojonej i zasięg w tej skali leżą w `client/src/core/map/` i mają testy.
 - **Powiązane:** ADR-004, ADR-005, GRA-001, INTERF-003
 
+## GRA-012: Jednostki w edytorze map
+- **Status:** ✅ zrobione
+- **Opis:** Edytor map poza malowaniem terenu ma pozwalać rozstawiać jednostki na istniejących kafelkach. Edycja obejmuje cały `GameState` (mapa + jednostki), a nie samą mapę, więc jednostki sąsiadują z terenem w jednym modelu i wracają razem z szkicem mapy.
+- **Kryteria:**
+  - **Tryb jednostek:** `U` przełącza między malowaniem terenu a stawianiem jednostek; klawisze `1`–`4` wybierają piechotę, czołg, artylerię i zwiad, a `C` przełącza stronę (niebieska/czerwona).
+  - **Stawianie i usuwanie:** LPM stawia jednostkę wybranej strony, PPM usuwa jednostkę; jednostkę można postawić tylko na istniejącym kafelku, a nowa jednostka na zajętym heksie zastępuje poprzednią.
+  - **Widok:** jednostki są rysowane nad terenem jako tokeny w kolorze strony z ikonami rodzaju (czołg, żołnierz, działo, zwiad) zamiast liter; HUD pokazuje tryb, wybraną jednostkę i jednostkę pod kursorem.
+  - **Spójność mapy:** usunięcie kafelka usuwa stojącą na nim jednostkę, a wyczyszczenie mapy (`X`) czyści też jednostki.
+  - **Sesja:** szkic w `registry` przechowuje cały `GameState`, więc po powrocie z menu map jednostki są na swoich miejscach.
+  - **Testy:** operacje `placeUnit`, `removeUnitAt` i `clearUnits` mają testy w `tests/core/state.test.ts`; warstwa widoku pozostaje bez testów jednostkowych (ADR-001).
+- **Powiązane:** GRA-002, GRA-003, ADR-003, ADR-004, ADR-011, INTERF-003
+
 ## GRA-013: Testy klienta w lustrzanym drzewie
 - **Status:** ✅ zrobione
 - **Opis:** Testy jednostkowe klienta leżą poza katalogiem kodu produkcyjnego. `client/src/` zawiera wyłącznie moduły gry, a `client/tests/` odtwarza jego drzewo: moduł `src/core/map/model.ts` ma test `tests/core/map/model.test.ts`. Regułę pilnuje test struktury, więc rozjazd nazw lub test w `src/` zatrzymuje `npm test`.

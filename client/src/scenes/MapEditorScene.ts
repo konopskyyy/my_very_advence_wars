@@ -13,21 +13,36 @@ import {
   setTerrain,
   terrainAt,
   toDoubled,
-  type GameMap,
   type HexCoord,
   type MapDefinition,
   type MapEdge,
 } from '../core/map';
+import {
+  createInitialState,
+  findUnitAt,
+  placeUnit,
+  removeUnitAt,
+  type GameState,
+} from '../core/state';
 import { TERRAIN_DEFS, TERRAIN_IDS, type TerrainId } from '../core/terrain';
+import { FACTION_DEFS, UNIT_DEFS, UNIT_KINDS, type FactionId, type UnitKind } from '../core/units';
 import { devToolsEnabled } from '../devTools';
 import { DevBar } from '../view/devBar';
 import { createHexSprite, HEX_SIZE, HexMapView, tracePolygon } from '../view/hexGrid';
+import {
+  createUnitToken,
+  UnitLayer,
+  unitTexture,
+  unitTextureKey,
+} from '../view/unitLayer';
 
 const SWATCH_RADIUS = 9;
 const SWATCH_GAP = 27;
 const SWATCH_Y = 56;
 const LABEL_Y = 72;
-const HUD_Y = 92;
+const UNIT_SWATCH_Y = 96;
+const UNIT_LABEL_Y = 112;
+const HUD_Y = 130;
 const PANEL_X = 8;
 const PANEL_Y = 8;
 const PANEL_WIDTH = 268;
@@ -50,18 +65,24 @@ const EDGE_BY_KEY: Record<string, MapEdge> = {
   arrowright: 'right',
 };
 
+type EditorTool = 'terrain' | 'unit';
+
 interface EditorData {
   readonly definition?: MapDefinition;
+  readonly state?: GameState;
 }
 
 export class MapEditorScene extends Phaser.Scene {
-  private map: GameMap = generateMap();
+  private state: GameState = createInitialState(generateMap());
   private mapId: string | null = null;
   private mapName = 'nowa';
   private readonly keys = new Map<string, Phaser.Input.Keyboard.Key>();
   private readonly devTools = devToolsEnabled();
 
+  private tool: EditorTool = 'terrain';
   private brush: TerrainId = 'plain';
+  private unitKind: UnitKind = 'infantry';
+  private faction: FactionId = 'blue';
   private hover: HexCoord | null = null;
   private panning = false;
   private panAnchor = { x: 0, y: 0, scrollX: 0, scrollY: 0 };
@@ -75,6 +96,7 @@ export class MapEditorScene extends Phaser.Scene {
   private mapBytes = 0;
 
   private mapView!: HexMapView;
+  private unitView!: UnitLayer;
   private hud!: Phaser.GameObjects.Text;
   private devBar?: DevBar;
   private panel!: Phaser.GameObjects.Rectangle;
@@ -82,6 +104,7 @@ export class MapEditorScene extends Phaser.Scene {
   private mapButton!: Phaser.GameObjects.Text;
   private menuButton!: Phaser.GameObjects.Text;
   private swatches: Phaser.GameObjects.Image[] = [];
+  private unitSwatches: Phaser.GameObjects.Image[] = [];
   private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
 
   constructor() {
@@ -93,7 +116,9 @@ export class MapEditorScene extends Phaser.Scene {
 
     this.mapId = definition?.id ?? null;
     this.mapName = definition?.name ?? 'nowa';
-    this.map = this.measure(() => definition?.map ?? generateMap());
+    this.state = this.measure(
+      () => data?.state ?? createInitialState(definition?.map ?? generateMap()),
+    );
   }
 
   create(): void {
@@ -101,9 +126,10 @@ export class MapEditorScene extends Phaser.Scene {
     camera.setZoom(1);
 
     const renderStarted = performance.now();
-    this.mapView = new HexMapView(this, this.map);
+    this.mapView = new HexMapView(this, this.state.map);
+    this.unitView = new UnitLayer(this, this.state.units);
     this.mapCpuMs += performance.now() - renderStarted;
-    this.mapBytes = mapMemoryUsage(this.map);
+    this.mapBytes = mapMemoryUsage(this.state.map);
 
     this.cursor = this.add.graphics();
     this.cursor.setDepth(5);
@@ -144,6 +170,43 @@ export class MapEditorScene extends Phaser.Scene {
         .setScrollFactor(0)
         .setDepth(11);
     });
+
+    this.unitSwatches = UNIT_KINDS.map((kind, index) => {
+      const token = createUnitToken(this, kind, this.faction);
+
+      token.setPosition(PANEL_X + 20 + index * SWATCH_GAP, UNIT_SWATCH_Y);
+      token.setScrollFactor(0);
+      token.setDepth(11);
+
+      return token;
+    });
+
+    UNIT_KINDS.forEach((_kind, index) => {
+      this.add
+        .text(PANEL_X + 20 + index * SWATCH_GAP, UNIT_LABEL_Y, String(index + 1), {
+          fontFamily: 'monospace',
+          fontSize: '10px',
+          color: '#9fb0a5',
+        })
+        .setOrigin(0.5, 0.5)
+        .setScrollFactor(0)
+        .setDepth(11);
+    });
+
+    this.add
+      .text(
+        PANEL_X + 20 + UNIT_KINDS.length * SWATCH_GAP,
+        UNIT_SWATCH_Y,
+        'JEDNOSTKI',
+        {
+          fontFamily: 'monospace',
+          fontSize: '10px',
+          color: '#9fb0a5',
+        },
+      )
+      .setOrigin(0, 0.5)
+      .setScrollFactor(0)
+      .setDepth(11);
 
     this.hud = this.add.text(PANEL_X + 12, HUD_Y, '', {
       fontFamily: 'monospace',
@@ -208,9 +271,13 @@ export class MapEditorScene extends Phaser.Scene {
   }
 
   private resetEditor(): void {
-    this.map = generateMap();
+    this.state = createInitialState(generateMap());
     this.mapId = null;
     this.mapName = 'nowa';
+    this.tool = 'terrain';
+    this.brush = 'plain';
+    this.unitKind = 'infantry';
+    this.faction = 'blue';
     this.hover = null;
     this.panning = false;
     this.paintButton = null;
@@ -368,8 +435,20 @@ export class MapEditorScene extends Phaser.Scene {
       return;
     }
 
+    if (key === 'u') {
+      this.tool = this.tool === 'terrain' ? 'unit' : 'terrain';
+      this.refreshHud();
+      return;
+    }
+
+    if (key === 'c') {
+      this.faction = this.faction === 'blue' ? 'red' : 'blue';
+      this.refreshHud();
+      return;
+    }
+
     if (key === 'x') {
-      this.map = this.measure(() => clearMap());
+      this.state = this.measure(() => createInitialState(clearMap()));
       this.syncView();
       return;
     }
@@ -383,7 +462,20 @@ export class MapEditorScene extends Phaser.Scene {
       }
     }
 
-    const terrain = TERRAIN_IDS[Number(key) - 1];
+    const index = Number(key) - 1;
+
+    if (this.tool === 'unit') {
+      const kind = UNIT_KINDS[index];
+
+      if (kind) {
+        this.unitKind = kind;
+        this.refreshHud();
+      }
+
+      return;
+    }
+
+    const terrain = TERRAIN_IDS[index];
     if (terrain) {
       this.brush = terrain;
       this.refreshHud();
@@ -397,7 +489,10 @@ export class MapEditorScene extends Phaser.Scene {
   }
 
   private extendEdge(edge: MapEdge): void {
-    this.map = this.measure(() => extendMap(this.map, edge, 1, this.brush));
+    this.state = this.measure(() => ({
+      ...this.state,
+      map: extendMap(this.state.map, edge, 1, this.brush),
+    }));
     this.syncView();
   }
 
@@ -412,7 +507,7 @@ export class MapEditorScene extends Phaser.Scene {
 
   private leaveTo(target: 'menu' | 'map-menu'): void {
     if (this.mapId) {
-      this.registry.set(`map:draft:${this.mapId}`, this.map);
+      this.registry.set(`map:draft:${this.mapId}`, this.state);
     }
 
     this.scene.start(target);
@@ -443,20 +538,41 @@ export class MapEditorScene extends Phaser.Scene {
     }
 
     this.painted = { coord, button };
-    this.map = this.measure(() =>
+
+    if (this.tool === 'unit') {
+      if (!terrainAt(this.state.map, coord)) {
+        return;
+      }
+
+      this.state = this.measure(() =>
+        button === 2
+          ? removeUnitAt(this.state, coord)
+          : placeUnit(this.state, this.unitKind, coord, this.faction),
+      );
+      this.syncView();
+      return;
+    }
+
+    const map = this.measure(() =>
       button === 2
-        ? removeTerrain(this.map, coord)
-        : setTerrain(this.map, coord, this.brush),
+        ? removeTerrain(this.state.map, coord)
+        : setTerrain(this.state.map, coord, this.brush),
     );
+
+    this.state =
+      button === 2
+        ? removeUnitAt({ ...this.state, map }, coord)
+        : { ...this.state, map };
 
     this.syncView();
   }
 
   private syncView(): void {
     const started = performance.now();
-    this.mapView.setMap(this.map);
+    this.mapView.setMap(this.state.map);
+    this.unitView.setUnits(this.state.units);
     this.mapCpuMs += performance.now() - started;
-    this.mapBytes = mapMemoryUsage(this.map);
+    this.mapBytes = mapMemoryUsage(this.state.map);
 
     this.updateCameraBounds();
     this.refreshHud();
@@ -464,7 +580,7 @@ export class MapEditorScene extends Phaser.Scene {
 
   private updateCameraBounds(): void {
     const camera = this.cameras.main;
-    const bounds = mapPixelBounds(this.map, HEX_SIZE) ?? BASE_BOUNDS;
+    const bounds = mapPixelBounds(this.state.map, HEX_SIZE) ?? BASE_BOUNDS;
 
     if (!bounds) {
       return;
@@ -482,20 +598,35 @@ export class MapEditorScene extends Phaser.Scene {
     const lines: string[] = [];
 
     lines.push(`Mapa: ${this.mapName}`);
-    lines.push(`Pędzel: ${TERRAIN_DEFS[this.brush].label}`);
+    lines.push(`Tryb: ${this.tool === 'unit' ? 'jednostki' : 'teren'}`);
+
+    if (this.tool === 'unit') {
+      lines.push(
+        `Jednostka: ${UNIT_DEFS[this.unitKind].label} (${FACTION_DEFS[this.faction].label})`,
+      );
+    } else {
+      lines.push(`Pędzel: ${TERRAIN_DEFS[this.brush].label}`);
+    }
 
     if (this.hover) {
-      const terrain = terrainAt(this.map, this.hover);
-      const label = terrain ? ` — ${TERRAIN_DEFS[terrain].label}` : ' — pusto';
+      const terrain = terrainAt(this.state.map, this.hover);
+      const unit = findUnitAt(this.state, this.hover);
       const hex = toDoubled(this.hover);
+
+      let label = terrain ? ` — ${TERRAIN_DEFS[terrain].label}` : ' — pusto';
+
+      if (unit) {
+        label += ` · ${UNIT_DEFS[unit.kind].label} (${FACTION_DEFS[unit.faction].label})`;
+      }
 
       lines.push(`Heks: ${hex.col}, ${hex.row}${label}`);
     } else {
       lines.push('Heks: —');
     }
 
-    const bounds = mapDoubledBounds(this.map);
-    lines.push(`Kafelki: ${Object.keys(this.map.cells).length}`);
+    const bounds = mapDoubledBounds(this.state.map);
+    lines.push(`Kafelki: ${Object.keys(this.state.map.cells).length}`);
+    lines.push(`Jednostki: ${this.state.units.length}`);
 
     if (bounds) {
       lines.push(`Zasięg: ${bounds.minCol}-${bounds.maxCol} × ${bounds.minRow}-${bounds.maxRow}`);
@@ -505,9 +636,9 @@ export class MapEditorScene extends Phaser.Scene {
 
     lines.push('');
     lines.push('Kolumna = 2q + r · wiersz = r');
-    lines.push('LPM — maluj (można ciągnąć)');
-    lines.push('PPM — usuń kafel');
-    lines.push('1-7 teren · X — wyczyść mapę');
+    lines.push('LPM — maluj / stawiaj · PPM — usuń');
+    lines.push(this.tool === 'unit' ? '1-4 jednostka · C — strona' : '1-7 teren');
+    lines.push('U — teren/jednostki · X — wyczyść mapę');
     lines.push('Shift+strzałki — kafelki na krawędzi');
     lines.push('Strzałki / WASD — kamera');
     lines.push('Kółko — zoom · środkowy — przesuń');
@@ -549,9 +680,27 @@ export class MapEditorScene extends Phaser.Scene {
         return;
       }
 
-      const selected = terrain === this.brush;
+      const selected = this.tool === 'terrain' && terrain === this.brush;
       swatch.setScale(selected ? 1.25 : 1);
       swatch.setAlpha(selected ? 1 : 0.7);
+    });
+
+    this.drawUnitSwatches();
+  }
+
+  private drawUnitSwatches(): void {
+    UNIT_KINDS.forEach((kind, index) => {
+      const swatch = this.unitSwatches[index];
+      if (!swatch) {
+        return;
+      }
+
+      unitTexture(this, kind, this.faction);
+      swatch.setTexture(unitTextureKey(kind, this.faction));
+
+      const selected = this.tool === 'unit' && kind === this.unitKind;
+      swatch.setScale(selected ? 1.25 : 1);
+      swatch.setAlpha(selected || this.tool === 'unit' ? 1 : 0.55);
     });
   }
 }
