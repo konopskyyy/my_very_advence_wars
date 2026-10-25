@@ -26,9 +26,10 @@ w `docker-compose.yml`, `docker/` i `electron/`.
 > 5. [[#Woluminy]]
 > 6. [[#Zmienne środowiskowe]]
 > 7. [[#Electron (poza Compose)]]
-> 8. [[#CI (GitHub Actions)]]
-> 9. [[#Codzienna praca]]
-> 10. [[#Rozwiązywanie problemów]]
+> 8. [[#Baza map w kliencie (SQLite)]]
+> 9. [[#CI (GitHub Actions)]]
+> 10. [[#Codzienna praca]]
+> 11. [[#Rozwiązywanie problemów]]
 
 ---
 
@@ -65,6 +66,13 @@ Dwie role, dwie ścieżki:
   `server` (php-fpm) przez FastCGI.
 - **Klient gry** — `client` (Vite, :18573) serwuje grę niezależnie; backendu
   używa dopiero realna logika multiplayer/sejwów.
+- **Mapy z edytora** — nie przechodzą przez Compose ani MySQL. Klient trzyma je
+  w SQLite (`sql.js`/WASM) w `localStorage`; szczegóły w [[Mapy]].
+
+> [!note] Dwie bazy, dwa cele
+> `db` (MySQL) należy do backendu Symfony i przyszłej rozgrywki sieciowej.
+> Zapisane mapy z edytora są w bazie SQLite po stronie klienta, poza Compose.
+> `Adminer` nie pokaże map z edytora.
 
 > [!note] Dlaczego nginx osobno od php-fpm?
 > PHP-FPM nie serwuje statyków ani nie obsługuje HTTP samodzielnie. Rozdzielenie
@@ -111,6 +119,10 @@ czyli **dev serwer Vite na żywo** z podpiętym kodem z `./client`.
 - `node_modules` siedzi w **wymianowym woluminie** `client_node_modules`, nie na
   hoście — inaczej montowanie `./client` zasłoniłoby moduły zainstalowane w
   kontenerze (host nie ma ich w tej samej wersji/architekturze).
+- Klient zawiera `sql.js` (SQLite w WebAssembly). Build emituje plik
+  `dist/assets/sql-wasm-*.wasm`, a baza map jest trzymana lokalnie w
+  `localStorage` przeglądarki/Electrona — nie w MySQL i bez nowego portu.
+  Format i schemat opisuje [[Mapy]].
 
 ### `nginx` — front HTTP backendu
 
@@ -251,13 +263,51 @@ npm run build --prefix electron # buduje paczkę do electron/release
 Pliki: `electron/main.cjs` (okno — pełne ekran, bez menu, F11/Alt+Enter
 przełącza fullscreen) i `electron/preload.cjs` (contextIsolation + sandbox).
 
-W trybie dev Electron ładuje Vite z kontenera (`localhost:18573`, port
-zgodny z `CLIENT_PORT`); w buildzie produkcyjnym — statyczny
-`client/dist/index.html`. Innym adresem dev sterujesz zmienną
-`VITE_DEV_SERVER_URL`.
+W trybie dev Electron ładuje Vite z kontenera pod `http://localhost:18573`.
+To adres domyślny — `make electron` **nie przekazuje** `CLIENT_PORT` z `.env`
+do Electrona. Po zmianie portu uruchom jawnie:
+
+```bash
+VITE_DEV_SERVER_URL=http://localhost:19000 make electron
+```
+
+W buildzie produkcyjnym `main.cjs` ładuje statyczny
+`client/dist/index.html`.
+
+> [!warning] Paczka Electrona to nadal szkielet
+> `make electron-build` buduje `client/dist`, ale `electron/package.json` w
+> `files` pakuje wyłącznie `main.cjs` i `preload.cjs`. Katalog `client/dist`
+> **nie trafia** do `resources/`, więc uruchomienie paczki z
+> `electron/release/` nie znajdzie `index.html`. To nie wpływa na
+> `make electron` (dev), ale do testu produkcyjnego trzeba dodać `client/dist`
+> przez `extraResources` albo rozszerzyć `files`.
 
 DevTools Electrona nie otwierają się same — włączasz je zmienną
 `ELECTRON_DEVTOOLS=1` (`ELECTRON_DEVTOOLS=1 make electron`).
+
+---
+
+## Baza map w kliencie (SQLite)
+
+Mapy z edytora są zapisywane w SQLite uruchomionym w kliencie przez `sql.js`
+(WASM). Nie ma tu kontenera, portu ani wolumenu Compose — baza żyje w profilu
+przeglądarki/Electrona.
+
+| Element | Gdzie |
+| ------- | ----- |
+| Baza | `localStorage['mvaw:sqlite']` (base64 pliku SQLite) |
+| Silnik | `sql.js` + `sql-wasm.wasm` (build: `client/dist/assets/sql-wasm-*.wasm`) |
+| Kod | `client/src/storage/database.ts`, `maps.ts`, `mapSerialization.ts` |
+| Format | `GameState` jako JSON w kolumnie `maps.state` |
+| Profil Electrona (Linux) | `~/.config/@my-very-advance-wars/electron` |
+| Origin dev | `http://localhost:18573` |
+| MySQL/Adminer | **nie zawierają** map z edytora |
+
+`localStorage` jest przypisany do originu i profilu. Zmiana portu, hosta
+(`localhost` → `127.0.0.1`) albo uruchomienie packaged `file://` powoduje, że
+aplikacja czyta inny magazyn i pokazuje pustą listę — mimo że stara baza nadal
+istnieje. `make clean` również jej nie usuwa, bo nie jest wolumenem Compose.
+Pełny opis schematu, formatu JSON, limitów i diagnostyki: [[Mapy]].
 
 ---
 
@@ -305,7 +355,7 @@ Compose bezpośrednio też działa — poniżej oba warianty.
 | Typy klienta                             | `make lint`           | `cd client && npx tsc --noEmit`                           |
 | Typy klienta w CI                        | —                     | GitHub Actions: `.github/workflows/ci.yml` (push, PR)     |
 | Zatrzymaj wszystko                       | `make down`           | `docker compose down`                                     |
-| Zatrzymaj i usuń woluminy (⚠️ dane bazy) | `make clean`          | `docker compose down -v`                                  |
+| Zatrzymaj i usuń woluminy (⚠️ MySQL)      | `make clean`          | `docker compose down -v`                                  |
 
 > [!tip] `make console` przyjmuje argumenty
 > `make console about`, `make console debug:router` itd. — argumenty po nazwie
@@ -376,8 +426,39 @@ Compose bezpośrednio też działa — poniżej oba warianty.
 > Albo zatrzymaj stare kontenery: `make down` i podnieś ponownie (`make up`).
 > Inny port ustawisz w `.env` (zmienna `BACKEND_PORT`).
 
+> [!question]- Po restarcie Electrona nie ma zapisanej mapy
+> Najczęstsze przyczyny:
+> 1. mapa nie została zapisana przyciskiem `ZAPISZ` — samo `ESC` odkłada tylko
+>    szkic sesji (`registry`),
+> 2. uruchomiono inny origin (np. po zmianie `CLIENT_PORT` lub
+>    `VITE_DEV_SERVER_URL`),
+> 3. uruchomiono inny profil Electrona albo przeglądarkę zamiast Electrona,
+> 4. uruchomiono packaged `file://` zamiast dev `http://localhost:18573`.
+>
+> Sprawdź w DevTools: `location.origin` i
+> `localStorage.getItem('mvaw:sqlite')?.length`. Więcej: [[Mapy#Diagnostyka i kopie zapasowe]].
+> Zapisana wersja mapy wbudowanej jest scalona z jej kafelkiem i ma dopisek
+> „zapisana” — nie jest osobnym wpisem w sekcji zapisanych map.
+
+> [!question]- `make clean` usunął mapy?
+> Nie. `make clean` usuwa woluminy Compose (`db_data`, `client_node_modules`,
+> `server_vendor`), a mapa z edytora jest w `localStorage` profilu
+> Electrona/przeglądarki. Mapy giną dopiero po wyczyszczeniu danych profilu
+> albo `localStorage.removeItem('mvaw:sqlite')`.
+
+> [!question]- Paczka Electrona nie startuje: `ERR_FILE_NOT_FOUND`
+> Obecny `electron-build` jest szkieletem: `files` w `electron/package.json`
+> pakuje tylko `main.cjs` i `preload.cjs`, bez `client/dist`. Do testu
+> produkcyjnego dodaj `client/dist` przez `extraResources` albo używaj
+> `make electron` (dev).
+
+> [!question]- Czy mapy są w MySQL/Adminerze?
+> Nie. `db` i `Adminer` dotyczą backendu Symfony. Mapy z edytora są w SQLite
+> w `localStorage` klienta — patrz [[Mapy#Schemat bazy]].
+
 ---
 
 > [!success] Powiązane
+> - [[Mapy]] — model mapy, schemat SQLite, trwałość i diagnostyka zapisanych map.
 > - [[ADR]] — ADR-001: decyzja o stacku (TypeScript + Phaser + Electron, backend Symfony).
 > - [[Zadania]] — INFRA-001 (środowisko Docker), BACKEND-001 (szkielet Symfony), DESKTOP-001 (Electron).

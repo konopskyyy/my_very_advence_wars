@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { createMap } from '../../src/core/map';
 import {
   clearUnits,
+  countUnits,
   createInitialState,
+  deployUnits,
   findUnitAt,
   placeUnit,
   removeUnitAt,
@@ -66,5 +68,45 @@ describe('clearUnits', () => {
     state = placeUnit(state, 'tank', { col: 5, row: 5 }, 'red');
 
     expect(clearUnits(state).units).toHaveLength(0);
+  });
+});
+
+describe('deployUnits', () => {
+  it('stawia całe rozstawienie jednej strony', () => {
+    const state = deployUnits(createInitialState(createMap(10, 10)), 'red', [
+      { kind: 'infantry', col: 2, row: 3 },
+      { kind: 'tank', col: 4, row: 5 },
+    ]);
+
+    expect(state.units).toHaveLength(2);
+    expect(state.units.every((unit) => unit.faction === 'red')).toBe(true);
+    expect(state.units.map((unit) => unit.pos)).toEqual([
+      { col: 2, row: 3 },
+      { col: 4, row: 5 },
+    ]);
+  });
+
+  it('liczy identyfikatory kolejno w całym stanie', () => {
+    let state = deployUnits(createInitialState(createMap(10, 10)), 'blue', [
+      { kind: 'infantry', col: 0, row: 0 },
+    ]);
+    state = deployUnits(state, 'red', [{ kind: 'scout', col: 5, row: 5 }]);
+
+    expect(state.units.map((unit) => unit.id)).toEqual(['u1', 'u2']);
+  });
+});
+
+describe('countUnits', () => {
+  it('liczy jednostki obu stron', () => {
+    let state = createInitialState(createMap(10, 10));
+    state = placeUnit(state, 'infantry', { col: 0, row: 0 }, 'blue');
+    state = placeUnit(state, 'tank', { col: 1, row: 0 }, 'blue');
+    state = placeUnit(state, 'scout', { col: 2, row: 0 }, 'red');
+
+    expect(countUnits(state.units)).toEqual({ blue: 2, red: 1, total: 3 });
+  });
+
+  it('zwraca zera dla pustej listy', () => {
+    expect(countUnits([])).toEqual({ blue: 0, red: 0, total: 0 });
   });
 });

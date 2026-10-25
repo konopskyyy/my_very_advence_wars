@@ -5,6 +5,7 @@ import {
   fillMap,
   mapBounds,
   mapDoubledBounds,
+  mapTileCount,
   removeTerrain,
   setTerrain,
   terrainAt,
@@ -116,5 +117,17 @@ describe('clearMap', () => {
 
     expect(Object.keys(map.cells)).toHaveLength(0);
     expect(mapBounds(map)).toBeUndefined();
+  });
+});
+
+describe('mapTileCount', () => {
+  it('liczy kafelki także poza pierwotnym prostokątem', () => {
+    const map = setTerrain(createMap(2, 2), { col: 8, row: -3 }, 'city');
+
+    expect(mapTileCount(map)).toBe(5);
+  });
+
+  it('zwraca zero dla pustej mapy', () => {
+    expect(mapTileCount(clearMap())).toBe(0);
   });
 });

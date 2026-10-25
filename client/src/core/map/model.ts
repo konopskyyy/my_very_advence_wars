@@ -45,6 +45,10 @@ export function terrainAt(map: GameMap, coord: HexCoord): TerrainId | undefined 
   return map.cells[cellKey(coord)];
 }
 
+export function mapTileCount(map: GameMap): number {
+  return Object.keys(map.cells).length;
+}
+
 export function setTerrain(map: GameMap, coord: HexCoord, terrain: TerrainId): GameMap {
   const key = cellKey(coord);
 

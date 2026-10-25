@@ -175,6 +175,90 @@ Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
   - **16:9:** na monitorze 16:9 canvas wypełnia cały ekran; inne proporcje mogą mieć pasy.
 - **Powiązane:** GRA-016, ADR-015, INTERF-003
 
+## GRA-020: Menu scenariuszy i duża mapa testowa
+- **Status:** ✅ zrobione
+- **Opis:** Menu główne ma osobny wpis „Scenariusze”, który prowadzi do listy scenariuszy testowych. Pierwszy scenariusz to duża mapa 48×28 (1344 kafle, około 3,8× więcej niż największa mapa wbudowana — „Dolina” ma 352 kafle), z wszystkimi rodzajami terenu i rozstawionymi jednostkami niebieskiej strony gracza oraz czerwonego przeciwnika.
+- **Kryteria:**
+  - **Wejście:** menu główne zawiera „Scenariusze”, „Edytor map” i „Wyjście”; `ESC` w menu scenariuszy wraca do menu głównego.
+  - **Scenariusz:** `client/src/core/scenario.ts` przechowuje `ScenarioDefinition` z pełnym `GameState` (mapa + jednostki), niezależnie od Phasera; katalog zawiera scenariusz „Front Wschodni”.
+  - **Mapa:** 48×28 kafli, wszystkie siedem terenów (łąka, las, woda, góry, bagno, droga, miasto), nieregularne pasma gór, rzeka, jeziora, bagna, lasy, drogi i miasta.
+  - **Jednostki:** po 10 jednostek na stronę, wszystkie cztery rodzaje (piechota, czołg, artyleria, zwiad); każda jednostka stoi na istniejącym kaflu.
+  - **Scena:** `ScenarioScene` rysuje mapę i jednostki, pokazuje podgląd heksa pod kursorem, wybraną jednostkę ze statystykami, liczbę jednostek obu stron i obsługuje kamerę (strzałki/WASD, najechanie na krawędź ekranu, środkowy przycisk, kółko), `ESC` — menu scenariuszy, `Shift+ESC` — menu główne.
+  - **Menu scenariuszy:** lista scenariuszy z miniaturą, opisem i licznikami; zapisane mapy z SQLite są widoczne jako dodatkowe mapy testowe.
+  - **Testy:** `tests/core/scenario.test.ts` pilnuje rozmiaru mapy (3–4× największej wbudowanej), obecności wszystkich terenów, jednostek obu stron i postawienia ich na kaflach.
+- **Powiązane:** GRA-012, ADR-016, INTERF-001, INTERF-005
+
+## GRA-021: Zapis map w wewnętrznym SQLite
+- **Status:** ✅ zrobione
+- **Opis:** Edytor map zapisuje teren i jednostki w wewnętrznej bazie SQLite działającej w kliencie (WASM), bez zależności od backendu. Baza przeżywa przeładowanie strony i jest wspólna dla przeglądarki oraz Electrona w obrębie profilu użytkownika.
+- **Kryteria:**
+  - **Baza:** `client/src/storage/database.ts` uruchamia `sql.js` i trzyma plik bazy w `localStorage` pod kluczem `mvaw:sqlite`.
+  - **Schemat:** tabela `maps` przechowuje `id`, `name`, `description`, `state` (JSON całego `GameState`), `tiles`, `units`, `created_at`, `updated_at`; zapis tego samego `id` aktualizuje wpis.
+  - **Zapis:** przycisk „ZAPISZ” w edytorze zapisuje mapę i jednostki do SQLite; nowa mapa dostaje identyfikator `local-…`, a kolejne zapisy aktualizują ten sam wpis.
+  - **Odczyt:** menu map pokazuje sekcję „ZAPISANE MAPY (SQLite)” i otwiera zapisaną mapę w edytorze; menu scenariuszy pokazuje zapisane mapy jako scenariusze testowe.
+  - **Serializacja:** `client/src/storage/mapSerialization.ts` zapisuje i waliduje `GameState` (teren, jednostki, amunicja, licznik) — uszkodzony JSON i nieznany teren są odrzucane.
+  - **Testy:** `tests/storage/mapSerialization.test.ts` sprawdza round-trip i walidację, a `tests/storage/maps.test.ts` — schemat, zapis, aktualizację i odczyt na prawdziwej bazie `sql.js`.
+- **Dokumentacja:** [[Mapy]] — model, schemat, format JSON, trwałość i diagnostyka.
+- **Powiązane:** GRA-003, GRA-020, ADR-017, INTERF-004, INTERF-005, INTERF-006
+
+## GRA-022: Wspólny moduł widoku mapy
+- **Status:** ✅ zrobione
+- **Opis:** Kamera, zoom, przeciąganie, granice mapy i tłumaczenie kursora na heks są wspólne dla edytora i scenariusza. Karty map oraz liczniki i rozstawianie jednostek nie są już kopiowane w każdej scenie.
+- **Kryteria:**
+  - **Widok:** `client/src/view/mapViewport.ts` obsługuje zoom, przesuwanie kamery, przeciąganie środkowym przyciskiem, granice mapy i `pixelToHex`.
+  - **Karty:** `client/src/view/mapCard.ts` tworzy kartę z miniaturą, tytułem, opisem i metadanymi; korzystają z niej menu map i menu scenariuszy.
+  - **Model:** `mapTileCount` w `client/src/core/map/model.ts` oraz `deployUnits` i `countUnits` w `client/src/core/state.ts`.
+  - **Sceny:** `MapEditorScene` i `ScenarioScene` używają wspólnego widoku zamiast własnych kopii logiki kamery i kursora.
+  - **Bez regresji:** edytor nadal maluje, stawia jednostki, rośnie na krawędziach i zapisuje mapę; scenariusz nadal wybiera jednostki i pokazuje statystyki.
+  - **Testy:** `tests/core/map/model.test.ts` i `tests/core/state.test.ts` pokrywają nowe funkcje `core/`.
+- **Powiązane:** GRA-007, GRA-020, GRA-024, ADR-001, ADR-018, INTERF-003, INTERF-005
+
+## GRA-023: Przewijane listy map i scenariuszy
+- **Status:** ✅ zrobione
+- **Opis:** Listy w menu map i menu scenariuszy mieszczą się na ekranie 1280×720 i przewijają się kółkiem myszy. Wszystkie zapisane mapy są widoczne na liście, także wtedy, gdy jest ich więcej niż miejsce na ekranie.
+- **Kryteria:**
+  - **Lista:** `client/src/view/scrollList.ts` ogranicza widoczny obszar nakładkami, przewija kółkiem myszy i rysuje pasek przewijania.
+  - **Menu map:** „Nowa mapa”, mapy wbudowane i wszystkie mapy z SQLite tworzą jedną przewijaną listę.
+  - **Menu scenariuszy:** scenariusze wbudowane i wszystkie zapisane mapy tworzą jedną przewijaną listę.
+  - **Bez limitu:** znika obcinanie zapisanych map do sześciu wpisów.
+  - **Czytelność:** tytuł menu i przycisk powrotu pozostają nieruchome; przewija się tylko zawartość.
+- **Powiązane:** GRA-017, GRA-020, ADR-018, INTERF-004, INTERF-005
+
+## GRA-024: Przewijanie kamery krawędzią ekranu
+- **Status:** ✅ zrobione
+- **Opis:** W scenariuszu i edytorze mapę można przesuwać myszą bez trzymania przycisku: wystarczy najechać kursorem na krawędź ekranu. Zachowanie korzysta ze wspólnego `MapViewport`, więc jest identyczne w obu scenach i działa również w Electronie. Zrealizowane w commicie `eeb3a6b`.
+- **Kryteria:**
+  - **Pas krawędzi:** kursor w odległości do 24 px od górnej, dolnej, lewej lub prawej krawędzi przewija kamerę w tę stronę z prędkością 620 px/s.
+  - **Priorytet UI:** nad lewym panelem przewijanie jest wyłączone, żeby nie kolidować z wyborem terenu, jednostek i przycisków.
+  - **Bez konfliktu z klikaniem:** przy wciśniętym przycisku myszy przewijanie krawędzią się zatrzymuje, więc wybór jednostki i malowanie działają normalnie.
+  - **Wspólny kod:** `client/src/view/mapViewport.ts` udostępnia opcje `edgePanMargin`, `edgePanSpeed` i `edgePanBlocked`; `ScenarioScene` i `MapEditorScene` tylko je włączają.
+  - **Sterowanie:** krawędź ekranu, strzałki/`WASD` i środkowy przycisk działają równolegle; kółko nadal zmienia zoom.
+- **Powiązane:** GRA-022, ADR-018, INTERF-003, INTERF-005
+
+## GRA-025: Zapisana wersja mapy wbudowanej w menu map
+- **Status:** ✅ zrobione
+- **Opis:** Zapisana w SQLite wersja mapy wbudowanej jest scalana z jej kafelkiem w menu map. Kliknięcie „Wzgórza” po restarcie otwiera zapisany stan, a nie pierwotną wersję wbudowaną; osobna sekcja zapisanych map zawiera wyłącznie mapy spoza katalogu wbudowanego.
+- **Kryteria:**
+  - **Scalanie:** kafelek mapy wbudowanej, dla której istnieje zapis o tym samym `id`, korzysta z zapisanego `GameState` i pokazuje metadane zapisu.
+  - **Oznaczenie:** kafelek zapisanej wersji ma w tytule dopisek „zapisana”, a kafelek ze szkicem z `registry` — „szkic”; dzięki temu widać, który stan zostanie otwarty.
+  - **Bez duplikatu:** zapisana wersja mapy wbudowanej nie pojawia się ponownie w sekcji „ZAPISANE MAPY (SQLite)”.
+  - **Bez regresji:** mapy spoza katalogu wbudowanego nadal trafiają do sekcji zapisanych map; szkic z bieżącej sesji ma pierwszeństwo przed stanem z bazy.
+- **Powiązane:** GRA-017, GRA-021, GRA-023, INTERF-004
+
+## GRA-026: Migracje SQLite i seed map
+- **Status:** 🚧 w toku
+- **Opis:** Klient uruchamia wersjonowane migracje SQLite przy otwarciu bazy, zamiast tworzyć schemat pojedynczym `CREATE TABLE IF NOT EXISTS`. Migracje obejmują początkowy schemat, pole `source` odróżniające mapy wbudowane od zapisanych przez użytkownika oraz seed map z pliku JSON. Dzięki temu zmiana schematu i danych startowych jest powtarzalna i nie wymaga ręcznego SQL.
+- **Kryteria:**
+  - **Runner:** `client/src/storage/migrations.ts` tworzy tabelę `schema_migrations` i wykonuje migracje w kolejności wersji; każda migracja działa w transakcji, a ponowne uruchomienie nie powtarza zastosowanych wersji.
+  - **Migracje:** `001-initial` tworzy tabelę `maps`, `002-map-source` dodaje `source`, a `003-seed-maps` wstawia mapy z pliku seed tylko wtedy, gdy danego `id` jeszcze nie ma.
+  - **Pola:** `maps` ma `id`, `name`, `description`, `state`, `tiles`, `units`, `source`, `created_at`, `updated_at`; `source` przyjmuje `editor` lub `builtin`.
+  - **Seed:** `client/src/storage/seed/maps.json` zawiera wersję i listę map (`id`, `name`, `description`, `source`, `state`); migracja waliduje stan przez `deserializeGameState()`.
+  - **Menu:** wiersz seedowany jako `builtin` jest scalany z kafelkiem mapy wbudowanej i nie dostaje dopisku „zapisana”; zapis z edytora zmienia `source` na `editor`, a menu scenariuszy pokazuje wyłącznie mapy użytkownika.
+  - **Bez utraty danych:** seed używa `ON CONFLICT(id) DO NOTHING`, więc nie nadpisuje zapisanej wersji mapy wbudowanej ani map użytkownika.
+  - **Testy:** `tests/storage/migrations.test.ts` sprawdza pustą bazę, ponowne uruchomienie, bazę w starym schemacie i zachowanie danych użytkownika; testy `storage/maps` działają po migracjach.
+  - **Dokumentacja:** [[Mapy]] opisuje wersje migracji, format pliku seed i sposób dodawania map.
+- **Powiązane:** GRA-021, GRA-025, ADR-017, ADR-019, INTERF-006
+
 ## INFRA-001: Środowisko Docker
 - **Status:** ✅ zrobione
 - **Opis:** docker-compose + Makefile + usługi client/server/nginx/db/adminer.

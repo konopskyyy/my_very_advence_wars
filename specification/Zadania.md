@@ -29,4 +29,11 @@ Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
 | [[Zadania-opisy#GRA-017: Wybór mapy przy wejściu do edytora\|GRA-017]] | Wybór mapy przy wejściu do edytora | ✅ | GRA-006, GRA-009, ADR-013, INTERF-001, INTERF-004 |
 | [[Zadania-opisy#GRA-018: Tymczasowo zawsze widoczny pasek dev\|GRA-018]] | Tymczasowo zawsze widoczny pasek dev | ✅ | GRA-008, ADR-014, INTERF-003 |
 | [[Zadania-opisy#GRA-019: Pełny ekran 16:9\|GRA-019]] | Pełny ekran 16:9 | ✅ | GRA-016, ADR-015, INTERF-003 |
+| [[Zadania-opisy#GRA-020: Menu scenariuszy i duża mapa testowa\|GRA-020]] | Menu scenariuszy i duża mapa testowa | ✅ | GRA-012, ADR-016, INTERF-001, INTERF-005 |
+| [[Zadania-opisy#GRA-021: Zapis map w wewnętrznym SQLite\|GRA-021]] | Zapis map w wewnętrznym SQLite | ✅ | GRA-003, GRA-020, ADR-017, INTERF-004, INTERF-005, INTERF-006 |
+| [[Zadania-opisy#GRA-022: Wspólny moduł widoku mapy\|GRA-022]] | Wspólny moduł widoku mapy | ✅ | GRA-007, GRA-020, GRA-024, ADR-001, ADR-018, INTERF-003, INTERF-005 |
+| [[Zadania-opisy#GRA-023: Przewijane listy map i scenariuszy\|GRA-023]] | Przewijane listy map i scenariuszy | ✅ | GRA-017, GRA-020, ADR-018, INTERF-004, INTERF-005 |
+| [[Zadania-opisy#GRA-024: Przewijanie kamery krawędzią ekranu\|GRA-024]] | Przewijanie kamery krawędzią ekranu | ✅ | GRA-022, ADR-018, INTERF-003, INTERF-005 |
+| [[Zadania-opisy#GRA-025: Zapisana wersja mapy wbudowanej w menu map\|GRA-025]] | Zapisana wersja mapy wbudowanej w menu map | ✅ | GRA-017, GRA-021, GRA-023, INTERF-004 |
+| [[Zadania-opisy#GRA-026: Migracje SQLite i seed map\|GRA-026]] | Migracje SQLite i seed map | 🚧 | GRA-021, GRA-025, ADR-019, INTERF-006 |
 | [[Zadania-opisy#INFRA-001: Środowisko Docker\|INFRA-001]] | Środowisko Docker | ✅ | `specification/Infrastruktura.md` |

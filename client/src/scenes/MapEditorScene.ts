@@ -3,12 +3,10 @@ import {
   clearMap,
   extendMap,
   generateMap,
-  hexCorners,
   mapDoubledBounds,
   mapMemoryUsage,
-  mapPixelBounds,
+  mapTileCount,
   measureMapOperation,
-  pixelToHex,
   removeTerrain,
   setTerrain,
   terrainAt,
@@ -27,8 +25,10 @@ import {
 import { TERRAIN_DEFS, TERRAIN_IDS, type TerrainId } from '../core/terrain';
 import { FACTION_DEFS, UNIT_DEFS, UNIT_KINDS, type FactionId, type UnitKind } from '../core/units';
 import { devToolsEnabled } from '../devTools';
+import { createSavedMapId, saveMap } from '../storage/maps';
 import { DevBar } from '../view/devBar';
-import { createHexSprite, HEX_SIZE, HexMapView, tracePolygon } from '../view/hexGrid';
+import { createHexSprite, HexMapView, outlineHex } from '../view/hexGrid';
+import { MapViewport } from '../view/mapViewport';
 import {
   createUnitToken,
   UnitLayer,
@@ -59,12 +59,7 @@ const FACTION_BUTTON_GAP = 4;
 const FACTION_BUTTONS_X = PANEL_X + 56;
 const HUD_Y = FACTION_TOP + 30;
 const BUTTONS_Y = 26;
-const ZOOM_MIN = 0.75;
-const ZOOM_MAX = 2.5;
-const PAN_SPEED = 420;
 const EDGE_GROWTH_INTERVAL = 120;
-const CAMERA_MARGIN = HEX_SIZE * 8;
-const BASE_BOUNDS = mapPixelBounds(generateMap(), HEX_SIZE);
 
 const EDGE_BY_KEY: Record<string, MapEdge> = {
   w: 'top',
@@ -116,8 +111,6 @@ export class MapEditorScene extends Phaser.Scene {
   private unitKind: UnitKind = 'infantry';
   private faction: FactionId = 'blue';
   private hover: HexCoord | null = null;
-  private panning = false;
-  private panAnchor = { x: 0, y: 0, scrollX: 0, scrollY: 0 };
   private paintButton: number | null = null;
   private painted: { coord: HexCoord; button: number } | null = null;
   private shiftDown = false;
@@ -125,13 +118,16 @@ export class MapEditorScene extends Phaser.Scene {
   private mapCpuMs = 0;
   private lastOperationMs = 0;
   private mapBytes = 0;
+  private saving = false;
 
+  private viewport!: MapViewport;
   private mapView!: HexMapView;
   private unitView!: UnitLayer;
   private hud!: Phaser.GameObjects.Text;
   private devBar?: DevBar;
   private panel!: Phaser.GameObjects.Rectangle;
   private cursor!: Phaser.GameObjects.Graphics;
+  private saveButton!: Phaser.GameObjects.Text;
   private mapButton!: Phaser.GameObjects.Text;
   private menuButton!: Phaser.GameObjects.Text;
   private terrainTiles: TerrainTile[] = [];
@@ -154,8 +150,11 @@ export class MapEditorScene extends Phaser.Scene {
   }
 
   create(): void {
-    const camera = this.cameras.main;
-    camera.setZoom(1);
+    this.viewport = new MapViewport(this, this.state.map, {
+      zoomMin: 0.75,
+      zoomMax: 2.5,
+      edgePanBlocked: (pointer) => this.pointerOverPanel(pointer),
+    });
 
     const renderStarted = performance.now();
     this.mapView = new HexMapView(this, this.state.map);
@@ -233,7 +232,7 @@ export class MapEditorScene extends Phaser.Scene {
     }
 
     this.mapButton = this.add
-      .text(PANEL_X + 12, HUD_Y, 'MENU MAP', {
+      .text(PANEL_X + 90, HUD_Y, 'MENU MAP', {
         fontFamily: 'monospace',
         fontSize: '11px',
         color: '#ffffff',
@@ -247,7 +246,7 @@ export class MapEditorScene extends Phaser.Scene {
     this.mapButton.on('pointerdown', () => this.leaveTo('map-menu'));
 
     this.menuButton = this.add
-      .text(PANEL_X + 140, HUD_Y, 'MENU GŁÓWNE', {
+      .text(PANEL_X + 160, HUD_Y, 'MENU GŁÓWNE', {
         fontFamily: 'monospace',
         fontSize: '11px',
         color: '#ffffff',
@@ -259,6 +258,20 @@ export class MapEditorScene extends Phaser.Scene {
     this.menuButton.on('pointerover', () => this.menuButton.setColor('#a6f4c5'));
     this.menuButton.on('pointerout', () => this.menuButton.setColor('#ffffff'));
     this.menuButton.on('pointerdown', () => this.leaveTo('menu'));
+
+    this.saveButton = this.add
+      .text(PANEL_X + 12, HUD_Y, 'ZAPISZ', {
+        fontFamily: 'monospace',
+        fontSize: '11px',
+        color: '#a6f4c5',
+      })
+      .setScrollFactor(0)
+      .setDepth(11)
+      .setInteractive({ useHandCursor: true });
+
+    this.saveButton.on('pointerover', () => this.saveButton.setColor('#ffffff'));
+    this.saveButton.on('pointerout', () => this.saveButton.setColor('#a6f4c5'));
+    this.saveButton.on('pointerdown', () => void this.saveCurrentMap());
 
     this.input.on('pointerdown', this.onPointerDown, this);
     this.input.on('pointermove', this.onPointerMove, this);
@@ -277,7 +290,6 @@ export class MapEditorScene extends Phaser.Scene {
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.resetEditor, this);
 
-    this.updateCameraBounds();
     this.refreshHud();
   }
 
@@ -447,13 +459,13 @@ export class MapEditorScene extends Phaser.Scene {
     this.unitKind = 'infantry';
     this.faction = 'blue';
     this.hover = null;
-    this.panning = false;
     this.paintButton = null;
     this.painted = null;
     this.shiftDown = false;
     this.mapCpuMs = 0;
     this.lastOperationMs = 0;
     this.mapBytes = 0;
+    this.saving = false;
   }
 
   update(_time: number, delta: number): void {
@@ -464,21 +476,12 @@ export class MapEditorScene extends Phaser.Scene {
       return;
     }
 
-    const camera = this.cameras.main;
-    const step = (PAN_SPEED * delta) / 1000;
-
-    let dx = 0;
-    let dy = 0;
-
-    if (this.cursors?.left.isDown || this.isDown('A')) dx -= 1;
-    if (this.cursors?.right.isDown || this.isDown('D')) dx += 1;
-    if (this.cursors?.up.isDown || this.isDown('W')) dy -= 1;
-    if (this.cursors?.down.isDown || this.isDown('S')) dy += 1;
-
-    if (dx !== 0 || dy !== 0) {
-      camera.scrollX += dx * step;
-      camera.scrollY += dy * step;
-    }
+    this.viewport.update(delta, {
+      left: (this.cursors?.left.isDown ?? false) || this.isDown('A'),
+      right: (this.cursors?.right.isDown ?? false) || this.isDown('D'),
+      up: (this.cursors?.up.isDown ?? false) || this.isDown('W'),
+      down: (this.cursors?.down.isDown ?? false) || this.isDown('S'),
+    });
   }
 
   private growEdge(delta: number): void {
@@ -513,14 +516,7 @@ export class MapEditorScene extends Phaser.Scene {
   }
 
   private onPointerDown(pointer: Phaser.Input.Pointer): void {
-    if (pointer.button === 1) {
-      this.panning = true;
-      this.panAnchor = {
-        x: pointer.x,
-        y: pointer.y,
-        scrollX: this.cameras.main.scrollX,
-        scrollY: this.cameras.main.scrollY,
-      };
+    if (this.viewport.startPan(pointer)) {
       return;
     }
 
@@ -537,10 +533,7 @@ export class MapEditorScene extends Phaser.Scene {
   }
 
   private onPointerMove(pointer: Phaser.Input.Pointer): void {
-    if (this.panning) {
-      const camera = this.cameras.main;
-      camera.scrollX = this.panAnchor.scrollX - (pointer.x - this.panAnchor.x);
-      camera.scrollY = this.panAnchor.scrollY - (pointer.y - this.panAnchor.y);
+    if (this.viewport.movePan(pointer)) {
       return;
     }
 
@@ -570,15 +563,13 @@ export class MapEditorScene extends Phaser.Scene {
     this.hover = coord;
 
     this.cursor.clear();
-    tracePolygon(this.cursor, hexCorners(this.mapView.center(coord), HEX_SIZE));
-    this.cursor.lineStyle(2, 0xffffff, 0.9);
-    this.cursor.strokePath();
+    outlineHex(this.cursor, this.mapView.center(coord), 0xffffff, 2);
 
     this.refreshHud();
   }
 
   private onPointerUp(): void {
-    this.panning = false;
+    this.viewport.endPan();
     this.paintButton = null;
     this.painted = null;
   }
@@ -593,9 +584,7 @@ export class MapEditorScene extends Phaser.Scene {
       return;
     }
 
-    const camera = this.cameras.main;
-    const zoom = camera.zoom + (deltaY > 0 ? -0.15 : 0.15);
-    camera.setZoom(Phaser.Math.Clamp(zoom, ZOOM_MIN, ZOOM_MAX));
+    this.viewport.zoom(deltaY);
   }
 
   private onKeyDown(event: KeyboardEvent): void {
@@ -657,7 +646,45 @@ export class MapEditorScene extends Phaser.Scene {
     this.scene.start(target);
   }
 
+  private async saveCurrentMap(): Promise<void> {
+    if (this.saving) {
+      return;
+    }
+
+    this.saving = true;
+
+    const id = this.mapId ?? createSavedMapId();
+    const name = this.mapName === 'nowa' ? 'Mapa lokalna' : this.mapName;
+
+    try {
+      await saveMap({
+        id,
+        name,
+        description: 'Mapa zapisana w edytorze',
+        state: this.state,
+      });
+
+      this.mapId = id;
+      this.mapName = name;
+      this.saveButton.setText('ZAPISANO');
+      this.refreshHud();
+
+      this.time.delayedCall(1400, () => this.saveButton.setText('ZAPISZ'));
+    } catch (error) {
+      console.error('Nie udało się zapisać mapy w SQLite', error);
+      this.saveButton.setText('BŁĄD ZAPISU');
+
+      this.time.delayedCall(1800, () => this.saveButton.setText('ZAPISZ'));
+    } finally {
+      this.saving = false;
+    }
+  }
+
   private pointerOverPanel(pointer: Phaser.Input.Pointer): boolean {
+    if (!this.panel) {
+      return false;
+    }
+
     return (
       pointer.x >= PANEL_X &&
       pointer.x <= PANEL_X + this.panel.width &&
@@ -667,9 +694,7 @@ export class MapEditorScene extends Phaser.Scene {
   }
 
   private hexUnderPointer(pointer: Phaser.Input.Pointer): HexCoord {
-    const world = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
-
-    return pixelToHex(world.x, world.y, HEX_SIZE);
+    return this.viewport.hexAt(pointer);
   }
 
   private paintAt(coord: HexCoord, button: number): void {
@@ -718,24 +743,8 @@ export class MapEditorScene extends Phaser.Scene {
     this.mapCpuMs += performance.now() - started;
     this.mapBytes = mapMemoryUsage(this.state.map);
 
-    this.updateCameraBounds();
+    this.viewport.setMap(this.state.map);
     this.refreshHud();
-  }
-
-  private updateCameraBounds(): void {
-    const camera = this.cameras.main;
-    const bounds = mapPixelBounds(this.state.map, HEX_SIZE) ?? BASE_BOUNDS;
-
-    if (!bounds) {
-      return;
-    }
-
-    camera.setBounds(
-      bounds.left - CAMERA_MARGIN,
-      bounds.top - CAMERA_MARGIN,
-      bounds.right - bounds.left + CAMERA_MARGIN * 2,
-      bounds.bottom - bounds.top + CAMERA_MARGIN * 2,
-    );
   }
 
   private refreshHud(): void {
@@ -768,7 +777,7 @@ export class MapEditorScene extends Phaser.Scene {
 
     const bounds = mapDoubledBounds(this.state.map);
     lines.push(
-      `Kafelki: ${Object.keys(this.state.map.cells).length} · Jedn.: ${this.state.units.length}`,
+      `Kafelki: ${mapTileCount(this.state.map)} · Jedn.: ${this.state.units.length}`,
     );
 
     if (bounds) {
@@ -782,8 +791,9 @@ export class MapEditorScene extends Phaser.Scene {
     lines.push('Klik — wybór w menu po lewej');
     lines.push('X — czyść mapę');
     lines.push('Shift+strzałki — wzrost mapy');
-    lines.push('Kamera: strzałki/WASD');
+    lines.push('Kamera: strzałki/WASD lub krawędź');
     lines.push('Kółko — zoom');
+    lines.push('ZAPISZ — mapa do SQLite');
     lines.push('ESC — mapy · Shift+ESC — menu');
 
     this.hud.setText(lines.join('\n'));
@@ -798,6 +808,7 @@ export class MapEditorScene extends Phaser.Scene {
   private drawButtons(): void {
     const y = HUD_Y + this.hud.height + 4;
 
+    this.saveButton.setY(y);
     this.mapButton.setY(y);
     this.menuButton.setY(y);
 

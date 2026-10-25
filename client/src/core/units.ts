@@ -15,6 +15,8 @@ export const FACTION_DEFS: Record<FactionId, FactionDef> = {
   neutral: { label: 'Neutralna', color: 0x9aa0a6 },
 };
 
+export const FACTION_IDS: readonly FactionId[] = ['blue', 'red', 'neutral'];
+
 interface UnitBase {
   readonly id: string;
   readonly faction: FactionId;
