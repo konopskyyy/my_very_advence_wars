@@ -1,4 +1,5 @@
-import type { GameMap, HexCoord } from './map';
+import { cellKey, hexDistance, hexNeighbors, type GameMap, type HexCoord } from './map';
+import { IMPASSABLE, TERRAIN_DEFS } from './terrain';
 import type { FactionId, Unit, UnitKind } from './units';
 import { createUnit } from './units';
 
@@ -50,6 +51,44 @@ export function removeUnitAt(state: GameState, coord: HexCoord): GameState {
 
 export function clearUnits(state: GameState): GameState {
   return state.units.length === 0 ? state : { ...state, units: [] };
+}
+
+export function canMoveUnit(state: GameState, unit: Unit, target: HexCoord): boolean {
+  if (unit.hasActed || unit.movesLeft <= 0) {
+    return false;
+  }
+
+  if (hexDistance(unit.pos, target) !== 1) {
+    return false;
+  }
+
+  if (findUnitAt(state, target)) {
+    return false;
+  }
+
+  const terrain = state.map.cells[cellKey(target)];
+
+  return terrain !== undefined && TERRAIN_DEFS[terrain].moveCost < IMPASSABLE;
+}
+
+export function moveTargets(state: GameState, unit: Unit): HexCoord[] {
+  return hexNeighbors(unit.pos).filter((target) => canMoveUnit(state, unit, target));
+}
+
+export function moveUnit(state: GameState, unitId: string, target: HexCoord): GameState {
+  const unit = state.units.find((candidate) => candidate.id === unitId);
+
+  if (!unit || !canMoveUnit(state, unit, target)) {
+    return state;
+  }
+
+  const units = state.units.map((candidate) =>
+    candidate.id === unitId
+      ? { ...candidate, pos: target, movesLeft: 0, hasActed: true }
+      : candidate,
+  );
+
+  return { ...state, units };
 }
 
 export function deployUnits(

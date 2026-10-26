@@ -1,10 +1,19 @@
-import { generateMap, paintRect, type GameMap } from './map';
+import {
+  cellKey,
+  generateMap,
+  mapBounds,
+  paintRect,
+  type GameMap,
+  type HexCoord,
+} from './map';
 import {
   createInitialState,
   deployUnits,
   type GameState,
   type UnitDeployment,
 } from './state';
+import { IMPASSABLE, TERRAIN_DEFS } from './terrain';
+import type { FactionId, UnitKind } from './units';
 
 export interface ScenarioDefinition {
   readonly id: string;
@@ -41,6 +50,138 @@ const OPPONENT_DEPLOYMENT: readonly UnitDeployment[] = [
   { kind: 'scout', col: 46, row: 11 },
   { kind: 'scout', col: 39, row: 20 },
 ];
+
+const AUTO_DEPLOYMENT: readonly UnitKind[] = [
+  'infantry',
+  'infantry',
+  'infantry',
+  'infantry',
+  'tank',
+  'tank',
+  'artillery',
+  'artillery',
+  'scout',
+  'scout',
+];
+
+const AUTO_FACTIONS: readonly FactionId[] = ['blue', 'red'];
+
+export function ensureScenarioArmies(state: GameState): GameState {
+  let next = state;
+
+  for (const faction of AUTO_FACTIONS) {
+    if (next.units.some((unit) => unit.faction === faction)) {
+      continue;
+    }
+
+    const slots = deploymentSlots(next, faction);
+    const deployment = slots.slice(0, AUTO_DEPLOYMENT.length).map((coord, index) => ({
+      kind: AUTO_DEPLOYMENT[index]!,
+      col: coord.col,
+      row: coord.row,
+    }));
+
+    next = deployUnits(next, faction, deployment);
+  }
+
+  return next;
+}
+
+function deploymentSlots(state: GameState, faction: FactionId): HexCoord[] {
+  const bounds = mapBounds(state.map);
+
+  if (!bounds) {
+    return [];
+  }
+
+  const columns = columnOrder(bounds.minCol, bounds.maxCol, faction);
+  const occupied = new Set(state.units.map((unit) => cellKey(unit.pos)));
+  const slots: HexCoord[] = [];
+
+  for (const row of spreadRows(bounds.minRow, bounds.maxRow, AUTO_DEPLOYMENT.length)) {
+    const coord = columns
+      .map((col) => ({ col, row }))
+      .find((candidate) => isFreeDeployment(state, occupied, candidate));
+
+    if (coord) {
+      slots.push(coord);
+      occupied.add(cellKey(coord));
+    }
+  }
+
+  for (const row of spreadRows(bounds.minRow, bounds.maxRow, bounds.maxRow - bounds.minRow + 1)) {
+    for (const col of columns) {
+      if (slots.length >= AUTO_DEPLOYMENT.length) {
+        return slots;
+      }
+
+      const coord = { col, row };
+
+      if (isFreeDeployment(state, occupied, coord)) {
+        slots.push(coord);
+        occupied.add(cellKey(coord));
+      }
+    }
+  }
+
+  return slots;
+}
+
+function spreadRows(minRow: number, maxRow: number, count: number): number[] {
+  if (maxRow < minRow) {
+    return [];
+  }
+
+  const rows: number[] = [];
+  const span = maxRow - minRow;
+
+  for (let index = 0; index < count; index += 1) {
+    const row = count === 1 ? minRow : minRow + Math.round((index * span) / (count - 1));
+
+    if (!rows.includes(row)) {
+      rows.push(row);
+    }
+  }
+
+  for (let row = minRow; row <= maxRow && rows.length < count; row += 1) {
+    if (!rows.includes(row)) {
+      rows.push(row);
+    }
+  }
+
+  return rows;
+}
+
+function columnOrder(minCol: number, maxCol: number, faction: FactionId): number[] {
+  const columns: number[] = [];
+
+  if (faction === 'red') {
+    for (let col = maxCol; col >= minCol; col -= 1) {
+      columns.push(col);
+    }
+  } else {
+    for (let col = minCol; col <= maxCol; col += 1) {
+      columns.push(col);
+    }
+  }
+
+  return columns;
+}
+
+function isFreeDeployment(
+  state: GameState,
+  occupied: ReadonlySet<string>,
+  coord: HexCoord,
+): boolean {
+  const key = cellKey(coord);
+  const terrain = state.map.cells[key];
+
+  return (
+    !occupied.has(key) &&
+    terrain !== undefined &&
+    TERRAIN_DEFS[terrain].moveCost < IMPASSABLE
+  );
+}
 
 function buildFrontMap(): GameMap {
   let map = generateMap({ cols: SCENARIO_COLS, rows: SCENARIO_ROWS, fill: 'plain' });

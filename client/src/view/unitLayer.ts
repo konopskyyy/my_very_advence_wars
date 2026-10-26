@@ -246,6 +246,10 @@ export class UnitLayer {
     return this.tokens.size;
   }
 
+  objects(): Phaser.GameObjects.Image[] {
+    return [...this.tokens.values()];
+  }
+
   setUnits(units: readonly Unit[]): void {
     this.units = units;
     this.sync();

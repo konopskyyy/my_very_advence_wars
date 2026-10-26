@@ -259,6 +259,29 @@ Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
   - **Dokumentacja:** [[Mapy]] opisuje wersje migracji, format pliku seed i sposób dodawania map.
 - **Powiązane:** GRA-021, GRA-025, ADR-017, ADR-019, INTERF-006
 
+## GRA-027: Grywalny scenariusz — tury, armie, ruch i stały interfejs
+- **Status:** ✅ zrobione
+- **Opis:** Scenariusz jest grywalny naprzemiennie: jedna strona jest aktywna, gracz kończy turę przyciskiem albo `T`, a mapy bez jednej ze stron dostają brakujące wojsko tylko na czas sesji. Jednostka aktywnej strony może przesunąć się o jedno sąsiednie pole, a cały interfejs scenariusza pozostaje stały przy zoomie i przewijaniu mapy. Logika tur, armii i ruchu leży w czystych funkcjach `core/` (`turn.ts`, `scenario.ts`, `state.ts`), niezależnych od Phasera.
+- **Kryteria:**
+  - **Tury:** `TurnState` przechowuje aktywną stronę i numer tury; `nextTurn()` przełącza niebieska → czerwona → niebieska, a `beginTurn()` przywraca ruch tylko jednostkom nowej strony. Przycisk „ZAKOŃCZ TURĘ” i `T` robią to samo; koniec tury czyści wybór i podpowiedzi.
+  - **Armie:** `ensureScenarioArmies()` uzupełnia wyłącznie stronę bez jednostek, stawiając piechotę, czołgi, artylerię i zwiad na wolnych, przechodnich kaflach (niebieskie od lewej, czerwone od prawej). Uzupełnienie jest idempotentne, działa tylko w sesji i nie trafia do SQLite; karta mapy pokazuje siły obu stron.
+  - **Ruch:** dokładnie jedno pole, bez pathfindingu. Jednostka musi należeć do aktywnej strony, mieć `movesLeft > 0` i nie mieć `hasActed`; cel musi być wolny i przechodni. Po ruchu dostaje `movesLeft = 0` i `hasActed = true`, a wybór zostaje na niej. Dozwolone heksy są obrysowane na zielono i znikają po ruchu lub końcu tury.
+  - **Interfejs:** kamera główna skaluje i przewija wyłącznie mapę, a kamera `scenario-ui` renderuje stały interfejs. Dolny pasek dowodzenia jest jedynym elementem UI: po lewej podgląd i statystyki wybranej jednostki, w środku nazwa i opis scenariusza, liczniki, heks pod kursorem i skróty menu, po prawej „ZAKOŃCZ TURĘ”, numer i strona tury. Pasek blokuje kliknięcia i kółko myszy, a jego dolne 24 px nadal przewija mapę.
+  - **Testy:** `tests/core/turn.test.ts`, `tests/core/scenario.test.ts` i `tests/core/state.test.ts` sprawdzają przełączanie tur, reset ruchu, uzupełnianie armii, sąsiedztwo, zajęte heksy, wodę i jednostkę po działaniu.
+- **Powiązane:** GRA-020, GRA-021, ADR-016, ADR-020, ADR-021, ADR-022, ADR-023, ADR-024, INTERF-005
+
+## GRA-028: Nazwa mapy w edytorze
+- **Status:** ✅ zrobione
+- **Opis:** Edytor map ma w lewym panelu pole „NAZWA”. Nowa mapa startuje jako `nowa`, a kliknięcie pola pozwala wpisać własną nazwę przed zapisem. Nazwa trafia do SQLite i do menu map oraz menu scenariuszy; wczytana mapa pokazuje swoją nazwę i można ją zmienić.
+- **Kryteria:**
+  - **Pole:** wiersz „NAZWA” leży pod tytułem panelu; pokazuje aktualną nazwę mapy, a kliknięcie wchodzi w tryb edycji z widocznym kursorem.
+  - **Edycja:** wpisywanie znaków, `Backspace`, `Enter` — zatwierdzenie i `Esc` — anulowanie. Pusta nazwa wraca do `nowa`, a długość jest ograniczona do 32 znaków.
+  - **Skróty:** podczas edycji nazwy `WASD`, `X`, `Shift` i `Esc` nie sterują edytorem ani kamerą; klawisze trafiają wyłącznie do pola.
+  - **Zapis:** „ZAPISZ” używa wpisanej nazwy; dopiero pusta nazwa nowej mapy zapisuje się jako `Mapa lokalna`. Zmiana nazwy istniejącej mapy aktualizuje ten sam wpis w SQLite.
+  - **Widoczność:** nazwa jest widoczna w HUD-zie edytora, na karcie w menu map i w menu scenariuszy.
+  - **Testy:** `tests/core/map/naming.test.ts` sprawdza przycinanie, limit długości i pustą nazwę.
+- **Powiązane:** GRA-021, ADR-017, ADR-025, INTERF-003, INTERF-004
+
 ## INFRA-001: Środowisko Docker
 - **Status:** ✅ zrobione
 - **Opis:** docker-compose + Makefile + usługi client/server/nginx/db/adminer.
