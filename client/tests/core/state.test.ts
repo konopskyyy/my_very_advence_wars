@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { createMap } from '../../src/core/map';
+import { createMap, setTerrain } from '../../src/core/map';
 import {
+  canMoveUnit,
   clearUnits,
   countUnits,
   createInitialState,
   deployUnits,
   findUnitAt,
+  moveTargets,
+  moveUnit,
   placeUnit,
   removeUnitAt,
 } from '../../src/core/state';
@@ -108,5 +111,86 @@ describe('countUnits', () => {
 
   it('zwraca zera dla pustej listy', () => {
     expect(countUnits([])).toEqual({ blue: 0, red: 0, total: 0 });
+  });
+});
+
+describe('ruch jednostek', () => {
+  it('przesuwa jednostkę na sąsiedni heks i kończy jej działanie', () => {
+    const state = placeUnit(
+      createInitialState(createMap(10, 10)),
+      'infantry',
+      { col: 2, row: 3 },
+      'blue',
+    );
+    const unit = state.units[0]!;
+    const moved = moveUnit(state, unit.id, { col: 3, row: 3 });
+
+    expect(moved).not.toBe(state);
+    expect(findUnitAt(moved, { col: 2, row: 3 })).toBeUndefined();
+    expect(findUnitAt(moved, { col: 3, row: 3 })).toMatchObject({
+      id: unit.id,
+      movesLeft: 0,
+      hasActed: true,
+    });
+  });
+
+  it('nie pozwala ruszyć się dalej niż o jedno pole', () => {
+    const state = placeUnit(
+      createInitialState(createMap(10, 10)),
+      'infantry',
+      { col: 2, row: 3 },
+      'blue',
+    );
+
+    expect(moveUnit(state, state.units[0]!.id, { col: 4, row: 3 })).toBe(state);
+  });
+
+  it('nie pozwala wejść na zajęty heks', () => {
+    let state = placeUnit(
+      createInitialState(createMap(10, 10)),
+      'infantry',
+      { col: 2, row: 3 },
+      'blue',
+    );
+    state = placeUnit(state, 'tank', { col: 3, row: 3 }, 'red');
+
+    expect(moveUnit(state, state.units[0]!.id, { col: 3, row: 3 })).toBe(state);
+  });
+
+  it('nie pozwala wejść na wodę', () => {
+    const map = setTerrain(createMap(10, 10), { col: 3, row: 3 }, 'water');
+    const state = placeUnit(createInitialState(map), 'infantry', { col: 2, row: 3 }, 'blue');
+
+    expect(canMoveUnit(state, state.units[0]!, { col: 3, row: 3 })).toBe(false);
+    expect(moveUnit(state, state.units[0]!.id, { col: 3, row: 3 })).toBe(state);
+  });
+
+  it('nie rusza jednostki, która już działała w tej turze', () => {
+    const start = placeUnit(
+      createInitialState(createMap(10, 10)),
+      'infantry',
+      { col: 2, row: 3 },
+      'blue',
+    );
+    const moved = moveUnit(start, start.units[0]!.id, { col: 3, row: 3 });
+
+    expect(moveUnit(moved, moved.units[0]!.id, { col: 4, row: 3 })).toBe(moved);
+  });
+
+  it('zwraca tylko wolne i przechodnie heksy sąsiednie', () => {
+    const state = placeUnit(
+      createInitialState(createMap(10, 10)),
+      'infantry',
+      { col: 0, row: 0 },
+      'blue',
+    );
+
+    expect(moveTargets(state, state.units[0]!)).toEqual(
+      expect.arrayContaining([
+        { col: 1, row: 0 },
+        { col: 0, row: 1 },
+      ]),
+    );
+    expect(moveTargets(state, state.units[0]!)).toHaveLength(2);
   });
 });

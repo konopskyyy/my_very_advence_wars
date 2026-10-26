@@ -1,6 +1,10 @@
 import Phaser from 'phaser';
 import { mapTileCount } from '../core/map';
-import { BUILT_IN_SCENARIOS, type ScenarioDefinition } from '../core/scenario';
+import {
+  BUILT_IN_SCENARIOS,
+  ensureScenarioArmies,
+  type ScenarioDefinition,
+} from '../core/scenario';
 import { countUnits } from '../core/state';
 import {
   listSavedMaps,
@@ -120,16 +124,18 @@ export class ScenarioMenuScene extends Phaser.Scene {
           continue;
         }
 
+        const state = ensureScenarioArmies(saved.state);
+        const counts = countUnits(state.units);
         const definition: ScenarioDefinition = {
           id: saved.id,
           name: saved.name,
           description: saved.description || 'Mapa zapisana w edytorze',
-          state: saved.state,
+          state,
         };
 
         const card = createMapCard(this, {
           title: `> ${saved.name} <`,
-          description: `${saved.tiles} kafli · ${saved.units} jedn. · ${formatTimestamp(saved.updatedAt)}`,
+          description: `${mapTileCount(state.map)} kafli · ${counts.blue} vs ${counts.red} jedn. · ${formatTimestamp(saved.updatedAt)}`,
           width: this.listWidth,
           height: 42,
           textWidth: this.listWidth - 32,

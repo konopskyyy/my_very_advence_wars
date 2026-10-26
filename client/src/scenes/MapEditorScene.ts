@@ -7,10 +7,12 @@ import {
   mapMemoryUsage,
   mapTileCount,
   measureMapOperation,
+  normalizeMapName,
   removeTerrain,
   setTerrain,
   terrainAt,
   toDoubled,
+  MAP_NAME_MAX_LENGTH,
   type HexCoord,
   type MapDefinition,
   type MapEdge,
@@ -46,8 +48,13 @@ const TILE_GAP = 2;
 const TILE_COLUMNS = 4;
 const MENU_PADDING = 8;
 const TITLE_Y = PANEL_Y + 10;
-const TERRAIN_LABEL_Y = PANEL_Y + 34;
-const TERRAIN_TOP = PANEL_Y + 48;
+const NAME_LABEL_Y = PANEL_Y + 36;
+const NAME_FIELD_X = PANEL_X + 12;
+const NAME_FIELD_Y = PANEL_Y + 50;
+const NAME_FIELD_WIDTH = PANEL_WIDTH - 24;
+const NAME_FIELD_HEIGHT = 20;
+const TERRAIN_LABEL_Y = PANEL_Y + 80;
+const TERRAIN_TOP = PANEL_Y + 94;
 const TERRAIN_ROWS = Math.ceil(TERRAIN_IDS.length / TILE_COLUMNS);
 const UNIT_LABEL_Y = TERRAIN_TOP + TERRAIN_ROWS * TILE_HEIGHT + 8;
 const UNIT_TOP = UNIT_LABEL_Y + 14;
@@ -103,6 +110,8 @@ export class MapEditorScene extends Phaser.Scene {
   private state: GameState = createInitialState(generateMap());
   private mapId: string | null = null;
   private mapName = 'nowa';
+  private editingName = false;
+  private nameDraft = '';
   private readonly keys = new Map<string, Phaser.Input.Keyboard.Key>();
   private readonly devTools = devToolsEnabled();
 
@@ -124,6 +133,8 @@ export class MapEditorScene extends Phaser.Scene {
   private mapView!: HexMapView;
   private unitView!: UnitLayer;
   private hud!: Phaser.GameObjects.Text;
+  private nameField!: Phaser.GameObjects.Rectangle;
+  private nameText!: Phaser.GameObjects.Text;
   private devBar?: DevBar;
   private panel!: Phaser.GameObjects.Rectangle;
   private cursor!: Phaser.GameObjects.Graphics;
@@ -177,6 +188,54 @@ export class MapEditorScene extends Phaser.Scene {
         fontSize: '12px',
         color: '#d8e2dc',
       })
+      .setScrollFactor(0)
+      .setDepth(11);
+
+    this.add
+      .text(NAME_FIELD_X, NAME_LABEL_Y, 'NAZWA', {
+        fontFamily: 'monospace',
+        fontSize: '10px',
+        color: '#9fb0a5',
+      })
+      .setScrollFactor(0)
+      .setDepth(11);
+
+    this.nameField = this.add.rectangle(
+      NAME_FIELD_X,
+      NAME_FIELD_Y,
+      NAME_FIELD_WIDTH,
+      NAME_FIELD_HEIGHT,
+      0x142018,
+      0.9,
+    );
+    this.nameField.setOrigin(0, 0);
+    this.nameField.setStrokeStyle(1, 0x2a3f33, 1);
+    this.nameField.setScrollFactor(0);
+    this.nameField.setDepth(10.5);
+    this.nameField.setInteractive({ useHandCursor: true });
+    this.nameField.on('pointerover', () => {
+      if (!this.editingName) {
+        this.nameField.setStrokeStyle(1, 0x6fbf8f, 1);
+      }
+    });
+    this.nameField.on('pointerout', () => {
+      if (!this.editingName) {
+        this.nameField.setStrokeStyle(1, 0x2a3f33, 1);
+      }
+    });
+    this.nameField.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      if (pointer.button === 0) {
+        this.startNameEdit();
+      }
+    });
+
+    this.nameText = this.add
+      .text(NAME_FIELD_X + 6, NAME_FIELD_Y + NAME_FIELD_HEIGHT / 2, '', {
+        fontFamily: 'monospace',
+        fontSize: '10px',
+        color: '#f2f5f7',
+      })
+      .setOrigin(0, 0.5)
       .setScrollFactor(0)
       .setDepth(11);
 
@@ -454,6 +513,8 @@ export class MapEditorScene extends Phaser.Scene {
     this.state = createInitialState(generateMap());
     this.mapId = null;
     this.mapName = 'nowa';
+    this.editingName = false;
+    this.nameDraft = '';
     this.tool = 'terrain';
     this.brush = 'plain';
     this.unitKind = 'infantry';
@@ -470,6 +531,10 @@ export class MapEditorScene extends Phaser.Scene {
 
   update(_time: number, delta: number): void {
     this.refreshDevBar(delta);
+
+    if (this.editingName) {
+      return;
+    }
 
     if (this.shiftDown) {
       this.growEdge(delta);
@@ -522,6 +587,10 @@ export class MapEditorScene extends Phaser.Scene {
 
     if (this.pointerOverPanel(pointer)) {
       return;
+    }
+
+    if (this.editingName) {
+      this.commitName();
     }
 
     if (pointer.button !== 0 && pointer.button !== 2) {
@@ -588,6 +657,11 @@ export class MapEditorScene extends Phaser.Scene {
   }
 
   private onKeyDown(event: KeyboardEvent): void {
+    if (this.editingName) {
+      this.handleNameKey(event);
+      return;
+    }
+
     if (event.key === 'Shift') {
       this.shiftDown = true;
       return;
@@ -621,6 +695,89 @@ export class MapEditorScene extends Phaser.Scene {
     }
   }
 
+  private handleNameKey(event: KeyboardEvent): void {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      this.commitName();
+      return;
+    }
+
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      this.cancelNameEdit();
+      return;
+    }
+
+    if (event.key === 'Backspace') {
+      event.preventDefault();
+      this.nameDraft = this.nameDraft.slice(0, -1);
+      this.refreshName();
+      return;
+    }
+
+    if (event.key === 'Delete') {
+      event.preventDefault();
+      this.nameDraft = '';
+      this.refreshName();
+      return;
+    }
+
+    if (event.ctrlKey || event.metaKey || event.altKey) {
+      return;
+    }
+
+    if (event.key.length !== 1) {
+      return;
+    }
+
+    event.preventDefault();
+
+    if (this.nameDraft.length >= MAP_NAME_MAX_LENGTH) {
+      return;
+    }
+
+    this.nameDraft += event.key;
+    this.refreshName();
+  }
+
+  private startNameEdit(): void {
+    if (this.editingName) {
+      return;
+    }
+
+    this.editingName = true;
+    this.nameDraft = this.mapName;
+    this.shiftDown = false;
+    this.keys.forEach((key) => key.reset());
+    this.nameField.setStrokeStyle(2, 0xa6f4c5, 1);
+    this.refreshName();
+  }
+
+  private commitName(): string {
+    const name = normalizeMapName(this.nameDraft) || 'nowa';
+
+    this.mapName = name;
+    this.editingName = false;
+    this.nameDraft = '';
+    this.nameField.setStrokeStyle(1, 0x2a3f33, 1);
+    this.refreshName();
+
+    return name;
+  }
+
+  private cancelNameEdit(): void {
+    this.editingName = false;
+    this.nameDraft = '';
+    this.nameField.setStrokeStyle(1, 0x2a3f33, 1);
+    this.refreshName();
+  }
+
+  private refreshName(): void {
+    const value = this.editingName ? this.nameDraft : this.mapName;
+
+    this.nameText.setText(this.editingName ? `${value}▌` : value);
+  }
+
   private extendEdge(edge: MapEdge): void {
     this.state = this.measure(() => ({
       ...this.state,
@@ -639,6 +796,10 @@ export class MapEditorScene extends Phaser.Scene {
   }
 
   private leaveTo(target: 'menu' | 'map-menu'): void {
+    if (this.editingName) {
+      this.commitName();
+    }
+
     if (this.mapId) {
       this.registry.set(`map:draft:${this.mapId}`, this.state);
     }
@@ -649,6 +810,10 @@ export class MapEditorScene extends Phaser.Scene {
   private async saveCurrentMap(): Promise<void> {
     if (this.saving) {
       return;
+    }
+
+    if (this.editingName) {
+      this.commitName();
     }
 
     this.saving = true;
@@ -797,6 +962,7 @@ export class MapEditorScene extends Phaser.Scene {
     lines.push('ESC — mapy · Shift+ESC — menu');
 
     this.hud.setText(lines.join('\n'));
+    this.refreshName();
     this.drawButtons();
     this.panel.setSize(
       Math.max(PANEL_WIDTH, this.hud.width + 24),

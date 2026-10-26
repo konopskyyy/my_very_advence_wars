@@ -96,6 +96,11 @@ interface GameState {
 }
 ```
 
+Stan tury (`TurnState` z `client/src/core/turn.ts`) nie jest częścią `GameState`.
+`GameState` opisuje zapisywalną mapę i jednostki, a tura jest stanem sesji
+scenariusza — dzięki temu format JSON i schemat SQLite nie muszą się zmieniać
+przy każdej zmianie zasad tur (ADR-020).
+
 - Klucz komórki to `"col,row"`, np. `"12,3"`.
 - `col` i `row` są liczbami całkowitymi w układzie **offset odd-r**; wartości
   mogą być ujemne, bo mapa może rosnąć też w lewo i w górę.

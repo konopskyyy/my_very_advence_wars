@@ -146,6 +146,10 @@ export class HexMapView {
     this.sync();
   }
 
+  objects(): Phaser.GameObjects.Image[] {
+    return [...this.sprites.values()];
+  }
+
   private sync(): void {
     const cells = this.map.cells;
 
