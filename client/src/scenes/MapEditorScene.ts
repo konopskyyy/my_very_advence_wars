@@ -81,9 +81,12 @@ const EDGE_BY_KEY: Record<string, MapEdge> = {
 
 type EditorTool = 'terrain' | 'unit';
 
+type EditorTarget = 'menu' | 'map-menu' | 'scenario-menu';
+
 interface EditorData {
   readonly definition?: MapDefinition;
   readonly state?: GameState;
+  readonly returnTo?: EditorTarget;
 }
 
 interface TerrainTile {
@@ -110,6 +113,7 @@ export class MapEditorScene extends Phaser.Scene {
   private state: GameState = createInitialState(generateMap());
   private mapId: string | null = null;
   private mapName = 'nowa';
+  private returnTo: EditorTarget = 'map-menu';
   private editingName = false;
   private nameDraft = '';
   private readonly keys = new Map<string, Phaser.Input.Keyboard.Key>();
@@ -155,6 +159,7 @@ export class MapEditorScene extends Phaser.Scene {
 
     this.mapId = definition?.id ?? null;
     this.mapName = definition?.name ?? 'nowa';
+    this.returnTo = data?.returnTo ?? 'map-menu';
     this.state = this.measure(
       () => data?.state ?? createInitialState(definition?.map ?? generateMap()),
     );
@@ -317,6 +322,19 @@ export class MapEditorScene extends Phaser.Scene {
     this.menuButton.on('pointerover', () => this.menuButton.setColor('#a6f4c5'));
     this.menuButton.on('pointerout', () => this.menuButton.setColor('#ffffff'));
     this.menuButton.on('pointerdown', () => this.leaveTo('menu'));
+
+    this.add
+      .text(PANEL_X + 12, HUD_Y + 16, 'UTWÓRZ SCENARIUSZ', {
+        fontFamily: 'monospace',
+        fontSize: '10px',
+        color: '#9fb0a5',
+      })
+      .setScrollFactor(0)
+      .setDepth(11)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerover', (object: Phaser.GameObjects.Text) => object.setColor('#a6f4c5'))
+      .on('pointerout', (object: Phaser.GameObjects.Text) => object.setColor('#9fb0a5'))
+      .on('pointerdown', () => this.createScenarioFromEditor());
 
     this.saveButton = this.add
       .text(PANEL_X + 12, HUD_Y, 'ZAPISZ', {
@@ -670,7 +688,7 @@ export class MapEditorScene extends Phaser.Scene {
     const key = event.key.toLowerCase();
 
     if (key === 'escape') {
-      this.leaveTo(event.shiftKey ? 'menu' : 'map-menu');
+      this.leaveTo(event.shiftKey ? 'menu' : this.returnTo);
       return;
     }
 
@@ -795,7 +813,7 @@ export class MapEditorScene extends Phaser.Scene {
     return measured.result;
   }
 
-  private leaveTo(target: 'menu' | 'map-menu'): void {
+  private leaveTo(target: EditorTarget): void {
     if (this.editingName) {
       this.commitName();
     }
@@ -1044,5 +1062,10 @@ export class MapEditorScene extends Phaser.Scene {
     background.setFillStyle(selected ? 0x1f3a2a : 0x142018, selected ? 1 : 0.9);
     background.setStrokeStyle(selected ? 2 : 1, selected ? 0xa6f4c5 : 0x2a3f33, 1);
     background.setData('selected', selected);
+  }
+
+  private async createScenarioFromEditor(): Promise<void> {
+    await this.saveCurrentMap();
+    this.scene.start('scenario-menu');
   }
 }

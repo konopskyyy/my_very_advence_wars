@@ -19,7 +19,7 @@ const SCROLLBAR_WIDTH = 4;
 const SCROLLBAR_MIN_THUMB = 28;
 
 export class ScrollList {
-  private readonly container: Phaser.GameObjects.Container;
+  readonly container: Phaser.GameObjects.Container;
   private readonly topCover: Phaser.GameObjects.Rectangle;
   private readonly bottomCover: Phaser.GameObjects.Rectangle;
   private readonly scrollbar: Phaser.GameObjects.Graphics;
