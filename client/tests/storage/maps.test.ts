@@ -8,6 +8,7 @@ import {
   ensureMapsSchema,
   listMaps,
   readMap,
+  seedBuiltInMaps,
   upsertMap,
 } from '../../src/storage/maps';
 
@@ -73,5 +74,16 @@ describe('magazyn map', () => {
   it('tworzy unikalne identyfikatory lokalne', () => {
     expect(createSavedMapId(1000)).toBe('local-rs');
     expect(createSavedMapId(2000)).toBe('local-1jk');
+  });
+
+  it('seeduje mapy wbudowane i scenariusz tylko raz', () => {
+    seedBuiltInMaps(db);
+    const first = listMaps(db).map((map) => map.id);
+
+    seedBuiltInMaps(db);
+    const second = listMaps(db).map((map) => map.id);
+
+    expect(first).toEqual(expect.arrayContaining(['dolina', 'wzgorza', 'front-wschodni']));
+    expect(second).toEqual(first);
   });
 });

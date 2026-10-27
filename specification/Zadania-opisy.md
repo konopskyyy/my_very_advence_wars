@@ -184,7 +184,7 @@ Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
   - **Mapa:** 48×28 kafli, wszystkie siedem terenów (łąka, las, woda, góry, bagno, droga, miasto), nieregularne pasma gór, rzeka, jeziora, bagna, lasy, drogi i miasta.
   - **Jednostki:** po 10 jednostek na stronę, wszystkie cztery rodzaje (piechota, czołg, artyleria, zwiad); każda jednostka stoi na istniejącym kaflu.
   - **Scena:** `ScenarioScene` rysuje mapę i jednostki, pokazuje podgląd heksa pod kursorem, wybraną jednostkę ze statystykami, liczbę jednostek obu stron i obsługuje kamerę (strzałki/WASD, najechanie na krawędź ekranu, środkowy przycisk, kółko), `ESC` — menu scenariuszy, `Shift+ESC` — menu główne.
-  - **Menu scenariuszy:** lista scenariuszy z miniaturą, opisem i licznikami; zapisane mapy z SQLite są widoczne jako dodatkowe mapy testowe.
+  - **Menu scenariuszy:** lista map z SQLite z podglądem, opisem, licznikami i wyborem frakcji; szczegóły w GRA-029.
   - **Testy:** `tests/core/scenario.test.ts` pilnuje rozmiaru mapy (3–4× największej wbudowanej), obecności wszystkich terenów, jednostek obu stron i postawienia ich na kaflach.
 - **Powiązane:** GRA-012, ADR-016, INTERF-001, INTERF-005
 
@@ -195,7 +195,7 @@ Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
   - **Baza:** `client/src/storage/database.ts` uruchamia `sql.js` i trzyma plik bazy w `localStorage` pod kluczem `mvaw:sqlite`.
   - **Schemat:** tabela `maps` przechowuje `id`, `name`, `description`, `state` (JSON całego `GameState`), `tiles`, `units`, `created_at`, `updated_at`; zapis tego samego `id` aktualizuje wpis.
   - **Zapis:** przycisk „ZAPISZ” w edytorze zapisuje mapę i jednostki do SQLite; nowa mapa dostaje identyfikator `local-…`, a kolejne zapisy aktualizują ten sam wpis.
-  - **Odczyt:** menu map pokazuje sekcję „ZAPISANE MAPY (SQLite)” i otwiera zapisaną mapę w edytorze; menu scenariuszy pokazuje zapisane mapy jako scenariusze testowe.
+  - **Odczyt:** menu map i menu scenariuszy pokazują jedną listę wszystkich map z SQLite; kliknięcie otwiera zapisaną mapę w edytorze albo jako scenariusz.
   - **Serializacja:** `client/src/storage/mapSerialization.ts` zapisuje i waliduje `GameState` (teren, jednostki, amunicja, licznik) — uszkodzony JSON i nieznany teren są odrzucane.
   - **Testy:** `tests/storage/mapSerialization.test.ts` sprawdza round-trip i walidację, a `tests/storage/maps.test.ts` — schemat, zapis, aktualizację i odczyt na prawdziwej bazie `sql.js`.
 - **Dokumentacja:** [[Mapy]] — model, schemat, format JSON, trwałość i diagnostyka.
@@ -218,8 +218,8 @@ Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
 - **Opis:** Listy w menu map i menu scenariuszy mieszczą się na ekranie 1280×720 i przewijają się kółkiem myszy. Wszystkie zapisane mapy są widoczne na liście, także wtedy, gdy jest ich więcej niż miejsce na ekranie.
 - **Kryteria:**
   - **Lista:** `client/src/view/scrollList.ts` ogranicza widoczny obszar nakładkami, przewija kółkiem myszy i rysuje pasek przewijania.
-  - **Menu map:** „Nowa mapa”, mapy wbudowane i wszystkie mapy z SQLite tworzą jedną przewijaną listę.
-  - **Menu scenariuszy:** scenariusze wbudowane i wszystkie zapisane mapy tworzą jedną przewijaną listę.
+  - **Menu map:** „Nowa mapa” i wszystkie mapy z SQLite (wbudowane, scenariusz i zapisane) tworzą jedną przewijaną listę; „Nowa mapa” jest widoczna także przy pustej liście.
+  - **Menu scenariuszy:** wszystkie mapy z SQLite tworzą jedną przewijaną listę; brak osobnych sekcji i duplikatów.
   - **Bez limitu:** znika obcinanie zapisanych map do sześciu wpisów.
   - **Czytelność:** tytuł menu i przycisk powrotu pozostają nieruchome; przewija się tylko zawartość.
 - **Powiązane:** GRA-017, GRA-020, ADR-018, INTERF-004, INTERF-005
@@ -236,28 +236,26 @@ Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
 - **Powiązane:** GRA-022, ADR-018, INTERF-003, INTERF-005
 
 ## GRA-025: Zapisana wersja mapy wbudowanej w menu map
-- **Status:** ✅ zrobione
+- **Status:** ✅ zrobione (zastąpione przez GRA-029)
 - **Opis:** Zapisana w SQLite wersja mapy wbudowanej jest scalana z jej kafelkiem w menu map. Kliknięcie „Wzgórza” po restarcie otwiera zapisany stan, a nie pierwotną wersję wbudowaną; osobna sekcja zapisanych map zawiera wyłącznie mapy spoza katalogu wbudowanego.
 - **Kryteria:**
   - **Scalanie:** kafelek mapy wbudowanej, dla której istnieje zapis o tym samym `id`, korzysta z zapisanego `GameState` i pokazuje metadane zapisu.
   - **Oznaczenie:** kafelek zapisanej wersji ma w tytule dopisek „zapisana”, a kafelek ze szkicem z `registry` — „szkic”; dzięki temu widać, który stan zostanie otwarty.
   - **Bez duplikatu:** zapisana wersja mapy wbudowanej nie pojawia się ponownie w sekcji „ZAPISANE MAPY (SQLite)”.
   - **Bez regresji:** mapy spoza katalogu wbudowanego nadal trafiają do sekcji zapisanych map; szkic z bieżącej sesji ma pierwszeństwo przed stanem z bazy.
+  - **Uwaga:** scalanie kafelka z zapisaną wersją zastąpiła jedna lista map z SQLite (GRA-029). Wbudowana mapa i jej zapis to teraz jeden wiersz o tym samym `id`, więc nie ma dwóch wpisów do scalania.
 - **Powiązane:** GRA-017, GRA-021, GRA-023, INTERF-004
 
-## GRA-026: Migracje SQLite i seed map
-- **Status:** 🚧 w toku
-- **Opis:** Klient uruchamia wersjonowane migracje SQLite przy otwarciu bazy, zamiast tworzyć schemat pojedynczym `CREATE TABLE IF NOT EXISTS`. Migracje obejmują początkowy schemat, pole `source` odróżniające mapy wbudowane od zapisanych przez użytkownika oraz seed map z pliku JSON. Dzięki temu zmiana schematu i danych startowych jest powtarzalna i nie wymaga ręcznego SQL.
+## GRA-026: Wersjonowane migracje SQLite
+- **Status:** ⬜ do zrobienia
+- **Opis:** Docelowo schemat `maps` ma być wersjonowany runnerem migracji, żeby dało się bezpiecznie dodawać kolumny i dane startowe. **Obecnie runner nie istnieje:** nie ma `client/src/storage/migrations/`, tabeli `schema_migrations`, kolumny `source` ani pliku `seed/maps.json`. Schemat powstaje przez `CREATE TABLE IF NOT EXISTS` (`MAPS_SCHEMA`) w `client/src/storage/maps.ts`, a mapy startowe wstawia `seedBuiltInMaps()` (GRA-029). Zadanie obejmuje wprowadzenie runnera przy pierwszej rzeczywistej zmianie schematu.
 - **Kryteria:**
+  - **Stan obecny:** `ensureMapsSchema()` tworzy tabelę `maps` bez wersjonowania; `seedBuiltInMaps()` dosiewa brakujące mapy przy każdym otwarciu bazy i utrwala bazę, jeśli coś wstawił.
   - **Runner:** `client/src/storage/migrations.ts` tworzy tabelę `schema_migrations` i wykonuje migracje w kolejności wersji; każda migracja działa w transakcji, a ponowne uruchomienie nie powtarza zastosowanych wersji.
-  - **Migracje:** `001-initial` tworzy tabelę `maps`, `002-map-source` dodaje `source`, a `003-seed-maps` wstawia mapy z pliku seed tylko wtedy, gdy danego `id` jeszcze nie ma.
-  - **Pola:** `maps` ma `id`, `name`, `description`, `state`, `tiles`, `units`, `source`, `created_at`, `updated_at`; `source` przyjmuje `editor` lub `builtin`.
-  - **Seed:** `client/src/storage/seed/maps.json` zawiera wersję i listę map (`id`, `name`, `description`, `source`, `state`); migracja waliduje stan przez `deserializeGameState()`.
-  - **Menu:** wiersz seedowany jako `builtin` jest scalany z kafelkiem mapy wbudowanej i nie dostaje dopisku „zapisana”; zapis z edytora zmienia `source` na `editor`, a menu scenariuszy pokazuje wyłącznie mapy użytkownika.
-  - **Bez utraty danych:** seed używa `ON CONFLICT(id) DO NOTHING`, więc nie nadpisuje zapisanej wersji mapy wbudowanej ani map użytkownika.
-  - **Testy:** `tests/storage/migrations.test.ts` sprawdza pustą bazę, ponowne uruchomienie, bazę w starym schemacie i zachowanie danych użytkownika; testy `storage/maps` działają po migracjach.
-  - **Dokumentacja:** [[Mapy]] opisuje wersje migracji, format pliku seed i sposób dodawania map.
-- **Powiązane:** GRA-021, GRA-025, ADR-017, ADR-019, INTERF-006
+  - **Migracje:** pierwsza migracja odtwarza obecny schemat, kolejne dodają nowe kolumny (np. `source`) razem z migracją danych.
+  - **Bez utraty danych:** migracje nie nadpisują map użytkownika; seed używa `ON CONFLICT(id) DO NOTHING`.
+  - **Testy:** `tests/storage/migrations.test.ts` sprawdza pustą bazę, ponowne uruchomienie, bazę w starym schemacie i zachowanie danych użytkownika.
+- **Powiązane:** GRA-021, GRA-025, GRA-029, ADR-019, INTERF-006
 
 ## GRA-027: Grywalny scenariusz — tury, armie, ruch i stały interfejs
 - **Status:** ✅ zrobione
@@ -281,6 +279,21 @@ Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
   - **Widoczność:** nazwa jest widoczna w HUD-zie edytora, na karcie w menu map i w menu scenariuszy.
   - **Testy:** `tests/core/map/naming.test.ts` sprawdza przycinanie, limit długości i pustą nazwę.
 - **Powiązane:** GRA-021, ADR-017, ADR-025, INTERF-003, INTERF-004
+
+## GRA-029: Menu scenariuszy z podglądem i edycją mapy
+- **Status:** ✅ zrobione
+- **Opis:** Menu scenariuszy jest jedną sceną z listą map po lewej i panelem przygotowania po prawej. Scenariusz to mapa z SQLite — nie ma osobnej, zaszytej listy scenariuszy ani osobnej tabeli. Mapy wbudowane (`dolina`, `wzgórza`) i scenariusz `front-wschodni` są seedowane do bazy przy jej otwarciu, więc każdy scenariusz ma odpowiadający wpis w edytorze map. Z panelu można rozpocząć bitwę wybraną frakcją albo przejść do edycji mapy.
+- **Kryteria:**
+  - **Jedna scena:** `ScenarioMenuScene` łączy listę, podgląd mapy, opis, statystyki, wybór frakcji (`Niebiescy`/`Czerwoni`, domyślnie niebiescy) i przyciski `EDYTUJ MAPĘ` oraz `ROZPOCZNIJ BITWĘ`; kliknięcie wpisu zmienia panel bez zmiany sceny.
+  - **Scenariusz = mapa:** lewa lista pochodzi wyłącznie z `listSavedMaps()`; `BUILT_IN_SCENARIOS` nie jest już wyświetlany jako osobna lista. `seedBuiltInMaps()` wstawia brakujące `dolina`, `wzgórza` i `front-wschodni` przez `ON CONFLICT(id) DO NOTHING` i utrwala bazę, jeśli coś wstawił.
+  - **Filtr:** scenariusz musi mieć co najmniej 16 kafli i po uzupełnieniu `ensureScenarioArmies()` jednostki obu stron; uzupełnienie armii jest sesyjne i nie trafia do SQLite.
+  - **Start:** `ROZPOCZNIJ BITWĘ` przekazuje `playerFaction` do `ScenarioScene`; pierwsza tura należy do wybranej strony, a kamera startuje na jej jednostkach.
+  - **Edycja:** `EDYTUJ MAPĘ` otwiera mapę scenariusza w `MapEditorScene` z jej stanem z bazy; `ESC` w edytorze wraca do menu scenariuszy, a zapis aktualizuje ten sam wiersz.
+  - **Edytor map:** lista map pochodzi wyłącznie z SQLite (jedna lista, bez sekcji); „Stwórz nową mapę” jest widoczny także przy pustej liście; `UTWÓRZ SCENARIUSZ` zapisuje bieżącą mapę i otwiera menu scenariuszy.
+  - **Bez duplikatów:** ponowne wejście do `ScenarioMenuScene` czyści listę i wybór; wpisy są deduplikowane po `id`, a spóźniony odczyt z poprzedniego wejścia jest odrzucany przez token sesji.
+  - **Testy:** `tests/storage/maps.test.ts` sprawdza, że seed wstawia `dolina`, `wzgórza` i `front-wschodni` dokładnie raz; `npx tsc --noEmit` i pozostałe testy klienta przechodzą.
+- **Dokumentacja:** [[Interfejs#INTERF-004: Menu map|INTERF-004]], [[Interfejs#INTERF-005: Scenariusze|INTERF-005]], [[Interfejs#INTERF-006: Wewnętrzna baza map (SQLite)|INTERF-006]], [[Mapy]].
+- **Powiązane:** GRA-020, GRA-021, GRA-023, GRA-025, GRA-027, GRA-028, ADR-017, ADR-019, ADR-021, ADR-026, INTERF-004, INTERF-005, INTERF-006
 
 ## INFRA-001: Środowisko Docker
 - **Status:** ✅ zrobione

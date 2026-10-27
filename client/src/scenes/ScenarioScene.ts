@@ -4,7 +4,7 @@ import { BUILT_IN_SCENARIOS, ensureScenarioArmies, type ScenarioDefinition } fro
 import { countUnits, findUnitAt, moveTargets, moveUnit, type GameState } from '../core/state';
 import { TERRAIN_DEFS } from '../core/terrain';
 import { beginTurn, createTurnState, isActiveFaction, nextTurn, type TurnState } from '../core/turn';
-import { FACTION_DEFS, UNIT_DEFS, type Unit } from '../core/units';
+import { FACTION_DEFS, UNIT_DEFS, type FactionId, type Unit } from '../core/units';
 import { HexMapView, outlineHex } from '../view/hexGrid';
 import { MapViewport } from '../view/mapViewport';
 import { UnitLayer, unitTexture } from '../view/unitLayer';
@@ -14,12 +14,14 @@ const EDGE_PAN_MARGIN = 24;
 
 interface ScenarioData {
   readonly definition?: ScenarioDefinition;
+  readonly playerFaction?: FactionId;
 }
 
 export class ScenarioScene extends Phaser.Scene {
   private scenario: ScenarioDefinition = BUILT_IN_SCENARIOS[0]!;
   private state: GameState = this.scenario.state;
   private turn: TurnState = createTurnState();
+  private playerFaction: FactionId = 'blue';
   private readonly keys = new Map<string, Phaser.Input.Keyboard.Key>();
 
   private hover: HexCoord | null = null;
@@ -52,7 +54,8 @@ export class ScenarioScene extends Phaser.Scene {
 
   init(data: ScenarioData): void {
     this.scenario = data?.definition ?? BUILT_IN_SCENARIOS[0]!;
-    this.turn = createTurnState();
+    this.playerFaction = data?.playerFaction ?? 'blue';
+    this.turn = createTurnState(this.playerFaction);
     this.state = beginTurn(ensureScenarioArmies(this.scenario.state), this.turn.faction);
     this.hover = null;
     this.selected = null;
@@ -111,7 +114,10 @@ export class ScenarioScene extends Phaser.Scene {
       keyboard.on('keydown', this.onKeyDown, this);
     }
 
-    const start = this.state.units.find((unit) => unit.faction === 'blue')?.pos ?? { col: 5, row: 13 };
+    const start =
+      this.state.units.find((unit) => unit.faction === this.playerFaction)?.pos ??
+      this.state.units.find((unit) => unit.faction === 'blue')?.pos ??
+      { col: 5, row: 13 };
 
     this.viewport.centerOn(start);
     this.refreshHud();

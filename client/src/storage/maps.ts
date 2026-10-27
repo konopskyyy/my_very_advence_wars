@@ -1,6 +1,7 @@
 import type { Database } from 'sql.js';
-import { mapTileCount } from '../core/map';
-import type { GameState } from '../core/state';
+import { BUILT_IN_MAPS, mapTileCount } from '../core/map';
+import { BUILT_IN_SCENARIOS } from '../core/scenario';
+import { createInitialState, type GameState } from '../core/state';
 import { openDatabase, persistDatabase } from './database';
 import { deserializeGameState, serializeGameState } from './mapSerialization';
 
@@ -151,5 +152,66 @@ async function openMapDatabase(): Promise<Database> {
 
   ensureMapsSchema(db);
 
+  if (seedBuiltInMaps(db)) {
+    persistDatabase(db);
+  }
+
   return db;
+}
+
+const SEED_TIMESTAMP = '2026-01-01T00:00:00.000Z';
+
+export function seedBuiltInMaps(db: Database): boolean {
+  const existing = new Set<string>();
+  const statement = db.prepare('SELECT id FROM maps');
+
+  try {
+    while (statement.step()) {
+      existing.add(String(statement.getAsObject().id));
+    }
+  } finally {
+    statement.free();
+  }
+
+  const seeds: SaveMapInput[] = [
+    ...BUILT_IN_MAPS.map((definition) => ({
+      id: definition.id,
+      name: definition.name,
+      description: definition.description,
+      state: createInitialState(definition.map),
+    })),
+    ...BUILT_IN_SCENARIOS.map((definition) => ({
+      id: definition.id,
+      name: definition.name,
+      description: definition.description,
+      state: definition.state,
+    })),
+  ];
+
+  let inserted = false;
+
+  for (const seed of seeds) {
+    if (existing.has(seed.id)) {
+      continue;
+    }
+
+    db.run(
+      `INSERT INTO maps (id, name, description, state, tiles, units, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(id) DO NOTHING`,
+      [
+        seed.id,
+        seed.name,
+        seed.description,
+        serializeGameState(seed.state),
+        mapTileCount(seed.state.map),
+        seed.state.units.length,
+        SEED_TIMESTAMP,
+        SEED_TIMESTAMP,
+      ],
+    );
+    inserted = true;
+  }
+
+  return inserted;
 }

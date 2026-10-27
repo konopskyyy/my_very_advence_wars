@@ -1,5 +1,4 @@
 import Phaser from 'phaser';
-import { BUILT_IN_MAPS, type MapDefinition } from '../core/map';
 import type { GameState } from '../core/state';
 import {
   listSavedMaps,
@@ -55,6 +54,20 @@ export class MapMenuScene extends Phaser.Scene {
 
     void this.buildList();
 
+    const createNew = this.add
+      .text(width / 2, height - 52, '> Stwórz nową mapę <', {
+        fontFamily: 'monospace',
+        fontSize: '14px',
+        color: '#ffffff',
+      })
+      .setOrigin(0.5)
+      .setDepth(10)
+      .setInteractive({ useHandCursor: true });
+
+    createNew.on('pointerover', () => createNew.setColor('#a6f4c5'));
+    createNew.on('pointerout', () => createNew.setColor('#ffffff'));
+    createNew.on('pointerdown', () => this.scene.start('map-editor'));
+
     const back = this.add
       .text(width / 2, height - 26, '> Menu główne <', {
         fontFamily: 'monospace',
@@ -77,28 +90,19 @@ export class MapMenuScene extends Phaser.Scene {
   }
 
   private async buildList(): Promise<void> {
+    if (!this.scene.isActive()) {
+      return;
+    }
+
+    this.addNewMapCard();
+
     const savedMaps = await this.loadSavedMaps();
 
     if (!this.scene.isActive()) {
       return;
     }
 
-    const savedById = new Map(savedMaps.map((map) => [map.id, map]));
-
-    this.addNewMapCard();
-
-    for (const definition of BUILT_IN_MAPS) {
-      this.addCard(definition, savedById.get(definition.id));
-      savedById.delete(definition.id);
-    }
-
-    if (savedById.size === 0) {
-      return;
-    }
-
-    this.addSection('ZAPISANE MAPY (SQLite)');
-
-    for (const saved of savedById.values()) {
+    for (const saved of savedMaps) {
       this.addSavedCard(saved);
     }
   }
@@ -139,40 +143,10 @@ export class MapMenuScene extends Phaser.Scene {
     this.list.addRow(card.container, card.height, (this.listWidth - card.width) / 2);
   }
 
-  private addCard(definition: MapDefinition, saved?: SavedMap): void {
-    const draft = this.draftFor(definition);
-    const state = draft ?? saved?.state;
-    const map = state?.map ?? definition.map;
-    const title = draft
-      ? `> ${definition.name} · szkic <`
-      : saved
-        ? `> ${definition.name} · zapisana <`
-        : `> ${definition.name} <`;
-    const description =
-      saved && !draft
-        ? `${saved.tiles} kafli · ${saved.units} jedn. · ${formatTimestamp(saved.updatedAt)}`
-        : definition.description;
-
-    const card = createMapCard(this, {
-      title,
-      description,
-      map,
-      previewSize: PREVIEW_SIZE,
-      onOpen: () => {
-        this.scene.start('map-editor', {
-          definition: { ...definition, map },
-          state,
-        });
-      },
-    });
-
-    this.list.addRow(card.container, card.height, (this.listWidth - card.width) / 2);
-  }
-
   private addSavedCard(saved: SavedMap): void {
     const draft = this.registry.get(`map:draft:${saved.id}`) as GameState | undefined;
     const state = draft ?? saved.state;
-    const definition: MapDefinition = {
+    const definition = {
       id: saved.id,
       name: saved.name,
       description: saved.description || 'Mapa zapisana w edytorze',
@@ -183,30 +157,12 @@ export class MapMenuScene extends Phaser.Scene {
     const card = createMapCard(this, {
       title,
       description: `${saved.tiles} kafli · ${saved.units} jedn. · ${formatTimestamp(saved.updatedAt)}`,
-      width: this.listWidth,
-      height: 42,
-      textWidth: this.listWidth - 32,
+      map: state.map,
+      previewSize: PREVIEW_SIZE,
       onOpen: () => this.scene.start('map-editor', { definition, state }),
     });
 
-    this.list.addRow(card.container, card.height);
+    this.list.addRow(card.container, card.height, (this.listWidth - card.width) / 2);
   }
 
-  private addSection(label: string): void {
-    const container = this.add.container(0, 0);
-    const text = this.add
-      .text(0, 11, label, {
-        fontFamily: 'monospace',
-        fontSize: '11px',
-        color: '#9fb0a5',
-      })
-      .setOrigin(0, 0.5);
-
-    container.add(text);
-    this.list.addRow(container, 22);
-  }
-
-  private draftFor(definition: MapDefinition): GameState | undefined {
-    return this.registry.get(`map:draft:${definition.id}`) as GameState | undefined;
-  }
 }
