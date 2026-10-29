@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Interfejs.md",
+                "file": "Zadania-opisy.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Interfejs"
+              "title": "Zadania-opisy"
             }
           }
         ]
@@ -190,12 +190,12 @@
   },
   "active": "a9e648ac2726e17f",
   "lastOpenFiles": [
+    "Zadania.md",
+    "Interfejs.md",
     "Spis treści.md",
     "Wymagania.md",
-    "Zadania.md",
     "Infrastruktura.md",
     "ADR.md",
-    "Interfejs.md",
     "INTERF-001 Interfejs menu.md",
     "INTERF-002 Pierwsze pole bitwy.md",
     "WYM-003 Zapis stanu gry.md",
