@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { preloadTerrainTiles } from '../view/terrainTiles';
 
 export class MenuScene extends Phaser.Scene {
   private title!: Phaser.GameObjects.Text;
@@ -7,6 +8,10 @@ export class MenuScene extends Phaser.Scene {
 
   constructor() {
     super('menu');
+  }
+
+  preload(): void {
+    preloadTerrainTiles(this);
   }
 
   create(): void {

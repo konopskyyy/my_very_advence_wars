@@ -40,4 +40,6 @@ Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
 | [[Zadania-opisy#GRA-028: Nazwa mapy w edytorze\|GRA-028]] | Nazwa mapy w edytorze | ✅ | GRA-021, ADR-017, ADR-025, INTERF-003, INTERF-004 |
 | [[Zadania-opisy#GRA-029: Menu scenariuszy z podglądem i edycją mapy\|GRA-029]] | Menu scenariuszy z podglądem i edycją mapy | ✅ | GRA-020, GRA-021, GRA-023, GRA-025, GRA-027, GRA-028, ADR-017, ADR-019, ADR-021, ADR-026, INTERF-004, INTERF-005, INTERF-006 |
 | [[Zadania-opisy#GRA-030: Pełny ruch jednostek z trasą i animacją\|GRA-030]] | Pełny ruch jednostek z trasą i animacją | ✅ | GRA-027, ADR-001, ADR-022, ADR-027, INTERF-005 |
+| [[Zadania-opisy#GRA-031: Kafelki terenu SVG z wariantami\|GRA-031]] | Kafelki terenu SVG z wariantami | ✅ | GRA-001, GRA-022, ADR-001, ADR-028, INTERF-003, INTERF-005 |
+| [[Zadania-opisy#GRA-032: Pusta lista w menu map\|GRA-032]] | Pusta lista w menu map | ✅ | GRA-017, GRA-023, ADR-013, ADR-018, INTERF-004 |
 | [[Zadania-opisy#INFRA-001: Środowisko Docker\|INFRA-001]] | Środowisko Docker | ✅ | `specification/Infrastruktura.md` |

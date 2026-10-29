@@ -8,6 +8,7 @@ import {
 import { formatTimestamp } from '../view/format';
 import { createMapCard } from '../view/mapCard';
 import { ScrollList } from '../view/scrollList';
+import { preloadTerrainTiles } from '../view/terrainTiles';
 
 const PREVIEW_SIZE = 4;
 const TITLE_Y = 30;
@@ -21,6 +22,10 @@ export class MapMenuScene extends Phaser.Scene {
 
   constructor() {
     super('map-menu');
+  }
+
+  preload(): void {
+    preloadTerrainTiles(this);
   }
 
   create(): void {
@@ -90,10 +95,6 @@ export class MapMenuScene extends Phaser.Scene {
   }
 
   private async buildList(): Promise<void> {
-    if (!this.scene.isActive()) {
-      return;
-    }
-
     this.addNewMapCard();
 
     const savedMaps = await this.loadSavedMaps();

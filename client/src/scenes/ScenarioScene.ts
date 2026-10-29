@@ -22,6 +22,7 @@ import type { FactionId, Unit } from '../core/units';
 import { HexMapView, outlineHex } from '../view/hexGrid';
 import { MapViewport } from '../view/mapViewport';
 import { BAR_HEIGHT, ScenarioCommandBar } from '../view/scenarioCommandBar';
+import { preloadTerrainTiles } from '../view/terrainTiles';
 import { UnitLayer } from '../view/unitLayer';
 
 const EDGE_PAN_MARGIN = 24;
@@ -55,6 +56,10 @@ export class ScenarioScene extends Phaser.Scene {
 
   constructor() {
     super('scenario');
+  }
+
+  preload(): void {
+    preloadTerrainTiles(this);
   }
 
   init(data: ScenarioData): void {

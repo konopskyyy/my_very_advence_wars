@@ -40,6 +40,7 @@ import {
 import { HexMapView, outlineHex } from '../view/hexGrid';
 import { MapNameField } from '../view/mapNameField';
 import { MapViewport } from '../view/mapViewport';
+import { preloadTerrainTiles } from '../view/terrainTiles';
 import { UnitLayer } from '../view/unitLayer';
 
 const TITLE_Y = EDITOR_PANEL_Y + 10;
@@ -103,6 +104,10 @@ export class MapEditorScene extends Phaser.Scene {
 
   constructor() {
     super('map-editor');
+  }
+
+  preload(): void {
+    preloadTerrainTiles(this);
   }
 
   init(data: EditorData): void {
