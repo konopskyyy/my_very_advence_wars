@@ -53,6 +53,16 @@ export function clearUnits(state: GameState): GameState {
   return state.units.length === 0 ? state : { ...state, units: [] };
 }
 
+export function getMoveCost(state: GameState, coord: HexCoord): number {
+  const terrain = state.map.cells[cellKey(coord)];
+
+  if (terrain === undefined) {
+    return IMPASSABLE;
+  }
+
+  return TERRAIN_DEFS[terrain].moveCost;
+}
+
 export function canMoveUnit(state: GameState, unit: Unit, target: HexCoord): boolean {
   if (unit.hasActed || unit.movesLeft <= 0) {
     return false;
@@ -66,25 +76,175 @@ export function canMoveUnit(state: GameState, unit: Unit, target: HexCoord): boo
     return false;
   }
 
-  const terrain = state.map.cells[cellKey(target)];
+  const moveCost = getMoveCost(state, target);
 
-  return terrain !== undefined && TERRAIN_DEFS[terrain].moveCost < IMPASSABLE;
+  if (moveCost >= IMPASSABLE) {
+    return false;
+  }
+
+  return moveCost <= unit.movesLeft;
+}
+
+export function getMovePath(state: GameState, unit: Unit, target: HexCoord): HexCoord[] | undefined {
+  if (unit.hasActed || unit.movesLeft <= 0) {
+    return undefined;
+  }
+
+  if (target.col === unit.pos.col && target.row === unit.pos.row) {
+    return undefined;
+  }
+
+  const moveCostTarget = getMoveCost(state, target);
+
+  if (moveCostTarget >= IMPASSABLE) {
+    return undefined;
+  }
+
+  const unitAtTarget = findUnitAt(state, target);
+
+  if (unitAtTarget && unitAtTarget.id !== unit.id) {
+    return undefined;
+  }
+
+  const costs = new Map<string, number>();
+  const parents = new Map<string, string>();
+  const startKey = cellKey(unit.pos);
+  costs.set(startKey, 0);
+
+  const queue: Array<{ coord: HexCoord; cost: number }> = [{ coord: unit.pos, cost: 0 }];
+
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+
+    for (const neighbor of hexNeighbors(current.coord)) {
+      const cost = getMoveCost(state, neighbor);
+
+      if (cost >= IMPASSABLE) {
+        continue;
+      }
+
+      const neighborKey = cellKey(neighbor);
+      const isTarget = neighbor.col === target.col && neighbor.row === target.row;
+      const occupant = findUnitAt(state, neighbor);
+
+      if (occupant && !(isTarget && occupant.id === unit.id)) {
+        continue;
+      }
+
+      const nextCost = current.cost + cost;
+
+      if (nextCost > unit.movesLeft) {
+        continue;
+      }
+
+      const existing = costs.get(neighborKey);
+
+      if (existing === undefined || nextCost < existing) {
+        costs.set(neighborKey, nextCost);
+        parents.set(neighborKey, cellKey(current.coord));
+        queue.push({ coord: neighbor, cost: nextCost });
+      }
+    }
+  }
+
+  const targetKey = cellKey(target);
+
+  if (!costs.has(targetKey)) {
+    return undefined;
+  }
+
+  const path: HexCoord[] = [];
+  let currentKey = targetKey;
+
+  while (currentKey !== startKey) {
+    const parent = parents.get(currentKey);
+
+    if (!parent) {
+      return undefined;
+    }
+
+    const parts = currentKey.split(',');
+    path.push({ col: Number(parts[0]), row: Number(parts[1]) });
+    currentKey = parent;
+  }
+
+  path.reverse();
+
+  return path;
 }
 
 export function moveTargets(state: GameState, unit: Unit): HexCoord[] {
-  return hexNeighbors(unit.pos).filter((target) => canMoveUnit(state, unit, target));
+  if (unit.hasActed || unit.movesLeft <= 0) {
+    return [];
+  }
+
+  const targets = new Map<string, HexCoord>();
+  const costs = new Map<string, number>();
+  const startKey = cellKey(unit.pos);
+  costs.set(startKey, 0);
+
+  const queue: Array<{ coord: HexCoord; cost: number }> = [{ coord: unit.pos, cost: 0 }];
+
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+
+    for (const neighbor of hexNeighbors(current.coord)) {
+      const cost = getMoveCost(state, neighbor);
+
+      if (cost >= IMPASSABLE) {
+        continue;
+      }
+
+      if (findUnitAt(state, neighbor)) {
+        continue;
+      }
+
+      const nextCost = current.cost + cost;
+
+      if (nextCost > unit.movesLeft) {
+        continue;
+      }
+
+      const key = cellKey(neighbor);
+      const existing = costs.get(key);
+
+      if (existing === undefined || nextCost < existing) {
+        costs.set(key, nextCost);
+        targets.set(key, neighbor);
+        queue.push({ coord: neighbor, cost: nextCost });
+      }
+    }
+  }
+
+  return Array.from(targets.values());
 }
 
 export function moveUnit(state: GameState, unitId: string, target: HexCoord): GameState {
   const unit = state.units.find((candidate) => candidate.id === unitId);
 
-  if (!unit || !canMoveUnit(state, unit, target)) {
+  if (!unit || unit.hasActed || unit.movesLeft <= 0) {
+    return state;
+  }
+
+  const path = getMovePath(state, unit, target);
+
+  if (!path) {
+    return state;
+  }
+
+  let totalCost = 0;
+
+  for (const coord of path) {
+    totalCost += getMoveCost(state, coord);
+  }
+
+  if (totalCost > unit.movesLeft) {
     return state;
   }
 
   const units = state.units.map((candidate) =>
     candidate.id === unitId
-      ? { ...candidate, pos: target, movesLeft: 0, hasActed: true }
+      ? { ...candidate, pos: target, movesLeft: unit.movesLeft - totalCost, hasActed: unit.movesLeft - totalCost === 0 }
       : candidate,
   );
 
