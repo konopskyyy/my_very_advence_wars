@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { cellCoord, hexCorners, hexToPixel, type GameMap, type HexCoord } from '../core/map';
 import { TERRAIN_DEFS, TERRAIN_IDS, type TerrainId } from '../core/terrain';
+import { terrainTileDisplaySize, terrainTileTextureKey } from './terrainTiles';
 
 export const HEX_SIZE = 22;
 
@@ -115,7 +116,29 @@ export function createHexSprite(
 ): Phaser.GameObjects.Image {
   hexTexture(scene, size);
 
-  return scene.add.image(0, 0, hexTextureKey(size), terrain);
+  const sprite = scene.add.image(0, 0, hexTextureKey(size), terrain);
+  applySpriteTerrain(sprite, terrain, size);
+
+  return sprite;
+}
+
+function applySpriteTerrain(
+  sprite: Phaser.GameObjects.Image,
+  terrain: TerrainId,
+  size: number,
+): void {
+  const key = terrainTileTextureKey(terrain);
+
+  if (key) {
+    sprite.setTexture(key);
+    const display = terrainTileDisplaySize(size);
+    sprite.setDisplaySize(display, display);
+  } else {
+    sprite.setScale(1);
+    sprite.setTexture(hexTextureKey(size), terrain);
+  }
+
+  sprite.setData('terrain', terrain);
 }
 
 export class HexMapView {
@@ -162,8 +185,8 @@ export class HexMapView {
         continue;
       }
 
-      if (sprite.frame.name !== terrain) {
-        sprite.setFrame(terrain);
+      if (sprite.getData('terrain') !== terrain) {
+        applySpriteTerrain(sprite, terrain, this.size);
       }
     }
 

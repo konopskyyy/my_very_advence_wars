@@ -10,6 +10,7 @@ import {
 import { formatTimestamp } from '../view/format';
 import { ScenarioDetailPanel, type ScenarioEntry } from '../view/scenarioDetailPanel';
 import { ScrollList } from '../view/scrollList';
+import { preloadTerrainTiles } from '../view/terrainTiles';
 
 const TITLE_Y = 30;
 const LIST_X = 40;
@@ -28,6 +29,10 @@ export class ScenarioMenuScene extends Phaser.Scene {
 
   constructor() {
     super('scenario-menu');
+  }
+
+  preload(): void {
+    preloadTerrainTiles(this);
   }
 
   create(): void {
