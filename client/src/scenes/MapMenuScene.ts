@@ -95,10 +95,6 @@ export class MapMenuScene extends Phaser.Scene {
   }
 
   private async buildList(): Promise<void> {
-    if (!this.scene.isActive()) {
-      return;
-    }
-
     this.addNewMapCard();
 
     const savedMaps = await this.loadSavedMaps();
