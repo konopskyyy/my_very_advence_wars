@@ -1,187 +1,155 @@
 # Zadania — opisy
 
 Zadania spoza tej listy się nie robi — nową pracę dopisuj do tabeli poniżej
-(zasady w `AGENTS.md`). Tabela to skrót, więc każde nowe zadanie wymaga
-wpisu zarówno tu, jak i w [[Zadania]].
-
-Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
+(zasady w `AGENTS.md`). Tutaj jest **tylko pełny opis**: kontekst, zakres
+i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
 
 ## GRA-001: Edytor mapy
-- **Status:** ✅
 - **Kontekst:** Gra potrzebuje sposobu tworzenia niestandardowych map bez ręcznego pisania JSON-a. Użytkownik chce malować teren na siatce heksagonalnej i móc zapisać mapę do dalszego użytku.
 - **Opis:** Edytor map na siatce heksagonalnej. Malowanie terenu i rozstawianie jednostek, budowa zbioru kafelków poza pierwotnym prostokątem, zoom, przewijanie, zapisywanie szkicu. Proporcje 16:9 i skalowanie przez Phaser `Scale.FIT`.
 - **Kryteria:** `master` wskazuje on `8600483`; `npm test` in `client/` passes; editor starts from main menu („Edytor map”), `ESC` returns to menu; map is a collection of tiles with absolute coordinates — tiles can be painted outside the original rectangle.
 
 ## GRA-002: Model jednostek
-- **Status:** 🚧
 - **Kontekst:** Potrzebny jest spójny model jednostek dla edytora i rozgrywki. Musi być wystarczający do rozstawiania w edytorze i do przyszłej logiki bitewnej.
 - **Opis:** Modele jednostek piechoty, czołgu, artylerii, zwiadu dla obu stron. Właściwości, identyfikatory, pozycjonowanie na heksach. Logika gry nie wiąże się z Phasera (ADR-001).
 - **Kryteria:** Istnieje `core/units.ts`, jednostki można stawiać w edytorze map (GRA-012), typy pokrywają się ze specyfikacją.
 
 ## GRA-003: Zapis i wczytywanie map
-- **Status:** ⬜
 - **Kontekst:** Edytor produkuje mapy, które trzeba przechowywać między sesjami. Potrzebny format zapisu obejmujący teren i jednostki.
 - **Opis:** Zapis i odczyt mapy (teren, jednostki, metadane). Docelowo integracja z SQLite (GRA-021). Format JSON spójny z modelem.
 - **Kryteria:** Mapy są zapisywane/wczytywane, struktura zgodna z `specification/Mapy.md`.
 
 ## GRA-004: Podstawa budowy mapek
-- **Status:** ✅
 - **Kontekst:** Potrzebna gotowa podstawa pod generowanie map do testów i scenariuszy.
 - **Opis:** Podstawowe narzędzia do budowy mapek, wspierające pracę edytora i generatora.
 - **Kryteria:** Używane przez GRA-001, GRA-006.
 
 ## GRA-005: Punkt bazowy — stan po ostatnim commicie
-- **Status:** ✅
 - **Kontekst:** Ustalony punkt odniesienia dla dalszych prac.
 - **Opis:** Stan repozytorium po ostatnim commicie jako punkt bazowy.
 - **Kryteria:** Repo w stabilnym stanie, testy klienta przechodzą.
 
 ## GRA-006: Rozbudowa generatora map
-- **Status:** ✅
 - **Kontekst:** Potrzebne procedury generowania map na potrzeby testowania i scenariuszy.
 - **Opis:** Rozszerzony generator map wspierający edytor i nowe funkcje.
 - **Kryteria:** Generator używany w GRA-017, wspiera seedowane mapy.
 
 ## GRA-007: Moduł mapy i algorytm układu heks
-- **Status:** ✅
 - **Kontekst:** Matematika heksagonalnej siatki musi być w jednym miejscu zgodnym z ADR-001.
 - **Opis:** Moduł `core/map/` z układem heks, konwersjami, sąsiedztwem. Offset w modelu, podwójna kolumna w HUD zgodnie z ADR-004.
 - **Kryteria:** Wspólny moduł używany przez edytor i scenę gry.
 
 ## GRA-008: Narzędzia deweloperskie i dev bar mapy
-- **Status:** ✅
 - **Kontekst:** Potrzebny podgląd wydajności i stanu mapy podczas rozwoju.
 - **Opis:** Dev bar, narzędzia diagnostyczne; tymczasowo zawsze widoczne (GRA-018).
 - **Kryteria:** Dev bar pokazuje FPS, czas, liczbę kafli, CPU, rozmiar modelu.
 
 ## GRA-009: Menu bez pola bitwy, z wyjściem z gry
-- **Status:** ✅
 - **Kontekst:** Wejście do gry musi prowadzić przez menu, bez zastępczej sceny pola bitwy.
 - **Opis:** Menu główne z opcjami „Scenariusze”, „Edytor map”, „Wyjście”. Usunięta scena zastępcza.
 - **Kryteria:** Zgodne z INTERF-001.
 
 ## GRA-010: Strona gry bez paska przewijania
-- **Status:** ✅
 - **Kontekst:** Gra ma wypełniać ekran bez pasków przeglądarki.
 - **Opis:** Konfiguracja CSS/scale uniemożliwiająca pojawienie się paska przewijania.
 - **Kryteria:** Brak paska przewijania na stronie gry.
 
 ## GRA-011: Podwojone kolumny w odczycie edytora
-- **Status:** ✅
 - **Kontekst:** Współrzędne dla gracza mają być czytelne.
 - **Opis:** Wyświetlanie współrzędnych heksu jako kolumna podwojona zgodnie z ADR-004.
 - **Kryteria:** HUD pokazuje `kolumna, wiersz` w podwójnych kolumnach.
 
 ## GRA-012: Jednostki w edytorze map
-- **Status:** ✅
 - **Kontekst:** Edytor musi umożliwiać rozstawianie jednostek.
 - **Opis:** Tryb jednostek, wybór rodzaju i strony, stawianie/usuwanie.
 - **Kryteria:** Zgodne z INTERF-003.
 
 ## GRA-013: Testy klienta w lustrzanym drzewie
-- **Status:** ✅
 - **Kontekst:** Testy mają odzwierciedlać strukturę `src/`.
 - **Opis:** Testy w `client/tests/` lustrzanie do `client/src/`, bez `*.test.ts` w `src/` (ADR-008).
 - **Kryteria:** `npm test` przechodzi, struktura zgodna.
 
 ## GRA-014: CI typów TypeScript
-- **Status:** ✅
 - **Kontekst:** Chcemy wczesnego łapania błędów typów.
 - **Opis:** GitHub Actions sprawdza `tsc --noEmit` w `client/` (ADR-009).
 - **Kryteria:** Pipeline działa przy push/PR na `master`.
 
 ## GRA-015: Rzeczownikowy opis commitów
-- **Status:** ✅
 - **Kontekst:** Spójny styl historii.
 - **Opis:** Commity po polsku, styl conventional, opis rzeczownikowo (ADR-010).
 - **Kryteria:** Zasady w `AGENTS.md`.
 
 ## GRA-016: Menu wyboru terenu i jednostek
-- **Status:** ✅
 - **Kontekst:** Szybszy wybór narzędzi w edytorze.
 - **Opis:** Panel budowy w edytorze z kafelkami terenu i jednostek.
 - **Kryteria:** Zgodne z INTERF-003.
 
 ## GRA-017: Wybór mapy przy wejściu do edytora
-- **Status:** ✅
 - **Kontekst:** Użytkownik musi móc wybrać istniejącą mapę do edycji.
 - **Opis:** Menu map jako wejście do edytora, opcja „Nowa mapa”.
 - **Kryteria:** Zgodne z INTERF-004.
 
 ## GRA-018: Tymczasowo zawsze widoczny pasek dev
-- **Status:** ✅
 - **Kontekst:** Ułatwienie diagnostyki podczas prac.
 - **Opis:** Dev bar zawsze widoczny (ADR-014).
 - **Kryteria:** Widoczny w edytorze.
 
 ## GRA-019: Pełny ekran 16:9
-- **Status:** ✅
 - **Kontekst:** Gra ma zajmować cały ekran w proporcjach 16:9.
 - **Opis:** Układ 16:9 skalowany przez `Scale.FIT`.
 - **Kryteria:** Zgodne z INTERF-003.
 
 ## GRA-020: Menu scenariuszy i duża mapa testowa
-- **Status:** ✅
 - **Kontekst:** Potrzebne wejście do rozgrywki.
 - **Opis:** Menu scenariuszy, duży scenariusz testowy.
 - **Kryteria:** Zgodne z INTERF-005.
 
 ## GRA-021: Zapis map w wewnętrznym SQLite
-- **Status:** ✅
 - **Kontekst:** Trwały zapis map bez backendu.
 - **Opis:** SQLite w WebAssembly (`sql.js`), baza w `localStorage`, tabela `maps` (ADR-017).
 - **Kryteria:** Zapis/odczyt działa, seed map startowych.
 
 ## GRA-022: Wspólny moduł widoku mapy
-- **Status:** ✅
 - **Kontekst:** Unikanie duplikacji między edytorem a sceną gry.
 - **Opis:** Wspólne moduły `view/mapViewport.ts`, `view/scrollList.ts`, `view/mapCard.ts` (ADR-018).
 - **Kryteria:** Edytor i scena korzystają ze wspólnego widoku.
 
 ## GRA-023: Przewijane listy map i scenariuszy
-- **Status:** ✅
 - **Kontekst:** Długie listy nie mieszczą się na ekranie.
 - **Opis:** Przewijanie kółkiem, pasek pozycji (ADR-018).
 - **Kryteria:** Zgodne z INTERF-004, INTERF-005.
 
 ## GRA-024: Przewijanie kamery krawędzią ekranu
-- **Status:** ✅
 - **Kontekst:** Ułatwienie nawigacji po dużej mapie.
 - **Opis:** Automatyczne przewijanie przy zbliżeniu kursora do krawędzi.
 - **Kryteria:** Działa w edytorze i scenariuszu.
 
 ## GRA-025: Zapisana wersja mapy wbudowanej w menu map
-- **Status:** ✅
 - **Kontekst:** Mapy wbudowane muszą być dostępne jako wpisy w SQLite.
 - **Opis:** Seed map wbudowanych do bazy.
 - **Kryteria:** Widoczne w menu map i edytorze.
 
 ## GRA-026: Wersjonowane migracje SQLite
-- **Status:** ⬜
 - **Kontekst:** Schemat bazy będzie ewoluował.
 - **Opis:** System migracji wersjonowanych dla SQLite.
 - **Kryteria:** Migracje działają, testy pokrywają przypadki.
 
 ## GRA-027: Grywalny scenariusz — tury, armie, ruch i stały interfejs
-- **Status:** ✅
 - **Kontekst:** Pierwsza grywalna wersja scenariusza.
 - **Opis:** Naprzemienne tury (ADR-020), uzupełnianie armii (ADR-021), ruch jednostek, stały interfejs z dwiema kamerami (ADR-023, ADR-024).
 - **Kryteria:** Hot-seat, przycisk końca tury, pasek dowodzenia, logika w `core/`.
 
 ## GRA-028: Nazwa mapy w edytorze
-- **Status:** ✅
 - **Kontekst:** Użytkownik chce nadawać nazwy mapom w edytorze.
 - **Opis:** Edycja nazwy w kanwie (ADR-025).
 - **Kryteria:** Nazwa zapisywana w SQLite, widoczna w menu.
 
 ## GRA-029: Menu scenariuszy z podglądem i edycją mapy
-- **Status:** ✅
 - **Kontekst:** Scenariusz = mapa z SQLite.
 - **Opis:** Każda mapa potencjalnym scenariuszem, edycja mapy z menu scenariuszy (ADR-026).
 - **Kryteria:** Zgodne z INTERF-005.
 
 ## GRA-030: Pełny ruch jednostek z trasą i animacją
-- **Status:** ✅
 - **Kontekst:** Ruch o jedno pole (GRA-027, ADR-022) nie wykorzystywał `moveRange` ani kosztu terenu, a gracz nie widział trasy przed wykonaniem ruchu. Potrzebny był ruch po ścieżce z podglądem kosztu i potwierdzeniem.
 - **Opis:** Pathfinding po heksach z kosztem terenu (`getMovePath()`), pierwszy klik rysuje najtańszą trasę w budżecie `movesLeft`, drugi klik na jej końcu potwierdza ruch (ADR-027). Jednostka zużywa punkty ruchu za całą trasę, a `hasActed` dostaje dopiero przy zerowym ruchu. Token animuje się po kolejnych polach trasy, a dolny pasek pokazuje aktualne `movesLeft/moveRange` i koszt ruchu terenu pod kursorem.
 - **Kryteria:**

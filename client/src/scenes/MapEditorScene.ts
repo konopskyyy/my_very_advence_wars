@@ -3,68 +3,46 @@ import {
   clearMap,
   extendMap,
   generateMap,
-  mapDoubledBounds,
   mapMemoryUsage,
-  mapTileCount,
   measureMapOperation,
-  normalizeMapName,
   removeTerrain,
   setTerrain,
   terrainAt,
-  toDoubled,
-  MAP_NAME_MAX_LENGTH,
   type HexCoord,
   type MapDefinition,
   type MapEdge,
 } from '../core/map';
 import {
   createInitialState,
-  findUnitAt,
   placeUnit,
   removeUnitAt,
   type GameState,
 } from '../core/state';
-import { TERRAIN_DEFS, TERRAIN_IDS, type TerrainId } from '../core/terrain';
-import { FACTION_DEFS, UNIT_DEFS, UNIT_KINDS, type FactionId, type UnitKind } from '../core/units';
+import type { TerrainId } from '../core/terrain';
+import type { FactionId, UnitKind } from '../core/units';
 import { devToolsEnabled } from '../devTools';
 import { createSavedMapId, saveMap } from '../storage/maps';
 import { DevBar } from '../view/devBar';
-import { createHexSprite, HexMapView, outlineHex } from '../view/hexGrid';
-import { MapViewport } from '../view/mapViewport';
+import { buildEditorHud } from '../view/editorHud';
 import {
-  createUnitToken,
-  UnitLayer,
-  unitTexture,
-  unitTextureKey,
-} from '../view/unitLayer';
+  EDITOR_FACTION_BUTTON_HEIGHT,
+  EDITOR_FACTION_TOP,
+  EDITOR_HUD_Y,
+  EDITOR_PANEL_WIDTH,
+  EDITOR_PANEL_X,
+  EDITOR_PANEL_Y,
+  EDITOR_TERRAIN_LABEL_Y,
+  EDITOR_UNIT_LABEL_Y,
+  EditorMenu,
+  type EditorMenuState,
+  type EditorTool,
+} from '../view/editorMenu';
+import { HexMapView, outlineHex } from '../view/hexGrid';
+import { MapNameField } from '../view/mapNameField';
+import { MapViewport } from '../view/mapViewport';
+import { UnitLayer } from '../view/unitLayer';
 
-const SWATCH_RADIUS = 9;
-const PANEL_X = 0;
-const PANEL_Y = 8;
-const PANEL_WIDTH = 250;
-const TILE_WIDTH = 56;
-const TILE_HEIGHT = 46;
-const TILE_GAP = 2;
-const TILE_COLUMNS = 4;
-const MENU_PADDING = 8;
-const TITLE_Y = PANEL_Y + 10;
-const NAME_LABEL_Y = PANEL_Y + 36;
-const NAME_FIELD_X = PANEL_X + 12;
-const NAME_FIELD_Y = PANEL_Y + 50;
-const NAME_FIELD_WIDTH = PANEL_WIDTH - 24;
-const NAME_FIELD_HEIGHT = 20;
-const TERRAIN_LABEL_Y = PANEL_Y + 80;
-const TERRAIN_TOP = PANEL_Y + 94;
-const TERRAIN_ROWS = Math.ceil(TERRAIN_IDS.length / TILE_COLUMNS);
-const UNIT_LABEL_Y = TERRAIN_TOP + TERRAIN_ROWS * TILE_HEIGHT + 8;
-const UNIT_TOP = UNIT_LABEL_Y + 14;
-const UNIT_BOTTOM = UNIT_TOP + TILE_HEIGHT;
-const FACTION_TOP = UNIT_BOTTOM + 8;
-const FACTION_BUTTON_WIDTH = 80;
-const FACTION_BUTTON_HEIGHT = 22;
-const FACTION_BUTTON_GAP = 4;
-const FACTION_BUTTONS_X = PANEL_X + 56;
-const HUD_Y = FACTION_TOP + 30;
+const TITLE_Y = EDITOR_PANEL_Y + 10;
 const BUTTONS_Y = 26;
 const EDGE_GROWTH_INTERVAL = 120;
 
@@ -79,8 +57,6 @@ const EDGE_BY_KEY: Record<string, MapEdge> = {
   arrowright: 'right',
 };
 
-type EditorTool = 'terrain' | 'unit';
-
 type EditorTarget = 'menu' | 'map-menu' | 'scenario-menu';
 
 interface EditorData {
@@ -89,33 +65,11 @@ interface EditorData {
   readonly returnTo?: EditorTarget;
 }
 
-interface TerrainTile {
-  readonly terrain: TerrainId;
-  readonly background: Phaser.GameObjects.Rectangle;
-  readonly swatch: Phaser.GameObjects.Image;
-  readonly label: Phaser.GameObjects.Text;
-}
-
-interface UnitTile {
-  readonly kind: UnitKind;
-  readonly background: Phaser.GameObjects.Rectangle;
-  readonly token: Phaser.GameObjects.Image;
-  readonly label: Phaser.GameObjects.Text;
-}
-
-interface FactionButton {
-  readonly faction: FactionId;
-  readonly background: Phaser.GameObjects.Rectangle;
-  readonly label: Phaser.GameObjects.Text;
-}
-
 export class MapEditorScene extends Phaser.Scene {
   private state: GameState = createInitialState(generateMap());
   private mapId: string | null = null;
   private mapName = 'nowa';
   private returnTo: EditorTarget = 'map-menu';
-  private editingName = false;
-  private nameDraft = '';
   private readonly keys = new Map<string, Phaser.Input.Keyboard.Key>();
   private readonly devTools = devToolsEnabled();
 
@@ -137,17 +91,14 @@ export class MapEditorScene extends Phaser.Scene {
   private mapView!: HexMapView;
   private unitView!: UnitLayer;
   private hud!: Phaser.GameObjects.Text;
-  private nameField!: Phaser.GameObjects.Rectangle;
-  private nameText!: Phaser.GameObjects.Text;
+  private nameField!: MapNameField;
+  private menu!: EditorMenu;
   private devBar?: DevBar;
   private panel!: Phaser.GameObjects.Rectangle;
   private cursor!: Phaser.GameObjects.Graphics;
   private saveButton!: Phaser.GameObjects.Text;
   private mapButton!: Phaser.GameObjects.Text;
   private menuButton!: Phaser.GameObjects.Text;
-  private terrainTiles: TerrainTile[] = [];
-  private unitTiles: UnitTile[] = [];
-  private factionButtons: FactionButton[] = [];
   private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
 
   constructor() {
@@ -181,14 +132,21 @@ export class MapEditorScene extends Phaser.Scene {
     this.cursor = this.add.graphics();
     this.cursor.setDepth(5);
 
-    this.panel = this.add.rectangle(PANEL_X, PANEL_Y, PANEL_WIDTH, 160, 0x0b0f14, 0.85);
+    this.panel = this.add.rectangle(
+      EDITOR_PANEL_X,
+      EDITOR_PANEL_Y,
+      EDITOR_PANEL_WIDTH,
+      160,
+      0x0b0f14,
+      0.85,
+    );
     this.panel.setOrigin(0, 0);
     this.panel.setStrokeStyle(1, 0x3d6b4f, 1);
     this.panel.setScrollFactor(0);
     this.panel.setDepth(10);
 
     this.add
-      .text(PANEL_X + 12, TITLE_Y, 'EDYTOR MAP', {
+      .text(EDITOR_PANEL_X + 12, TITLE_Y, 'EDYTOR MAP', {
         fontFamily: 'monospace',
         fontSize: '12px',
         color: '#d8e2dc',
@@ -196,8 +154,17 @@ export class MapEditorScene extends Phaser.Scene {
       .setScrollFactor(0)
       .setDepth(11);
 
+    this.nameField = new MapNameField(
+      this,
+      this.mapName,
+      (name) => {
+        this.mapName = name;
+      },
+      () => this.startNameEdit(),
+    );
+
     this.add
-      .text(NAME_FIELD_X, NAME_LABEL_Y, 'NAZWA', {
+      .text(EDITOR_PANEL_X + 12, EDITOR_TERRAIN_LABEL_Y, 'TEREN', {
         fontFamily: 'monospace',
         fontSize: '10px',
         color: '#9fb0a5',
@@ -205,85 +172,48 @@ export class MapEditorScene extends Phaser.Scene {
       .setScrollFactor(0)
       .setDepth(11);
 
-    this.nameField = this.add.rectangle(
-      NAME_FIELD_X,
-      NAME_FIELD_Y,
-      NAME_FIELD_WIDTH,
-      NAME_FIELD_HEIGHT,
-      0x142018,
-      0.9,
-    );
-    this.nameField.setOrigin(0, 0);
-    this.nameField.setStrokeStyle(1, 0x2a3f33, 1);
-    this.nameField.setScrollFactor(0);
-    this.nameField.setDepth(10.5);
-    this.nameField.setInteractive({ useHandCursor: true });
-    this.nameField.on('pointerover', () => {
-      if (!this.editingName) {
-        this.nameField.setStrokeStyle(1, 0x6fbf8f, 1);
-      }
-    });
-    this.nameField.on('pointerout', () => {
-      if (!this.editingName) {
-        this.nameField.setStrokeStyle(1, 0x2a3f33, 1);
-      }
-    });
-    this.nameField.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-      if (pointer.button === 0) {
-        this.startNameEdit();
-      }
+    this.menu = new EditorMenu(this, this.menuState(), {
+      onTerrain: (terrain) => {
+        this.tool = 'terrain';
+        this.brush = terrain;
+        this.refreshHud();
+      },
+      onUnit: (kind) => {
+        this.tool = 'unit';
+        this.unitKind = kind;
+        this.refreshHud();
+      },
+      onFaction: (faction) => {
+        this.faction = faction;
+        this.refreshHud();
+      },
     });
 
-    this.nameText = this.add
-      .text(NAME_FIELD_X + 6, NAME_FIELD_Y + NAME_FIELD_HEIGHT / 2, '', {
+    this.add
+      .text(EDITOR_PANEL_X + 12, EDITOR_UNIT_LABEL_Y, 'JEDNOSTKI', {
         fontFamily: 'monospace',
         fontSize: '10px',
-        color: '#f2f5f7',
+        color: '#9fb0a5',
       })
+      .setScrollFactor(0)
+      .setDepth(11);
+
+    this.add
+      .text(
+        EDITOR_PANEL_X + 12,
+        EDITOR_FACTION_TOP + EDITOR_FACTION_BUTTON_HEIGHT / 2,
+        'STRONA',
+        {
+          fontFamily: 'monospace',
+          fontSize: '10px',
+          color: '#9fb0a5',
+        },
+      )
       .setOrigin(0, 0.5)
       .setScrollFactor(0)
       .setDepth(11);
 
-    this.add
-      .text(PANEL_X + 12, TERRAIN_LABEL_Y, 'TEREN', {
-        fontFamily: 'monospace',
-        fontSize: '10px',
-        color: '#9fb0a5',
-      })
-      .setScrollFactor(0)
-      .setDepth(11);
-
-    this.terrainTiles = TERRAIN_IDS.map((terrain, index) =>
-      this.createTerrainTile(terrain, index),
-    );
-
-    this.add
-      .text(PANEL_X + 12, UNIT_LABEL_Y, 'JEDNOSTKI', {
-        fontFamily: 'monospace',
-        fontSize: '10px',
-        color: '#9fb0a5',
-      })
-      .setScrollFactor(0)
-      .setDepth(11);
-
-    this.unitTiles = UNIT_KINDS.map((kind, index) => this.createUnitTile(kind, index));
-
-    this.add
-      .text(PANEL_X + 12, FACTION_TOP + FACTION_BUTTON_HEIGHT / 2, 'STRONA', {
-        fontFamily: 'monospace',
-        fontSize: '10px',
-        color: '#9fb0a5',
-      })
-      .setOrigin(0, 0.5)
-      .setScrollFactor(0)
-      .setDepth(11);
-
-    const factions: FactionId[] = ['blue', 'red'];
-    this.factionButtons = factions.map((faction, index) =>
-      this.createFactionButton(faction, index),
-    );
-
-    this.hud = this.add.text(PANEL_X + 12, HUD_Y, '', {
+    this.hud = this.add.text(EDITOR_PANEL_X + 12, EDITOR_HUD_Y, '', {
       fontFamily: 'monospace',
       fontSize: '11px',
       color: '#d8e2dc',
@@ -292,11 +222,11 @@ export class MapEditorScene extends Phaser.Scene {
     this.hud.setDepth(11);
 
     if (this.devTools) {
-      this.devBar = new DevBar(this, PANEL_X + 12, HUD_Y, 'left');
+      this.devBar = new DevBar(this, EDITOR_PANEL_X + 12, EDITOR_HUD_Y, 'left');
     }
 
     this.mapButton = this.add
-      .text(PANEL_X + 90, HUD_Y, 'MENU MAP', {
+      .text(EDITOR_PANEL_X + 90, EDITOR_HUD_Y, 'MENU MAP', {
         fontFamily: 'monospace',
         fontSize: '11px',
         color: '#ffffff',
@@ -310,7 +240,7 @@ export class MapEditorScene extends Phaser.Scene {
     this.mapButton.on('pointerdown', () => this.leaveTo('map-menu'));
 
     this.menuButton = this.add
-      .text(PANEL_X + 160, HUD_Y, 'MENU GŁÓWNE', {
+      .text(EDITOR_PANEL_X + 160, EDITOR_HUD_Y, 'MENU GŁÓWNE', {
         fontFamily: 'monospace',
         fontSize: '11px',
         color: '#ffffff',
@@ -324,7 +254,7 @@ export class MapEditorScene extends Phaser.Scene {
     this.menuButton.on('pointerdown', () => this.leaveTo('menu'));
 
     this.add
-      .text(PANEL_X + 12, HUD_Y + 16, 'UTWÓRZ SCENARIUSZ', {
+      .text(EDITOR_PANEL_X + 12, EDITOR_HUD_Y + 16, 'UTWÓRZ SCENARIUSZ', {
         fontFamily: 'monospace',
         fontSize: '10px',
         color: '#9fb0a5',
@@ -337,7 +267,7 @@ export class MapEditorScene extends Phaser.Scene {
       .on('pointerdown', () => this.createScenarioFromEditor());
 
     this.saveButton = this.add
-      .text(PANEL_X + 12, HUD_Y, 'ZAPISZ', {
+      .text(EDITOR_PANEL_X + 12, EDITOR_HUD_Y, 'ZAPISZ', {
         fontFamily: 'monospace',
         fontSize: '11px',
         color: '#a6f4c5',
@@ -370,169 +300,29 @@ export class MapEditorScene extends Phaser.Scene {
     this.refreshHud();
   }
 
-  private createTerrainTile(terrain: TerrainId, index: number): TerrainTile {
-    const column = index % TILE_COLUMNS;
-    const row = Math.floor(index / TILE_COLUMNS);
-    const centerX = this.tileX(column);
-    const centerY = this.tileY(TERRAIN_TOP, row);
-    const top = centerY - TILE_HEIGHT / 2;
-    const background = this.createTileBackground(centerX, centerY);
-
-    background.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-      if (pointer.button !== 0) {
-        return;
-      }
-
-      this.tool = 'terrain';
-      this.brush = terrain;
-      this.refreshHud();
-    });
-
-    const swatch = createHexSprite(this, terrain, SWATCH_RADIUS);
-    swatch.setPosition(centerX, top + 15);
-    swatch.setScrollFactor(0);
-    swatch.setDepth(11);
-
-    const label = this.add
-      .text(centerX, top + 36, TERRAIN_DEFS[terrain].label, {
-        fontFamily: 'monospace',
-        fontSize: '9px',
-        color: '#d8e2dc',
-      })
-      .setOrigin(0.5, 0.5)
-      .setScrollFactor(0)
-      .setDepth(11);
-
-    return { terrain, background, swatch, label };
+  private menuState(): EditorMenuState {
+    return {
+      tool: this.tool,
+      brush: this.brush,
+      unitKind: this.unitKind,
+      faction: this.faction,
+    };
   }
 
-  private createUnitTile(kind: UnitKind, index: number): UnitTile {
-    const column = index % TILE_COLUMNS;
-    const row = Math.floor(index / TILE_COLUMNS);
-    const centerX = this.tileX(column);
-    const centerY = this.tileY(UNIT_TOP, row);
-    const top = centerY - TILE_HEIGHT / 2;
-    const background = this.createTileBackground(centerX, centerY);
-
-    background.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-      if (pointer.button !== 0) {
-        return;
-      }
-
-      this.tool = 'unit';
-      this.unitKind = kind;
-      this.refreshHud();
-    });
-
-    const token = createUnitToken(this, kind, this.faction);
-    token.setPosition(centerX, top + 15);
-    token.setScrollFactor(0);
-    token.setDepth(11);
-
-    const label = this.add
-      .text(centerX, top + 36, UNIT_DEFS[kind].label, {
-        fontFamily: 'monospace',
-        fontSize: '9px',
-        color: '#d8e2dc',
-      })
-      .setOrigin(0.5, 0.5)
-      .setScrollFactor(0)
-      .setDepth(11);
-
-    return { kind, background, token, label };
-  }
-
-  private createFactionButton(faction: FactionId, index: number): FactionButton {
-    const centerX =
-      FACTION_BUTTONS_X +
-      FACTION_BUTTON_WIDTH / 2 +
-      index * (FACTION_BUTTON_WIDTH + FACTION_BUTTON_GAP);
-    const centerY = FACTION_TOP + FACTION_BUTTON_HEIGHT / 2;
-    const background = this.add.rectangle(
-      centerX,
-      centerY,
-      FACTION_BUTTON_WIDTH,
-      FACTION_BUTTON_HEIGHT,
-      0x142018,
-      0.9,
-    );
-
-    background.setStrokeStyle(1, 0x2a3f33, 1);
-    background.setScrollFactor(0);
-    background.setDepth(10.5);
-    background.setInteractive({ useHandCursor: true });
-    background.on('pointerover', () => this.highlightTile(background));
-    background.on('pointerout', () => this.refreshMenu());
-    background.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-      if (pointer.button !== 0) {
-        return;
-      }
-
-      this.faction = faction;
-      this.refreshHud();
-    });
-
-    const label = this.add
-      .text(centerX, centerY, FACTION_DEFS[faction].label, {
-        fontFamily: 'monospace',
-        fontSize: '9px',
-        color: '#d8e2dc',
-      })
-      .setOrigin(0.5, 0.5)
-      .setScrollFactor(0)
-      .setDepth(11);
-
-    return { faction, background, label };
-  }
-
-  private createTileBackground(
-    centerX: number,
-    centerY: number,
-  ): Phaser.GameObjects.Rectangle {
-    const background = this.add.rectangle(
-      centerX,
-      centerY,
-      TILE_WIDTH,
-      TILE_HEIGHT,
-      0x142018,
-      0.9,
-    );
-
-    background.setStrokeStyle(1, 0x2a3f33, 1);
-    background.setScrollFactor(0);
-    background.setDepth(10.5);
-    background.setInteractive({ useHandCursor: true });
-    background.on('pointerover', () => this.highlightTile(background));
-    background.on('pointerout', () => this.refreshMenu());
-
-    return background;
-  }
-
-  private tileX(column: number): number {
-    return (
-      PANEL_X + MENU_PADDING + column * (TILE_WIDTH + TILE_GAP) + TILE_WIDTH / 2
-    );
-  }
-
-  private tileY(top: number, row: number): number {
-    return top + row * TILE_HEIGHT + TILE_HEIGHT / 2;
-  }
-
-  private highlightTile(background: Phaser.GameObjects.Rectangle): void {
-    if (background.getData('selected') === true) {
+  private startNameEdit(): void {
+    if (this.nameField.isEditing) {
       return;
     }
 
-    background.setFillStyle(0x1d2f24, 1);
-    background.setStrokeStyle(1, 0x6fbf8f, 1);
+    this.shiftDown = false;
+    this.keys.forEach((key) => key.reset());
+    this.nameField.start();
   }
 
   private resetEditor(): void {
     this.state = createInitialState(generateMap());
     this.mapId = null;
     this.mapName = 'nowa';
-    this.editingName = false;
-    this.nameDraft = '';
     this.tool = 'terrain';
     this.brush = 'plain';
     this.unitKind = 'infantry';
@@ -550,7 +340,7 @@ export class MapEditorScene extends Phaser.Scene {
   update(_time: number, delta: number): void {
     this.refreshDevBar(delta);
 
-    if (this.editingName) {
+    if (this.nameField?.isEditing) {
       return;
     }
 
@@ -607,8 +397,8 @@ export class MapEditorScene extends Phaser.Scene {
       return;
     }
 
-    if (this.editingName) {
-      this.commitName();
+    if (this.nameField.isEditing) {
+      this.nameField.commit();
     }
 
     if (pointer.button !== 0 && pointer.button !== 2) {
@@ -675,8 +465,8 @@ export class MapEditorScene extends Phaser.Scene {
   }
 
   private onKeyDown(event: KeyboardEvent): void {
-    if (this.editingName) {
-      this.handleNameKey(event);
+    if (this.nameField.isEditing) {
+      this.nameField.handleKey(event);
       return;
     }
 
@@ -713,89 +503,6 @@ export class MapEditorScene extends Phaser.Scene {
     }
   }
 
-  private handleNameKey(event: KeyboardEvent): void {
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      this.commitName();
-      return;
-    }
-
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      this.cancelNameEdit();
-      return;
-    }
-
-    if (event.key === 'Backspace') {
-      event.preventDefault();
-      this.nameDraft = this.nameDraft.slice(0, -1);
-      this.refreshName();
-      return;
-    }
-
-    if (event.key === 'Delete') {
-      event.preventDefault();
-      this.nameDraft = '';
-      this.refreshName();
-      return;
-    }
-
-    if (event.ctrlKey || event.metaKey || event.altKey) {
-      return;
-    }
-
-    if (event.key.length !== 1) {
-      return;
-    }
-
-    event.preventDefault();
-
-    if (this.nameDraft.length >= MAP_NAME_MAX_LENGTH) {
-      return;
-    }
-
-    this.nameDraft += event.key;
-    this.refreshName();
-  }
-
-  private startNameEdit(): void {
-    if (this.editingName) {
-      return;
-    }
-
-    this.editingName = true;
-    this.nameDraft = this.mapName;
-    this.shiftDown = false;
-    this.keys.forEach((key) => key.reset());
-    this.nameField.setStrokeStyle(2, 0xa6f4c5, 1);
-    this.refreshName();
-  }
-
-  private commitName(): string {
-    const name = normalizeMapName(this.nameDraft) || 'nowa';
-
-    this.mapName = name;
-    this.editingName = false;
-    this.nameDraft = '';
-    this.nameField.setStrokeStyle(1, 0x2a3f33, 1);
-    this.refreshName();
-
-    return name;
-  }
-
-  private cancelNameEdit(): void {
-    this.editingName = false;
-    this.nameDraft = '';
-    this.nameField.setStrokeStyle(1, 0x2a3f33, 1);
-    this.refreshName();
-  }
-
-  private refreshName(): void {
-    const value = this.editingName ? this.nameDraft : this.mapName;
-
-    this.nameText.setText(this.editingName ? `${value}▌` : value);
-  }
-
   private extendEdge(edge: MapEdge): void {
     this.state = this.measure(() => ({
       ...this.state,
@@ -814,8 +521,8 @@ export class MapEditorScene extends Phaser.Scene {
   }
 
   private leaveTo(target: EditorTarget): void {
-    if (this.editingName) {
-      this.commitName();
+    if (this.nameField.isEditing) {
+      this.nameField.commit();
     }
 
     if (this.mapId) {
@@ -830,8 +537,8 @@ export class MapEditorScene extends Phaser.Scene {
       return;
     }
 
-    if (this.editingName) {
-      this.commitName();
+    if (this.nameField.isEditing) {
+      this.nameField.commit();
     }
 
     this.saving = true;
@@ -849,6 +556,7 @@ export class MapEditorScene extends Phaser.Scene {
 
       this.mapId = id;
       this.mapName = name;
+      this.nameField.setValue(name);
       this.saveButton.setText('ZAPISANO');
       this.refreshHud();
 
@@ -869,10 +577,10 @@ export class MapEditorScene extends Phaser.Scene {
     }
 
     return (
-      pointer.x >= PANEL_X &&
-      pointer.x <= PANEL_X + this.panel.width &&
-      pointer.y >= PANEL_Y &&
-      pointer.y <= PANEL_Y + this.panel.height
+      pointer.x >= EDITOR_PANEL_X &&
+      pointer.x <= EDITOR_PANEL_X + this.panel.width &&
+      pointer.y >= EDITOR_PANEL_Y &&
+      pointer.y <= EDITOR_PANEL_Y + this.panel.height
     );
   }
 
@@ -931,78 +639,39 @@ export class MapEditorScene extends Phaser.Scene {
   }
 
   private refreshHud(): void {
-    const lines: string[] = [];
-
-    lines.push(`Mapa: ${this.mapName}`);
-    lines.push(`Tryb: ${this.tool === 'unit' ? 'jednostki' : 'teren'}`);
-
-    if (this.tool === 'unit') {
-      lines.push(`Jednostka: ${UNIT_DEFS[this.unitKind].label}`);
-    } else {
-      lines.push(`Pędzel: ${TERRAIN_DEFS[this.brush].label}`);
-    }
-
-    if (this.hover) {
-      const terrain = terrainAt(this.state.map, this.hover);
-      const unit = findUnitAt(this.state, this.hover);
-      const hex = toDoubled(this.hover);
-
-      let label = terrain ? ` — ${TERRAIN_DEFS[terrain].label}` : ' — pusto';
-
-      if (unit) {
-        label += ` · ${UNIT_DEFS[unit.kind].label}`;
-      }
-
-      lines.push(`Heks: ${hex.col},${hex.row}${label}`);
-    } else {
-      lines.push('Heks: —');
-    }
-
-    const bounds = mapDoubledBounds(this.state.map);
-    lines.push(
-      `Kafelki: ${mapTileCount(this.state.map)} · Jedn.: ${this.state.units.length}`,
+    this.hud.setText(
+      buildEditorHud({
+        mapName: this.mapName,
+        tool: this.tool,
+        brush: this.brush,
+        unitKind: this.unitKind,
+        hover: this.hover,
+        state: this.state,
+      }),
     );
-
-    if (bounds) {
-      lines.push(`Zasięg: ${bounds.minCol}-${bounds.maxCol} × ${bounds.minRow}-${bounds.maxRow}`);
-    } else {
-      lines.push('Zasięg: —');
-    }
-
-    lines.push('');
-    lines.push('LPM — maluj · PPM — usuń');
-    lines.push('Klik — wybór w menu po lewej');
-    lines.push('X — czyść mapę');
-    lines.push('Shift+strzałki — wzrost mapy');
-    lines.push('Kamera: strzałki/WASD lub krawędź');
-    lines.push('Kółko — zoom');
-    lines.push('ZAPISZ — mapa do SQLite');
-    lines.push('ESC — mapy · Shift+ESC — menu');
-
-    this.hud.setText(lines.join('\n'));
-    this.refreshName();
+    this.nameField.refresh();
     this.drawButtons();
     this.panel.setSize(
-      Math.max(PANEL_WIDTH, this.hud.width + 24),
-      this.panelContentBottom() - PANEL_Y,
+      Math.max(EDITOR_PANEL_WIDTH, this.hud.width + 24),
+      this.panelContentBottom() - EDITOR_PANEL_Y,
     );
-    this.refreshMenu();
+    this.menu.refresh(this.menuState());
   }
 
   private drawButtons(): void {
-    const y = HUD_Y + this.hud.height + 4;
+    const y = EDITOR_HUD_Y + this.hud.height + 4;
 
     this.saveButton.setY(y);
     this.mapButton.setY(y);
     this.menuButton.setY(y);
 
     if (this.devBar) {
-      this.devBar.setPosition(PANEL_X + 12, y + 22);
+      this.devBar.setPosition(EDITOR_PANEL_X + 12, y + 22);
     }
   }
 
   private panelContentBottom(): number {
-    const buttonsBottom = HUD_Y + this.hud.height + BUTTONS_Y;
+    const buttonsBottom = EDITOR_HUD_Y + this.hud.height + BUTTONS_Y;
 
     if (!this.devBar) {
       return buttonsBottom;
@@ -1020,48 +689,9 @@ export class MapEditorScene extends Phaser.Scene {
     });
 
     this.panel.setSize(
-      Math.max(PANEL_WIDTH, this.hud.width + 24),
-      this.panelContentBottom() - PANEL_Y,
+      Math.max(EDITOR_PANEL_WIDTH, this.hud.width + 24),
+      this.panelContentBottom() - EDITOR_PANEL_Y,
     );
-  }
-
-  private refreshMenu(): void {
-    this.terrainTiles.forEach(({ terrain, background, swatch, label }) => {
-      const selected = this.tool === 'terrain' && terrain === this.brush;
-
-      this.styleTile(background, selected);
-      swatch.setScale(selected ? 1.2 : 1);
-      label.setColor(selected ? '#a6f4c5' : '#d8e2dc');
-    });
-
-    this.unitTiles.forEach(({ kind, background, token, label }) => {
-      const selected = this.tool === 'unit' && kind === this.unitKind;
-
-      this.styleTile(background, selected);
-      unitTexture(this, kind, this.faction);
-      token.setTexture(unitTextureKey(kind, this.faction));
-      token.setScale(selected ? 1.1 : 1);
-      label.setColor(selected ? '#a6f4c5' : '#d8e2dc');
-    });
-
-    this.factionButtons.forEach(({ faction, background, label }) => {
-      const selected = this.faction === faction;
-
-      background.setFillStyle(selected ? 0x1f3a2a : 0x142018, selected ? 1 : 0.9);
-      background.setStrokeStyle(
-        selected ? 2 : 1,
-        selected ? FACTION_DEFS[faction].color : 0x2a3f33,
-        1,
-      );
-      background.setData('selected', selected);
-      label.setColor(selected ? '#ffffff' : '#9fb0a5');
-    });
-  }
-
-  private styleTile(background: Phaser.GameObjects.Rectangle, selected: boolean): void {
-    background.setFillStyle(selected ? 0x1f3a2a : 0x142018, selected ? 1 : 0.9);
-    background.setStrokeStyle(selected ? 2 : 1, selected ? 0xa6f4c5 : 0x2a3f33, 1);
-    background.setData('selected', selected);
   }
 
   private async createScenarioFromEditor(): Promise<void> {

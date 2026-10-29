@@ -30,17 +30,19 @@ nieaktualnych numerów portów — czytelnik wpisze je do terminala.
 
 ## Przebudowa aplikacji po zmianach — obowiązek
 
-Po **każdej** zmianie w `client/` przebuduj aplikację, żeby użytkownik widział
-aktualny stan:
+Po zmianach w `client/` przebuduj aplikację, żeby użytkownik widział aktualny
+stan. Zmiany zbieraj w serię i przebudowuj **raz na końcu**, nie po każdym
+drobiazgu:
 
 ```bash
-cd client && npm run build      # odświeża client/dist (Electron ładuje ten katalog)
-docker compose restart client   # Vite rozwiązuje importy od nowa
+cd client && npm run build 2>&1 | tail -n 20   # odświeża client/dist (Electron ładuje ten katalog)
+docker compose restart client                  # Vite rozwiązuje importy od nowa
 ```
 
-HMR nie nadąża po zmianie struktury modułów (`core/map.ts` → `core/map/`), a
-`client/dist` bywa starszy od kodu. Bez tego przeglądarka pokazuje starą
-wersję, a diagnoza zachowania jest myląca.
+Nie wklejaj pełnego logu builda do rozmowy — wystarczy końcówka albo kod
+wyjścia. HMR nie nadąża po zmianie struktury modułów (`core/map.ts` →
+`core/map/`), a `client/dist` bywa starszy od kodu. Bez tego przeglądarka
+pokazuje starą wersję, a diagnoza zachowania jest myląca.
 
 ## Komentarze — tylko gdy wnoszą wiedzę
 
@@ -86,6 +88,31 @@ usuń komentarze, które przestały być prawdą.
   `specification/Zadania.md` (albo interfejsu, którego nie ma w
   `specification/Interfejs.md`), nie się robi. Nową pracę zaczynaj od wpisu
   w dokumentacji, a potem implementuj — inaczej kod wyprzedza specyfikację.
+  Nowe zadanie zakładasz w tabeli `Zadania.md` (ID, nazwa, status, powiązania)
+  i w `Zadania-opisy.md` (kontekst, opis, kryteria) — bez powtarzania statusu
+  w opisie.
 - Kod gry (logika `core/` bez zależności od Phasera) — patrz ADR-001 w
   `specification/ADR.md`. Nie wiąż logiki gry z silnikiem.
 - Nie commituj sekretów: `.env` i `server/.env` są w `.gitignore` i mają tam zostać.
+
+## Oszczędzanie kontekstu
+
+- **Czytaj punktowo.** Dokumenty mają ID sekcji (`ADR-022`, `GRA-030`,
+  `INTERF-005`). Najpierw `grep`, potem wycinek przez `sed -n`; nie wczytuj
+  całego `ADR.md` ani `Mapy.md`.
+- **Nie czytaj artefaktów.** Pomijaj `client/dist/`, `client/node_modules/`,
+  `server/vendor/` i `package-lock.json`; do sprawdzenia użyj `grep`.
+- **Jedno źródło opisu zadania.** Status i powiązania są w
+  `specification/Zadania.md`, pełny opis i kryteria wyłącznie w
+  `specification/Zadania-opisy.md`. Nie kopiuj treści między plikami.
+- **Edycje punktowe w dokumentacji.** Zmieniaj tylko sekcję, której dotyczy
+  praca (`edit`), nie przepisuj całego pliku. Nowe treści dopisuj na końcu.
+- **Wielkie pliki dziel.** Scena albo moduł powyżej ~500 linii utrudnia
+  czytanie i generuje duże diffy — wydzielaj HUD, panele i obsługę inputu do
+  `view/`.
+- **Odpowiedzi bez kodu.** Nie wklejaj całych plików ani diffów; podawaj
+  ścieżki, numery linii i krótki fragment tylko wtedy, gdy bez niego nie da się
+  zrozumieć decyzji. Logi builda i testów skracaj do końcówki.
+- **Narzędzia filtruj.** `git diff --stat`, `tail`, `grep` zamiast `cat`
+  i pełnych diffów. Output narzędzi trafia do kontekstu nawet wtedy, gdy
+  interfejs go zwija — ukrycie w UI samo z siebie nic nie oszczędza.

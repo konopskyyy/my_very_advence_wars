@@ -32,7 +32,7 @@
 - **Mapa to zbiór kafelków**, nie prostokąt: można malować **poza pierwotnym prostokątem** — na czarnym tle. Współrzędne heksów są absolutne, więc kafelki mogą leżeć także po osi `0` (ujemne `col`/`row`). Zasięg kamery rośnie razem z mapą.
 - **Stan edycji:** edytor przechowuje `GameState` (mapa + jednostki + licznik), a szkic w `registry` obejmuje jednostki — po powrocie z menu map wracają na swoje heksy.
 - **Odczyt współrzędnych:** HUD podaje pozycję heksa jako `kolumna, wiersz` w **kolumnach podwojonych** (ADR-004): kolumna `2q + r`, więc sąsiednie hexy w wierszu różnią się o 2, a parzystość kolumny zdradza parzystość wiersza. Ten sam zapis dotyczy zasięgu mapy.
-- **Pliki:** `client/src/scenes/MapEditorScene.ts`, `client/src/view/mapViewport.ts`, `client/src/view/hexGrid.ts`, `client/src/view/unitLayer.ts`, `client/src/view/devBar.ts`, `client/src/devTools.ts`, `client/src/core/map/layout.ts`, `client/src/core/map/model.ts`, `client/src/core/map/generator.ts`, `client/src/core/map/metrics.ts`, `client/src/core/state.ts`, `client/src/core/units.ts`, `client/src/core/terrain.ts`, `client/src/storage/database.ts`, `client/src/storage/maps.ts`
+- **Pliki:** `client/src/scenes/MapEditorScene.ts`, `client/src/view/editorMenu.ts`, `client/src/view/editorHud.ts`, `client/src/view/mapNameField.ts`, `client/src/view/mapViewport.ts`, `client/src/view/hexGrid.ts`, `client/src/view/unitLayer.ts`, `client/src/view/devBar.ts`, `client/src/devTools.ts`, `client/src/core/map/layout.ts`, `client/src/core/map/model.ts`, `client/src/core/map/generator.ts`, `client/src/core/map/metrics.ts`, `client/src/core/state.ts`, `client/src/core/units.ts`, `client/src/core/terrain.ts`, `client/src/storage/database.ts`, `client/src/storage/maps.ts`
 
 ## INTERF-004: Menu map
 - **Status:** Zaimplementowane
@@ -53,7 +53,7 @@
 - **Edycja mapy:** przycisk `EDYTUJ MAPĘ` otwiera mapę wybranego scenariusza w edytorze map; `ESC` w edytorze wraca do menu scenariuszy. Zapis aktualizuje ten sam wiersz w SQLite, więc zmiana jest od razu widoczna na liście scenariuszy.
 - **Generator/mapy:** przycisk `UTWÓRZ SCENARIUSZ` w edytorze zapisuje bieżącą mapę do SQLite i otwiera menu scenariuszy, gdzie nowa mapa jest od razu dostępna do gry.
 - **Przewijanie:** lista po lewej przewijana kółkiem myszy.
-- **Pliki:** `client/src/scenes/ScenarioMenuScene.ts`, `client/src/scenes/ScenarioScene.ts`, `client/src/view/scrollList.ts`, `client/src/view/mapViewport.ts`, `client/src/core/scenario.ts`, `client/src/core/turn.ts`, `client/src/view/unitLayer.ts`, `client/src/storage/maps.ts`
+- **Pliki:** `client/src/scenes/ScenarioMenuScene.ts`, `client/src/scenes/ScenarioScene.ts`, `client/src/view/scenarioDetailPanel.ts`, `client/src/view/scenarioCommandBar.ts`, `client/src/view/scrollList.ts`, `client/src/view/mapViewport.ts`, `client/src/core/scenario.ts`, `client/src/core/turn.ts`, `client/src/view/unitLayer.ts`, `client/src/storage/maps.ts`
 
 ## INTERF-006: Wewnętrzna baza map (SQLite)
 - **Status:** Zaimplementowane
