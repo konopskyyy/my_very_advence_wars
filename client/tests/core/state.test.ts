@@ -115,7 +115,7 @@ describe('countUnits', () => {
 });
 
 describe('ruch jednostek', () => {
-  it('przesuwa jednostkę na sąsiedni heks i kończy jej działanie', () => {
+  it('przesuwa jednostkę na sąsiedni heks z uwagą na koszt terenu', () => {
     const state = placeUnit(
       createInitialState(createMap(10, 10)),
       'infantry',
@@ -129,20 +129,38 @@ describe('ruch jednostek', () => {
     expect(findUnitAt(moved, { col: 2, row: 3 })).toBeUndefined();
     expect(findUnitAt(moved, { col: 3, row: 3 })).toMatchObject({
       id: unit.id,
+      movesLeft: 3,
+      hasActed: false,
+    });
+  });
+
+  it('kończy działanie jednostki gdy zużyje cały ruch', () => {
+    let state = placeUnit(
+      createInitialState(createMap(10, 10)),
+      'infantry',
+      { col: 2, row: 3 },
+      'blue',
+    );
+    const unit = state.units[0]!;
+    state = moveUnit(state, unit.id, { col: 3, row: 3 });
+    state = moveUnit(state, unit.id, { col: 4, row: 3 });
+    state = moveUnit(state, unit.id, { col: 5, row: 3 });
+    const moved = moveUnit(state, state.units[0]!.id, { col: 6, row: 3 });
+
+    expect(findUnitAt(moved, { col: 6, row: 3 })).toMatchObject({
       movesLeft: 0,
       hasActed: true,
     });
   });
 
-  it('nie pozwala ruszyć się dalej niż o jedno pole', () => {
+  it('nie pozwala ruszyć się poza zasięg ruchu', () => {
     const state = placeUnit(
       createInitialState(createMap(10, 10)),
       'infantry',
       { col: 2, row: 3 },
       'blue',
     );
-
-    expect(moveUnit(state, state.units[0]!.id, { col: 4, row: 3 })).toBe(state);
+    expect(moveUnit(state, state.units[0]!.id, { col: 8, row: 3 })).toBe(state);
   });
 
   it('nie pozwala wejść na zajęty heks', () => {
@@ -166,18 +184,21 @@ describe('ruch jednostek', () => {
   });
 
   it('nie rusza jednostki, która już działała w tej turze', () => {
-    const start = placeUnit(
+    let start = placeUnit(
       createInitialState(createMap(10, 10)),
       'infantry',
       { col: 2, row: 3 },
       'blue',
     );
-    const moved = moveUnit(start, start.units[0]!.id, { col: 3, row: 3 });
+    start = moveUnit(start, start.units[0]!.id, { col: 3, row: 3 });
+    start = moveUnit(start, start.units[0]!.id, { col: 4, row: 3 });
+    start = moveUnit(start, start.units[0]!.id, { col: 5, row: 3 });
+    const moved = moveUnit(start, start.units[0]!.id, { col: 6, row: 3 });
 
-    expect(moveUnit(moved, moved.units[0]!.id, { col: 4, row: 3 })).toBe(moved);
+    expect(moveUnit(moved, moved.units[0]!.id, { col: 7, row: 3 })).toBe(moved);
   });
 
-  it('zwraca tylko wolne i przechodnie heksy sąsiednie', () => {
+  it('zwraca heksy w zasięgu ruchu', () => {
     const state = placeUnit(
       createInitialState(createMap(10, 10)),
       'infantry',
@@ -191,6 +212,17 @@ describe('ruch jednostek', () => {
         { col: 0, row: 1 },
       ]),
     );
-    expect(moveTargets(state, state.units[0]!)).toHaveLength(2);
+    expect(moveTargets(state, state.units[0]!)).toHaveLength(18);
+  });
+
+  it('wybiera najtańszą trasę zamiast najkrótszej', () => {
+    const map = setTerrain(createMap(10, 10), { col: 1, row: 0 }, 'mountain');
+    const state = placeUnit(createInitialState(map), 'infantry', { col: 0, row: 0 }, 'blue');
+    const moved = moveUnit(state, state.units[0]!.id, { col: 2, row: 0 });
+
+    expect(findUnitAt(moved, { col: 2, row: 0 })).toMatchObject({
+      movesLeft: 1,
+      hasActed: false,
+    });
   });
 });

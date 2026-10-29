@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { cellKey, hexToPixel, type HexCoord } from '../core/map';
+import { hexToPixel, type HexCoord } from '../core/map';
 import {
   FACTION_DEFS,
   type FactionId,
@@ -230,6 +230,7 @@ export function createUnitToken(
 
 export class UnitLayer {
   private readonly tokens = new Map<string, Phaser.GameObjects.Image>();
+  private readonly positions = new Map<string, HexCoord>();
 
   private units: readonly Unit[];
 
@@ -246,13 +247,17 @@ export class UnitLayer {
     return this.tokens.size;
   }
 
+  getToken(unitId: string): Phaser.GameObjects.Image | undefined {
+    return this.tokens.get(unitId);
+  }
+
   objects(): Phaser.GameObjects.Image[] {
     return [...this.tokens.values()];
   }
 
-  setUnits(units: readonly Unit[]): void {
+  setUnits(units: readonly Unit[], animate = true): void {
     this.units = units;
-    this.sync();
+    this.sync(animate);
   }
 
   center(coord: HexCoord): { x: number; y: number } {
@@ -265,37 +270,63 @@ export class UnitLayer {
     }
 
     this.tokens.clear();
+    this.positions.clear();
   }
 
-  private sync(): void {
-    const unitsByCell = new Map<string, Unit>();
+  private sync(animate = true): void {
+    const unitsById = new Map<string, Unit>();
 
     for (const unit of this.units) {
-      unitsByCell.set(cellKey(unit.pos), unit);
+      unitsById.set(unit.id, unit);
     }
 
-    for (const [key, token] of this.tokens) {
-      const unit = unitsByCell.get(key);
+    for (const [id, token] of this.tokens) {
+      const unit = unitsById.get(id);
 
       if (unit && token.texture.key === unitTextureKey(unit.kind, unit.faction)) {
         continue;
       }
 
       token.destroy();
-      this.tokens.delete(key);
+      this.tokens.delete(id);
+      this.positions.delete(id);
     }
 
-    for (const [key, unit] of unitsByCell) {
-      let token = this.tokens.get(key);
+    for (const unit of this.units) {
+      let token = this.tokens.get(unit.id);
 
       if (!token) {
         token = createUnitToken(this.scene, unit.kind, unit.faction);
         token.setDepth(2);
-        this.tokens.set(key, token);
+        this.tokens.set(unit.id, token);
+        this.positions.set(unit.id, unit.pos);
+        const center = this.center(unit.pos);
+        token.setPosition(center.x, center.y);
+        continue;
       }
 
+      const prev = this.positions.get(unit.id);
       const center = this.center(unit.pos);
-      token.setPosition(center.x, center.y);
+
+      if (!prev || prev.col !== unit.pos.col || prev.row !== unit.pos.row) {
+        if (animate) {
+          this.animateMove(token, center.x, center.y);
+        }
+        this.positions.set(unit.id, unit.pos);
+      } else {
+        token.setPosition(center.x, center.y);
+      }
     }
+  }
+
+  private animateMove(token: Phaser.GameObjects.Image, x: number, y: number): void {
+    this.scene.tweens.killTweensOf(token);
+    this.scene.tweens.add({
+      targets: token,
+      x,
+      y,
+      duration: 250,
+      ease: 'Cubic.easeOut',
+    });
   }
 }
