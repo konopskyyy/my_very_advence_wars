@@ -1,8 +1,8 @@
 # Zadania
 
 Zadania spoza tej listy się nie robi — nową pracę dopisuj do tabeli poniżej
-(zasady w `AGENTS.md`). Tabela to skrót; rozszerzone opisy i kryteria są
-w [[Zadania-opisy]] — nowe zadanie zakładasz w obu miejscach.
+(zasady w `AGENTS.md`). Tabela jest **jedynym źródłem statusu i powiązań**;
+kontekst, opis i kryteria leżą wyłącznie w [[Zadania-opisy]].
 
 Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
 

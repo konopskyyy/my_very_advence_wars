@@ -38,3 +38,14 @@ Uruchamianie: `make test` (albo `cd client && npm test`); tryb watch:
 `cd client && npm run test:watch`. Vitest bierze wyłącznie `tests/**/*.test.ts`
 (`test.include` w `client/vite.config.ts`), a `tsc --noEmit` sprawdza także
 testy, bo `tests/` jest w `client/tsconfig.json`.
+
+## Dokumentacja
+
+- **Czytanie punktowe.** Najpierw `grep -n "<ID>"` w dokumencie, potem wycinek
+  przez `sed -n`. Nie wczytuj całych `ADR.md`, `Mapy.md` ani
+  `Infrastruktura.md`; kotwice sekcji są w [[Spis treści]].
+- **Edycje punktowe.** Zmieniaj tylko sekcję, której dotyczy praca. Nie
+  przepisuj całego pliku, gdy wystarczy `edit`; nowe treści dopisuj na końcu.
+- **Jedno źródło statusu.** `Zadania.md` trzyma ID, nazwę, status i powiązania.
+  `Zadania-opisy.md` trzyma wyłącznie kontekst, opis i kryteria — bez
+  powtarzania statusu.
