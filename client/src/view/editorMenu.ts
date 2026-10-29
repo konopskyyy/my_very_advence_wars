@@ -57,6 +57,8 @@ interface TerrainTile {
   readonly terrain: TerrainId;
   readonly background: Phaser.GameObjects.Rectangle;
   readonly swatch: Phaser.GameObjects.Image;
+  readonly swatchScaleX: number;
+  readonly swatchScaleY: number;
   readonly label: Phaser.GameObjects.Text;
 }
 
@@ -103,13 +105,16 @@ export class EditorMenu {
       this.state = state;
     }
 
-    this.terrainTiles.forEach(({ terrain, background, swatch, label }) => {
-      const selected = this.state.tool === 'terrain' && terrain === this.state.brush;
+    this.terrainTiles.forEach(
+      ({ terrain, background, swatch, swatchScaleX, swatchScaleY, label }) => {
+        const selected = this.state.tool === 'terrain' && terrain === this.state.brush;
+        const factor = selected ? 1.2 : 1;
 
-      this.styleTile(background, selected);
-      swatch.setScale(selected ? 1.2 : 1);
-      label.setColor(selected ? '#a6f4c5' : '#d8e2dc');
-    });
+        this.styleTile(background, selected);
+        swatch.setScale(swatchScaleX * factor, swatchScaleY * factor);
+        label.setColor(selected ? '#a6f4c5' : '#d8e2dc');
+      },
+    );
 
     this.unitTiles.forEach(({ kind, background, token, label }) => {
       const selected = this.state.tool === 'unit' && kind === this.state.unitKind;
@@ -152,6 +157,8 @@ export class EditorMenu {
     });
 
     const swatch = createHexSprite(this.scene, terrain, SWATCH_RADIUS);
+    const swatchScaleX = swatch.scaleX;
+    const swatchScaleY = swatch.scaleY;
     swatch.setPosition(centerX, top + 15);
     swatch.setScrollFactor(0);
     swatch.setDepth(11);
@@ -166,7 +173,7 @@ export class EditorMenu {
       .setScrollFactor(0)
       .setDepth(11);
 
-    return { terrain, background, swatch, label };
+    return { terrain, background, swatch, swatchScaleX, swatchScaleY, label };
   }
 
   private createUnitTile(kind: UnitKind, index: number): UnitTile {

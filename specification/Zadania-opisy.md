@@ -167,6 +167,7 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
   - **Warianty:** funkcja `pickVariantIndex(count, random)` w `core/terrain.ts` zwraca indeks z zakresu `0..count-1`, a `tests/core/terrain.test.ts` pokrywa brak wariantów i granice losowania.
   - **Widok:** łąka, woda i miasto używają SVG w edytorze, menu, podglądach i scenariuszu; las, góry, bagno i droga wyglądają jak wcześniej.
   - **Styk kafli:** rysunek wypełnia cały heks (bez ciemnego bevelu), a sprite zachodzi o 3% na sąsiadów, więc między kaflami nie prześwituje czarne tło.
+  - **Paleta edytora:** podglądy terenu zachowują rozmiar heksa (~20 px), mimo że tekstura SVG ma 256 px; wybór kafelka skaluje je względem zapisanej skali bazowej, a nie przez `setScale(1)`.
   - **Build:** `npm run build` kopiuje SVG do `client/dist/assets`, więc kafelki działają po przebudowie i w Electronie. `assetsInlineLimit: 0` w `vite.config.ts` blokuje inline'owanie małych SVG, którego Phaser nie potrafi odczytać.
 
 ## GRA-032: Pusta lista w menu map
