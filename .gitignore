@@ -8,6 +8,10 @@ dist-electron/
 release/
 *.asar
 
+# Raporty testów mutacyjnych (Stryker)
+client/reports/
+client/.stryker-tmp/
+
 # PHP / Symfony
 vendor/
 var/
