@@ -13,7 +13,7 @@
 ## INTERF-003: Edytor map
 - **Status:** Zaimplementowane
 - **Opis:** Edytor map na siatce heksagonalnej. Służy do **malowania terenu** i **rozstawiania jednostek** na kafelkach. Scena ma proporcje 16:9 (1280×720) i jest skalowana przez Phaser `Scale.FIT`, więc na monitorze 16:9 wypełnia cały ekran.
-- **Teren:** łąka, las, woda, góry, bagno, droga, miasto. Łąka, woda i miasto mają kafelki SVG z plików `<TerrainId>-<wariant>.svg`; warianty tasują się przy zmianie terenu (ADR-028), a pozostałe tereny rysuje proceduralna tekstura.
+- **Teren:** łąka, las, woda, góry, bagno, droga, miasto. Łąka, las, woda i miasto mają kafelki SVG z plików `<TerrainId>-<wariant>.svg`; warianty tasują się przy zmianie terenu (ADR-028), a góry, bagno i drogę rysuje proceduralna tekstura.
 - **Jednostki:** piechota, czołg, artyleria, zwiad; strona niebieska lub czerwona. Token jednostki to kolorowe koło strony z ikoną rodzaju (żołnierz, czołg, działo, zwiad) zamiast litery.
 - **Menu:** lewy panel dzieli się na pola „NAZWA”, „TEREN” i „JEDNOSTKI”. Jest przyklejony do lewej krawędzi ekranu, a węższe kafelki i skrócony HUD zostawiają więcej miejsca na mapę. Kliknięcie kafelka terenu wybiera pędzel i tryb terenu, kliknięcie kafelka jednostki wybiera rodzaj i tryb jednostek, a przyciski „Niebieska”/„Czerwona” wybierają stronę. Wybrany kafelek ma jaśniejszą obwódkę, a kafelek pod kursorem reaguje na hover.
 - **Nazwa mapy:** nowa mapa startuje jako `nowa`; kliknięcie pola „NAZWA” włącza edycję. Wpisywane znaki trafiają do nazwy, `Backspace` usuwa ostatni znak, `Enter` zatwierdza, a `Esc` anuluje. Na czas edycji skróty edytora i kamera są wyłączone. Nazwa ma limit 32 znaków, a pusta wraca do `nowa`. Zapisana nazwa trafia do SQLite i jest widoczna w menu map oraz scenariuszy.
