@@ -184,3 +184,12 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
   - **Raport:** `client/reports/` jest ignorowany przez git, a w CI publikowany jako artefakt także przy nieudanym jobie.
   - **Lokalnie:** `make mutation` i `npm run mutation` dają ten sam wynik co CI.
   - **Dokumentacja:** `specification/Infrastruktura.md` opisuje zakres, progi i artefakt pipeline'u.
+
+## GRA-034: Wzmocnienie testów pod mutacje
+- **Kontekst:** Pierwszy przebieg Strykera (INFRA-002) dał 61% i odsłonił pliki z niskim pokryciem zachowań: `scenario.ts` (32%), `map/catalog.ts` (22%) i `state.ts` (61%). Testy sprawdzały głównie, że jednostki powstają, a nie gdzie dokładnie trafiają ani których heksów unikają.
+- **Opis:** Nowe testy katalogu map (metadane, wymiary, konkretne kafle malowane prostokątami) oraz rozbudowa testów scenariusza (puste mapy, dokładne kolumny i rzędy rozmieszczenia, pomijanie wody, brakujących kafli i heksów zajętych) i ruchu (`canMoveUnit`, `getMovePath`, `getMoveCost`, zachowanie przy zużytym ruchu).
+- **Kryteria:**
+  - **Katalog map:** oba wbudowane układy mają sprawdzone metadane, granice, liczbę kafli i teren w rogach każdego malowanego prostokąta; `findMapDefinition` znajduje wpis po identyfikatorze i zwraca `undefined` dla nieznanego.
+  - **Scenariusz:** pusta mapa nie dodaje jednostek; brakująca strona dostaje dokładnie 10 jednostek w ustalonej kolejności rodzajów, niebieska od lewej, czerwona od prawej; woda, brakujące kafle i heksy zajmowane przez drugą stronę są pomijane, a istniejące jednostki nie są nadpisywane.
+  - **Ruch:** `canMoveUnit` odrzuca ten sam heks, heks nieprzyległy, zajęty, wodę, cel droższy niż pozostały ruch i jednostkę, która już działała; `getMoveCost` zwraca `IMPASSABLE` dla brakującego kafla; `getMovePath` odrzuca cel tożsamy z pozycją, zajęty, wodę i jednostkę bez ruchu.
+  - **Wynik:** pełny przebieg Strykera po zmianach daje 80,39% (676 zabitych, 21 timeoutów, 126 przeżytych, 44 bez pokrycia, 40 błędów na 907 mutantów) zamiast 61,01% przed zmianą; testy i `tsc --noEmit` pozostają zielone.

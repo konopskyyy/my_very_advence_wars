@@ -332,7 +332,7 @@ requeście i ręcznie (`workflow_dispatch`).
 - **Kroki:** checkout, `npm ci` z cache opartym na `client/package-lock.json`,
   krok właściwy; job mutacyjny dodatkowo publikuje raport.
 - **Uprawnienia:** tylko odczyt repozytorium (`contents: read`).
-- **Czas:** typy i testy jednostkowe trwają sekundy, mutacje około 2–3 minuty
+- **Czas:** typy i testy jednostkowe trwają sekundy, mutacje około 4 minut
   (Stryker uruchamia testy dla każdego mutanta).
 
 Pipeline nie buduje aplikacji ani nie uruchamia Dockera — nie wymaga sekretów.
