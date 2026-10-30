@@ -174,3 +174,33 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
 - **Kontekst:** `MapMenuScene.buildList()` zaczynał się od `this.scene.isActive()`. W Phaserze 4 podczas `create()` scena ma status `CREATING`, a nie `RUNNING`, więc warunek był zawsze fałszywy i lista map — razem z kartą „Nowa mapa” — nigdy się nie budowała.
 - **Opis:** Usunięty strażnik na początku `buildList()`; karta nowej mapy dodaje się od razu, a strażnik po `await` nadal chroni przed dopisywaniem wierszy do zamkniętej sceny.
 - **Kryteria:** Menu map pokazuje kartę „Nowa mapa” i zapisane mapy; wyjście z menu w trakcie ładowania nie dopisuje wierszy do nieistniejącej listy.
+
+## GRA-033: Nowe grafiki kafelków i las
+- **Kontekst:** Do `client/dist/assets` trafiła nowa partia autorskich kafelków SVG z nazwami z pobierania (`meadow_tile_1 (1).svg`, `city_tile_2 (2).svg`), obok starych plików. Las nie miał dotąd żadnego kafla SVG — rysowała go proceduralna tekstura.
+- **Opis:** Pliki przeniesione do `client/src/assets/map/` pod nazwy `<TerrainId>-<wariant>.svg`, stare grafiki zastąpione nowymi. `view/terrainTiles.ts` dostaje dwa warianty lasu i miasta (ADR-028).
+- **Kryteria:**
+  - **Nazwy:** pliki odpowiadają ID terenu (`plain`, `forest`, `water`, `city`) i numerowi wariantu; w katalogu nie zostają nazwy z pobierania ze spacjami i nawiasami.
+  - **Las:** dwa kafelki (`forest-1.svg`, `forest-2.svg`) są wpisane w `terrainTiles.ts` i tasują się jak pozostałe.
+  - **Miasto:** dwa warianty (`city-1.svg`, `city-2.svg`); dodatkowe układy zabudowy z drugiego pobrania nie są używane.
+  - **Krawędzie:** grafiki są przycięte do pełnego heksa i nie mają ciemnej fazy na obwodzie, więc między kaflami nie widać czarnych pasków (ADR-028).
+  - **Stare pliki:** poprzednie grafiki łąki, wody i miasta nie są już importowane ani obecne w `src/assets/map/`.
+  - **Build:** `npm run build` kopiuje nowe SVG do `client/dist/assets`, a stare hashowane pliki znikają z katalogu builda.
+
+## INFRA-002: Testy jednostkowe i mutacyjne w CI
+- **Kontekst:** Pipeline `.github/workflows/ci.yml` sprawdzał wyłącznie typy klienta, a Vitest uruchamiał się tylko lokalnie przez `make test`. Testów mutacyjnych nie było, więc jakość asercji nie była mierzona.
+- **Opis:** CI ma trzy równoległe joby: typy, testy jednostkowe (`npm test`) i testy mutacyjne (`npm run mutation`). Mutacje liczy Stryker dla `client/src/core/**/*.ts`, a raport HTML/JSON trafia do artefaktu `mutation-report`.
+- **Kryteria:**
+  - **Testy jednostkowe:** job `Testy jednostkowe` uruchamia `npm test` po `npm ci` i obala pipeline przy czerwonym Vitest.
+  - **Mutacje:** konfiguracja w `client/stryker.config.mjs` (runner `vitest`, zakres `src/core`), progi `high 80` / `low 60` / `break 50`; wynik poniżej progu obala job.
+  - **Raport:** `client/reports/` jest ignorowany przez git, a w CI publikowany jako artefakt także przy nieudanym jobie.
+  - **Lokalnie:** `make mutation` i `npm run mutation` dają ten sam wynik co CI.
+  - **Dokumentacja:** `specification/Infrastruktura.md` opisuje zakres, progi i artefakt pipeline'u.
+
+## GRA-034: Wzmocnienie testów pod mutacje
+- **Kontekst:** Pierwszy przebieg Strykera (INFRA-002) dał 61% i odsłonił pliki z niskim pokryciem zachowań: `scenario.ts` (32%), `map/catalog.ts` (22%) i `state.ts` (61%). Testy sprawdzały głównie, że jednostki powstają, a nie gdzie dokładnie trafiają ani których heksów unikają.
+- **Opis:** Nowe testy katalogu map (metadane, wymiary, konkretne kafle malowane prostokątami) oraz rozbudowa testów scenariusza (puste mapy, dokładne kolumny i rzędy rozmieszczenia, pomijanie wody, brakujących kafli i heksów zajętych) i ruchu (`canMoveUnit`, `getMovePath`, `getMoveCost`, zachowanie przy zużytym ruchu).
+- **Kryteria:**
+  - **Katalog map:** oba wbudowane układy mają sprawdzone metadane, granice, liczbę kafli i teren w rogach każdego malowanego prostokąta; `findMapDefinition` znajduje wpis po identyfikatorze i zwraca `undefined` dla nieznanego.
+  - **Scenariusz:** pusta mapa nie dodaje jednostek; brakująca strona dostaje dokładnie 10 jednostek w ustalonej kolejności rodzajów, niebieska od lewej, czerwona od prawej; woda, brakujące kafle i heksy zajmowane przez drugą stronę są pomijane, a istniejące jednostki nie są nadpisywane.
+  - **Ruch:** `canMoveUnit` odrzuca ten sam heks, heks nieprzyległy, zajęty, wodę, cel droższy niż pozostały ruch i jednostkę, która już działała; `getMoveCost` zwraca `IMPASSABLE` dla brakującego kafla; `getMovePath` odrzuca cel tożsamy z pozycją, zajęty, wodę i jednostkę bez ruchu.
+  - **Wynik:** pełny przebieg Strykera po zmianach daje 80,39% (676 zabitych, 21 timeoutów, 126 przeżytych, 44 bez pokrycia, 40 błędów na 907 mutantów) zamiast 61,01% przed zmianą; testy i `tsc --noEmit` pozostają zielone.

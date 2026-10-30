@@ -42,4 +42,7 @@ Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
 | [[Zadania-opisy#GRA-030: Pełny ruch jednostek z trasą i animacją\|GRA-030]] | Pełny ruch jednostek z trasą i animacją | ✅ | GRA-027, ADR-001, ADR-022, ADR-027, INTERF-005 |
 | [[Zadania-opisy#GRA-031: Kafelki terenu SVG z wariantami\|GRA-031]] | Kafelki terenu SVG z wariantami | ✅ | GRA-001, GRA-022, ADR-001, ADR-028, INTERF-003, INTERF-005 |
 | [[Zadania-opisy#GRA-032: Pusta lista w menu map\|GRA-032]] | Pusta lista w menu map | ✅ | GRA-017, GRA-023, ADR-013, ADR-018, INTERF-004 |
+| [[Zadania-opisy#GRA-033: Nowe grafiki kafelków i las\|GRA-033]] | Nowe grafiki kafelków i las | ✅ | GRA-031, ADR-028, INTERF-003 |
+| [[Zadania-opisy#GRA-034: Wzmocnienie testów pod mutacje\|GRA-034]] | Wzmocnienie testów pod mutacje | ✅ | INFRA-002, GRA-013 |
 | [[Zadania-opisy#INFRA-001: Środowisko Docker\|INFRA-001]] | Środowisko Docker | ✅ | `specification/Infrastruktura.md` |
+| [[Zadania-opisy#INFRA-002: Testy jednostkowe i mutacyjne w CI\|INFRA-002]] | Testy jednostkowe i mutacyjne w CI | ✅ | INFRA-001, `specification/Infrastruktura.md` |

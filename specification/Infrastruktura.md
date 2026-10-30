@@ -313,18 +313,29 @@ Pełny opis schematu, formatu JSON, limitów i diagnostyki: [[Mapy]].
 
 ## CI (GitHub Actions)
 
-Pipeline `.github/workflows/ci.yml` sprawdza typy klienta. Uruchamia się przy
-pushu na `master`, przy każdym pull requeście i ręcznie (`workflow_dispatch`).
+Pipeline `.github/workflows/ci.yml` sprawdza typy, testy jednostkowe i testy
+mutacyjne klienta. Uruchamia się przy pushu na `master`, przy każdym pull
+requeście i ręcznie (`workflow_dispatch`).
 
-- **Zakres:** `tsc --noEmit` w `client/` — ten sam check co `make lint`. Testy
-  Vitest nie są częścią pipeline'u.
+- **Zakres:** trzy równoległe joby w `client/`:
+  - **TypeScript** — `npx tsc --noEmit` (ten sam check co `make lint`),
+  - **Testy jednostkowe** — `npm test` (Vitest, `client/tests/`),
+  - **Testy mutacyjne** — `npm run mutation` (Stryker, `client/stryker.config.mjs`).
+- **Mutacje:** Stryker mutuje wyłącznie `client/src/core/**/*.ts` (logika bez
+  Phasera), testy uruchamia runnerem `@stryker-mutator/vitest-runner`. Progi:
+  `high 80`, `low 60`, `break 50` — wynik poniżej 50% obala job. Raport HTML
+  i JSON (`client/reports/`) trafia do artefaktu `mutation-report`.
+  Konfiguracja wskazuje nieistniejący `tsconfig.stryker-disabled.json`, bo
+  TypeScript 7 nie udostępnia API JS, na którym opiera się preprocesor
+  tsconfig w Strykerze; typy i tak sprawdza osobny job.
 - **Środowisko:** `ubuntu-latest`, Node 22 (jak obraz `node:22-alpine` w Compose).
 - **Kroki:** checkout, `npm ci` z cache opartym na `client/package-lock.json`,
-  `npx tsc --noEmit`.
+  krok właściwy; job mutacyjny dodatkowo publikuje raport.
 - **Uprawnienia:** tylko odczyt repozytorium (`contents: read`).
+- **Czas:** typy i testy jednostkowe trwają sekundy, mutacje około 4 minut
+  (Stryker uruchamia testy dla każdego mutanta).
 
-Pipeline nie buduje aplikacji ani nie uruchamia Dockera — sprawdza wyłącznie
-typy, więc trwa krótko i nie wymaga sekretów.
+Pipeline nie buduje aplikacji ani nie uruchamia Dockera — nie wymaga sekretów.
 
 ---
 
@@ -352,8 +363,11 @@ Compose bezpośrednio też działa — poniżej oba warianty.
 | Build klienta + Electrona                | `make electron-build` | —                                                         |
 | Przebuduj klienta (po zmianach)           | —                     | `cd client && npm run build && docker compose restart client` |
 | Testy klienta (Vitest)                   | `make test`           | `cd client && npm test`                                   |
+| Testy mutacyjne klienta (Stryker)        | `make mutation`       | `cd client && npm run mutation`                           |
 | Typy klienta                             | `make lint`           | `cd client && npx tsc --noEmit`                           |
 | Typy klienta w CI                        | —                     | GitHub Actions: `.github/workflows/ci.yml` (push, PR)     |
+| Testy jednostkowe w CI                   | —                     | GitHub Actions: `.github/workflows/ci.yml` (`npm test`)   |
+| Testy mutacyjne w CI                     | —                     | GitHub Actions: `.github/workflows/ci.yml` (`npm run mutation`) |
 | Zatrzymaj wszystko                       | `make down`           | `docker compose down`                                     |
 | Zatrzymaj i usuń woluminy (⚠️ MySQL)      | `make clean`          | `docker compose down -v`                                  |
 

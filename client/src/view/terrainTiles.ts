@@ -2,6 +2,8 @@ import Phaser from 'phaser';
 import { pickVariantIndex, type TerrainId } from '../core/terrain';
 import city1 from '../assets/map/city-1.svg?url';
 import city2 from '../assets/map/city-2.svg?url';
+import forest1 from '../assets/map/forest-1.svg?url';
+import forest2 from '../assets/map/forest-2.svg?url';
 import plain1 from '../assets/map/plain-1.svg?url';
 import plain2 from '../assets/map/plain-2.svg?url';
 import water1 from '../assets/map/water-1.svg?url';
@@ -9,6 +11,7 @@ import water2 from '../assets/map/water-2.svg?url';
 
 const TILE_TEXTURES: Partial<Record<TerrainId, readonly string[]>> = {
   plain: [plain1, plain2],
+  forest: [forest1, forest2],
   water: [water1, water2],
   city: [city1, city2],
 };

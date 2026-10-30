@@ -29,3 +29,52 @@ jobs:
         run: npm ci
       - name: Typy
         run: npx tsc --noEmit
+
+  test:
+    name: Testy jednostkowe
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+      - name: Zależności
+        run: npm ci
+      - name: Vitest
+        run: npm test
+
+  mutation:
+    name: Testy mutacyjne
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+      - name: Zależności
+        run: npm ci
+      - name: Stryker
+        run: npm run mutation
+      - name: Raport
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: mutation-report
+          path: client/reports
+          if-no-files-found: ignore
+          retention-days: 14

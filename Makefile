@@ -13,7 +13,7 @@ ADMINER_PORT ?= 18081
 
 .PHONY: help up up-tools down stop restart ps logs logs-server logs-client \
         shell console composer cache-clear db-shell build rebuild client-install \
-        install electron electron-build clean clean-all test lint env run
+        install electron electron-build clean clean-all test mutation lint env run
 
 ## ——— Pomoc ————————————————————————————————————————————————
 
@@ -104,6 +104,9 @@ electron-build: ## Zbuduj klienta i paczkę Electrona
 
 test: ## Testy klienta (Vitest)
 	cd client && npm test
+
+mutation: ## Testy mutacyjne klienta (Stryker)
+	cd client && npm run mutation
 
 lint: ## Sprawdź typy klienta
 	cd client && npx tsc --noEmit
