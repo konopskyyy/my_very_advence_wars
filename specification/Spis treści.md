@@ -8,9 +8,10 @@ kotwicami Obsidiana, więc `[[ADR#ADR-022: ...]]` otwiera samą decyzję.
 | [[ADR]] | decyzje architektoniczne | `ADR-001`… |
 | [[Wymagania]] | zakres gry | — |
 | [[Interfejs]] | ekrany i sterowanie | `INTERF-001`… |
+| [[API]] | endpointy backendu, kontrakt JSON/REST | `API-001`… |
 | [[Mapy]] | model mapy, SQLite, format zapisu | — |
-| [[Zadania]] | tabela zadań, statusy, powiązania | `GRA-001`…, `INFRA-001` |
-| [[Zadania-opisy]] | kontekst, opis i kryteria zadań | `GRA-001`… |
+| [[Zadania]] | tabela zadań, statusy, powiązania | `GRA-001`…, `SRV-001`…, `INFRA-001` |
+| [[Zadania-opisy]] | kontekst, opis i kryteria zadań | `GRA-001`…, `SRV-001`… |
 | [[Infrastruktura]] | Docker, porty, CI | `INFRA-001` |
 | [[Konwencje]] | testy, dokumentacja, styl | — |
 

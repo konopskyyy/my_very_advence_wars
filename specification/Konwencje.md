@@ -39,6 +39,26 @@ Uruchamianie: `make test` (albo `cd client && npm test`); tryb watch:
 (`test.include` w `client/vite.config.ts`), a `tsc --noEmit` sprawdza także
 testy, bo `tests/` jest w `client/tsconfig.json`.
 
+## Backend Symfony
+
+- Nowe funkcje backendu są **modułami** w `server/src/<Moduł>/`, dzielonymi na
+  warstwy: `Domain` (encje, wartości, repozytoria, wyjątki), `Application`
+  (przypadki użycia i porty), `Infrastructure` (Doctrine, adaptery frameworka,
+  fixtury) i `Presentation` (kontrolery, DTO, listenery). Przykład: `Auth`
+  i ADR-029.
+- `Domain` nie zna HTTP ani Lexika. Mapowanie Doctrine i kontrakty Symfony
+  Security są deklarowane atrybutami na encji (ADR-029); `Application` zależy
+  wyłącznie od encji i portów, a implementacje frameworkowe wchodzą
+  w `Infrastructure`.
+- Testy backendu leżą w `server/tests/` i powtarzają strukturę modułu
+  (`tests/Auth/...`). Funkcjonalne testy HTTP dziedziczą po `WebTestCase`,
+  a jednostkowe po `TestCase`/`KernelTestCase`.
+- Testy backendu działają na SQLite w `APP_ENV=test`; produkcja i dev używają
+  MySQL. Migracje generuje `make console make:migration`, a wykonuje
+  `make migrate`.
+- Zależności PHP dodawaj przez `composer require` (Flex rejestruje bundle
+  i konfigurację), a nie ręcznym wpisem w `config/bundles.php`.
+
 ## Dokumentacja
 
 - **Czytanie punktowe.** Najpierw `grep -n "<ID>"` w dokumencie, potem wycinek

@@ -1,0 +1,6 @@
+services:
+    # Infection przerywa initial tests, gdy cokolwiek trafi na stderr. Symfony loguje
+    # tam oczekiwane wyjątki HTTP (np. 422 z walidacji), więc w testach je wyciszamy.
+    app.test.null_logger:
+        class: Psr\Log\NullLogger
+        decorates: logger

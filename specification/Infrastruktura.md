@@ -136,6 +136,13 @@ FastCGI z nginx. Kod z `./server` (bind mount).
 
 - `vendor/` w **wymianowym woluminie** `server_vendor` (patrz [[#Woluminy]]).
 - Zmienne: `APP_ENV=dev`, `DATABASE_URL` sklejane z danych bazy.
+- Doctrine ORM + migracje: schemat zmienia się wyłącznie migracjami
+  (`make migrate`), nie `doctrine:schema:update`.
+- Uwierzytelnianie: moduł `server/src/Auth/` i JWT Lexika. Para kluczy leży
+  w `server/config/jwt/` (poza git) i powstaje przez `make jwt-keys`; hasło
+  klucza (`JWT_PASSPHRASE`) oraz ścieżki ustawia się w `server/.env`.
+- Fixtury deweloperskie: `make fixtures` (czyści tabele i tworzy konta
+  `admin@example.com` / `gracz@example.com`).
 
 ### `db` — MySQL 8.4
 
@@ -229,10 +236,21 @@ niego, więc plik jest opcjonalny na start.
 | `DB_PORT`           | `13306`                   | Port MySQL — bind do `127.0.0.1`.      |
 | `ADMINER_PORT`      | `18081`                   | Port Adminera (profil `tools`).        |
 
+Backend ma osobny, ignorowany przez git `server/.env`. Poza `APP_SECRET`
+i `DATABASE_URL` potrzebuje:
+
+| Zmienna             | Domyślna wartość w dev        | Uwagi                                      |
+| ------------------- | ----------------------------- | ------------------------------------------ |
+| `JWT_SECRET_KEY`    | `%kernel.project_dir%/config/jwt/private.pem` | Klucz prywatny JWT.       |
+| `JWT_PUBLIC_KEY`    | `%kernel.project_dir%/config/jwt/public.pem`  | Klucz publiczny JWT.      |
+| `JWT_PASSPHRASE`    | dowolne hasło dev             | Hasło klucza; nie commituj produkcji.      |
+| `CORS_ALLOW_ORIGIN` | regex localhost/127.0.0.1     | Origin klienta Vite (`18573`) i Electrona. |
+
 > [!tip]
 > Skopiuj `.env.example` na `.env` i dopisz własne hasła. Plik `.env` jest
 > w `.gitignore` — **nie trafia do repo**. Plik `.env` Symfony (`server/.env`,
-> z `APP_SECRET`) też jest ignorowany.
+> z `APP_SECRET`) też jest ignorowany; przy pierwszym uruchomieniu uzupełnij
+> w nim zmienne JWT według tabeli powyżej i wygeneruj klucze `make jwt-keys`.
 
 ---
 
@@ -313,27 +331,42 @@ Pełny opis schematu, formatu JSON, limitów i diagnostyki: [[Mapy]].
 
 ## CI (GitHub Actions)
 
-Pipeline `.github/workflows/ci.yml` sprawdza typy, testy jednostkowe i testy
-mutacyjne klienta. Uruchamia się przy pushu na `master`, przy każdym pull
-requeście i ręcznie (`workflow_dispatch`).
+Pipeline `.github/workflows/ci.yml` sprawdza typy i testy (jednostkowe oraz
+mutacyjne) klienta i backendu. Uruchamia się przy pushu na `master`, przy każdym
+pull requeście i ręcznie (`workflow_dispatch`).
 
-- **Zakres:** trzy równoległe joby w `client/`:
-  - **TypeScript** — `npx tsc --noEmit` (ten sam check co `make lint`),
-  - **Testy jednostkowe** — `npm test` (Vitest, `client/tests/`),
-  - **Testy mutacyjne** — `npm run mutation` (Stryker, `client/stryker.config.mjs`).
-- **Mutacje:** Stryker mutuje wyłącznie `client/src/core/**/*.ts` (logika bez
-  Phasera), testy uruchamia runnerem `@stryker-mutator/vitest-runner`. Progi:
+- **Zakres:** pięć równoległych jobów:
+  - `client/` — **TypeScript** `npx tsc --noEmit` (ten sam check co `make lint`),
+  - `client/` — **Testy jednostkowe** `npm test` (Vitest, `client/tests/`),
+  - `client/` — **Testy mutacyjne** `npm run mutation` (Stryker, `client/stryker.config.mjs`),
+  - `server/` — **Testy backendu** `php bin/phpunit` (PHPUnit, `server/tests/`),
+  - `server/` — **Testy mutacyjne backendu** `vendor/bin/infection` (Infection,
+    `server/infection.json5`).
+- **Mutacje klienta:** Stryker mutuje wyłącznie `client/src/core/**/*.ts` (logika
+  bez Phasera), testy uruchamia runnerem `@stryker-mutator/vitest-runner`. Progi:
   `high 80`, `low 60`, `break 50` — wynik poniżej 50% obala job. Raport HTML
   i JSON (`client/reports/`) trafia do artefaktu `mutation-report`.
   Konfiguracja wskazuje nieistniejący `tsconfig.stryker-disabled.json`, bo
   TypeScript 7 nie udostępnia API JS, na którym opiera się preprocesor
   tsconfig w Strykerze; typy i tak sprawdza osobny job.
-- **Środowisko:** `ubuntu-latest`, Node 22 (jak obraz `node:22-alpine` w Compose).
-- **Kroki:** checkout, `npm ci` z cache opartym na `client/package-lock.json`,
-  krok właściwy; job mutacyjny dodatkowo publikuje raport.
+- **Mutacje backendu:** Infection mutuje całe `server/src/`, uruchamiając testy
+  PHPUnit z pokryciem PCOV. Progi: `minMsi 80`, `minCoveredMsi 90` — wynik
+  poniżej któregokolwiek obala job. Raporty (`server/var/infection/`: log, HTML,
+  JSON, per-mutator) trafiają do artefaktu `server-mutation-report`. Testy w
+  środowisku `test` korzystają z SQLite (`server/var/test.db`), więc job nie
+  potrzebuje MySQL.
+- **Środowisko:** `ubuntu-latest`, Node 22 (jak obraz `node:22-alpine` w Compose)
+  oraz PHP 8.4 z rozszerzeniami `ctype`, `iconv`, `pdo_sqlite`, `sqlite3`,
+  `mbstring`, `dom`, `libxml`.
+- **Kroki:** checkout, zależności z cache (`client/package-lock.json` lub
+  `server/composer.lock`), krok właściwy. Joby backendu tworzą przed
+  `composer install` plik `server/.env` (ignorowany przez git) ze zmiennymi
+  wymaganymi do bootu Symfony, a następnie generują parę kluczy JWT
+  (`lexik:jwt:generate-keypair`). Joby mutacyjne dodatkowo publikują raport.
 - **Uprawnienia:** tylko odczyt repozytorium (`contents: read`).
-- **Czas:** typy i testy jednostkowe trwają sekundy, mutacje około 4 minut
-  (Stryker uruchamia testy dla każdego mutanta).
+- **Czas:** typy i testy jednostkowe trwają sekundy, mutacje klienta około
+  4 minut (Stryker uruchamia testy dla każdego mutanta), mutacje backendu
+  kilka sekund (kilkadziesiąt mutantów w `server/src/`).
 
 Pipeline nie buduje aplikacji ani nie uruchamia Dockera — nie wymaga sekretów.
 
@@ -356,6 +389,10 @@ Compose bezpośrednio też działa — poniżej oba warianty.
 | Konsola Symfony                          | `make console about`  | `docker compose exec server php bin/console about`        |
 | Zainstaluj zależności PHP                | `make composer`       | `docker compose exec server composer install`             |
 | Wyczyść cache Symfony                    | `make cache-clear`    | `docker compose exec server php bin/console cache:clear`  |
+| Migracje Doctrine                        | `make migrate`        | `docker compose exec server php bin/console doctrine:migrations:migrate` |
+| Fixtury (konta testowe)                  | `make fixtures`       | `docker compose exec server php bin/console doctrine:fixtures:load` |
+| Klucze JWT                               | `make jwt-keys`       | `docker compose exec server php bin/console lexik:jwt:generate-keypair --overwrite` |
+| Testy backendu                           | `make test-server`    | `docker compose exec server php bin/phpunit`              |
 | MySQL CLI                                | `make db-shell`       | —                                                         |
 | Rebuild backendu (po Dockerfile)         | `make rebuild`        | `docker compose build --no-cache && docker compose up -d` |
 | Uruchom Electrona (dev)                  | `make electron`       | `npm start --prefix electron`                             |
@@ -368,6 +405,8 @@ Compose bezpośrednio też działa — poniżej oba warianty.
 | Typy klienta w CI                        | —                     | GitHub Actions: `.github/workflows/ci.yml` (push, PR)     |
 | Testy jednostkowe w CI                   | —                     | GitHub Actions: `.github/workflows/ci.yml` (`npm test`)   |
 | Testy mutacyjne w CI                     | —                     | GitHub Actions: `.github/workflows/ci.yml` (`npm run mutation`) |
+| Testy backendu w CI                      | —                     | GitHub Actions: `.github/workflows/ci.yml` (`php bin/phpunit`) |
+| Testy mutacyjne backendu w CI            | —                     | GitHub Actions: `.github/workflows/ci.yml` (`vendor/bin/infection`) |
 | Zatrzymaj wszystko                       | `make down`           | `docker compose down`                                     |
 | Zatrzymaj i usuń woluminy (⚠️ MySQL)      | `make clean`          | `docker compose down -v`                                  |
 

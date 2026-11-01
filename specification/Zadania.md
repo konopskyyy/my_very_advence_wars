@@ -44,5 +44,8 @@ Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
 | [[Zadania-opisy#GRA-032: Pusta lista w menu map\|GRA-032]] | Pusta lista w menu map | ✅ | GRA-017, GRA-023, ADR-013, ADR-018, INTERF-004 |
 | [[Zadania-opisy#GRA-033: Nowe grafiki kafelków i las\|GRA-033]] | Nowe grafiki kafelków i las | ✅ | GRA-031, ADR-028, INTERF-003 |
 | [[Zadania-opisy#GRA-034: Wzmocnienie testów pod mutacje\|GRA-034]] | Wzmocnienie testów pod mutacje | ✅ | INFRA-002, GRA-013 |
+| [[Zadania-opisy#SRV-001: Warstwowy moduł auth z encją użytkownika\|SRV-001]] | Warstwowy moduł auth z encją użytkownika | ✅ | ADR-029, API-001 |
+| [[Zadania-opisy#SRV-002: Rejestracja i logowanie JWT\|SRV-002]] | Rejestracja i logowanie JWT | ✅ | SRV-001, ADR-029, API-001 |
 | [[Zadania-opisy#INFRA-001: Środowisko Docker\|INFRA-001]] | Środowisko Docker | ✅ | `specification/Infrastruktura.md` |
 | [[Zadania-opisy#INFRA-002: Testy jednostkowe i mutacyjne w CI\|INFRA-002]] | Testy jednostkowe i mutacyjne w CI | ✅ | INFRA-001, `specification/Infrastruktura.md` |
+| [[Zadania-opisy#INFRA-003: Testy backendu i mutacje w CI\|INFRA-003]] | Testy backendu i mutacje w CI | ✅ | INFRA-002, SRV-001, SRV-002, `specification/Infrastruktura.md` |

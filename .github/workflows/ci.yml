@@ -78,3 +78,92 @@ jobs:
           path: client/reports
           if-no-files-found: ignore
           retention-days: 14
+
+  server-test:
+    name: Testy backendu
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: ctype, iconv, pdo_sqlite, sqlite3, mbstring, dom, libxml
+          coverage: none
+          tools: composer:v2
+      - name: Cache Composera
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: composer-${{ hashFiles('server/composer.lock') }}
+          restore-keys: composer-
+      - name: Plik .env
+        run: |
+          cat > .env <<'EOF'
+          APP_SECRET=ci-secret
+          DEFAULT_URI=https://example.test
+          DATABASE_URL="sqlite:///%kernel.project_dir%/var/data.db"
+          JWT_SECRET_KEY=%kernel.project_dir%/config/jwt/private.pem
+          JWT_PUBLIC_KEY=%kernel.project_dir%/config/jwt/public.pem
+          JWT_PASSPHRASE=ci-passphrase
+          CORS_ALLOW_ORIGIN='^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?$'
+          EOF
+      - name: Zależności
+        run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Klucze JWT
+        run: php bin/console lexik:jwt:generate-keypair --overwrite --no-interaction
+      - name: PHPUnit
+        run: php bin/phpunit
+
+  server-mutation:
+    name: Testy mutacyjne backendu
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: ctype, iconv, pdo_sqlite, sqlite3, mbstring, dom, libxml
+          coverage: pcov
+          tools: composer:v2
+      - name: Cache Composera
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: composer-${{ hashFiles('server/composer.lock') }}
+          restore-keys: composer-
+      - name: Plik .env
+        run: |
+          cat > .env <<'EOF'
+          APP_SECRET=ci-secret
+          DEFAULT_URI=https://example.test
+          DATABASE_URL="sqlite:///%kernel.project_dir%/var/data.db"
+          JWT_SECRET_KEY=%kernel.project_dir%/config/jwt/private.pem
+          JWT_PUBLIC_KEY=%kernel.project_dir%/config/jwt/public.pem
+          JWT_PASSPHRASE=ci-passphrase
+          CORS_ALLOW_ORIGIN='^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?$'
+          EOF
+      - name: Zależności
+        run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Klucze JWT
+        run: php bin/console lexik:jwt:generate-keypair --overwrite --no-interaction
+      - name: Infection
+        run: vendor/bin/infection --no-progress --threads=max
+      - name: Raport
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: server-mutation-report
+          path: server/var/infection
+          if-no-files-found: ignore
+          retention-days: 14

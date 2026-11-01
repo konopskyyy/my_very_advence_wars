@@ -1,0 +1,13 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Auth\Domain\User\Exception;
+
+final class EmailAlreadyTakenException extends \RuntimeException
+{
+    public static function forEmail(string $email): self
+    {
+        return new self(sprintf('Email "%s" is already registered.', $email));
+    }
+}

@@ -186,6 +186,27 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
   - **Stare pliki:** poprzednie grafiki łąki, wody i miasta nie są już importowane ani obecne w `src/assets/map/`.
   - **Build:** `npm run build` kopiuje nowe SVG do `client/dist/assets`, a stare hashowane pliki znikają z katalogu builda.
 
+## SRV-001: Warstwowy moduł auth z encją użytkownika
+- **Kontekst:** Backend Symfony nie miał warstwy danych ani użytkowników. Przed dodaniem logowania trzeba było wpiąć Doctrine ORM, migracje i fixtury oraz ustalić granice modułu, żeby kontrolery nie mieszały się z regułami domenowymi.
+- **Opis:** Moduł `App\Auth` z warstwami `Domain`, `Application`, `Infrastructure` i `Presentation` (ADR-029). Encja `User` z e-mailem, hashem hasła, rolami i datą utworzenia; e-mail jako wartość `Email` normalizująca małe litery. Repozytorium domenowe ma adapter Doctrine, a hashowanie i wystawianie tokenów są portami z adapterami Symfony/Lexik.
+- **Kryteria:**
+  - **Warstwy:** `Domain` nie importuje HTTP ani Lexika (mapowanie Doctrine i kontrakty Security są atrybutami encji); `Application` zna tylko porty i encję; `Infrastructure` zawiera repozytorium Doctrine, provider użytkownika, adaptery haseł/tokenów i fixtury; `Presentation` zawiera kontrolery, DTO i listener wyjątków.
+  - **Encja:** `app_user` ma unikalny e-mail, hash hasła, role (domyślnie `ROLE_USER`) i `createdAt`; e-mail jest normalizowany i walidowany w `Email`.
+  - **Baza:** Doctrine ORM mapuje `src/Auth/Domain`; migracja tworzy tabelę `app_user`, a `make migrate` ją wykonuje.
+  - **Fixtury:** `make fixtures` tworzy `admin@example.com` i `gracz@example.com`, nie duplikuje istniejących kont.
+  - **Dokumentacja:** ADR-029 i `specification/API.md` opisują decyzję i kontrakt.
+
+## SRV-002: Rejestracja i logowanie JWT
+- **Kontekst:** Po dodaniu encji użytkownika potrzebny był publiczny sposób rejestracji i logowania oraz ochrona przyszłych endpointów API. Klient ma dostawać token, a nie polegać na sesji cookies.
+- **Opis:** Endpointy `POST /api/auth/register`, `POST /api/auth/login` i `GET /api/auth/me` (API-001). Rejestracja sprawdza unikalność e-maila, hashuje hasło i od razu wystawia JWT. Logowanie weryfikuje hash i zwraca token. Firewall `api` jest bezstanowy, używa Lexika, a `me` wymaga `IS_AUTHENTICATED_FULLY`. Błędy domenowe mapuje listener na `409`/`401`.
+- **Kryteria:**
+  - **Rejestracja:** `201` z tokenem i użytkownikiem; e-mail normalizowany; duplikat `409`; zły payload `422`.
+  - **Logowanie:** `200` z tokenem; złe dane `401` bez ujawniania, czy konto istnieje; brak pól `422`.
+  - **Token:** JWT `RS256`, TTL 3600 s, nagłówek `Authorization: Bearer`; `me` zwraca konto, a bez tokenu `401`.
+  - **Bezpieczeństwo:** hasła nigdy nie wracają w odpowiedzi; hashowanie przez Symfony; endpointy auth są jedynymi publicznymi pod `/api`.
+  - **Testy:** `make test-server` pokrywa rejestrację, duplikat, walidację, logowanie, `me` z tokenem i bez.
+  - **Dokumentacja:** `specification/API.md`, ADR-029 i `specification/Infrastruktura.md` opisują endpointy, zmienne i komendy.
+
 ## INFRA-002: Testy jednostkowe i mutacyjne w CI
 - **Kontekst:** Pipeline `.github/workflows/ci.yml` sprawdzał wyłącznie typy klienta, a Vitest uruchamiał się tylko lokalnie przez `make test`. Testów mutacyjnych nie było, więc jakość asercji nie była mierzona.
 - **Opis:** CI ma trzy równoległe joby: typy, testy jednostkowe (`npm test`) i testy mutacyjne (`npm run mutation`). Mutacje liczy Stryker dla `client/src/core/**/*.ts`, a raport HTML/JSON trafia do artefaktu `mutation-report`.
@@ -195,6 +216,15 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
   - **Raport:** `client/reports/` jest ignorowany przez git, a w CI publikowany jako artefakt także przy nieudanym jobie.
   - **Lokalnie:** `make mutation` i `npm run mutation` dają ten sam wynik co CI.
   - **Dokumentacja:** `specification/Infrastruktura.md` opisuje zakres, progi i artefakt pipeline'u.
+
+## INFRA-003: Testy backendu i mutacje w CI
+- **Kontekst:** Pipeline sprawdzał tylko klienta; PHPUnit działał wyłącznie lokalnie, a Infection nie był w ogóle skonfigurowany, więc regresje w `server/src/` przechodziły przez CI niezauważone.
+- **Opis:** Dwa nowe joby w `.github/workflows/ci.yml` — `Testy backendu` (`php bin/phpunit`) i `Testy mutacyjne backendu` (`vendor/bin/infection`). PHP 8.4 z PCOV, SQLite w `APP_ENV=test`, para kluczy JWT generowana przed testami. Konfiguracja Infection w `server/infection.json5`.
+- **Kryteria:**
+  - **PHPUnit:** job instaluje zależności Composera z cache i obala pipeline, gdy testy backendu są czerwone.
+  - **Infection:** mutuje `server/src/`, progi `minMsi 80` i `minCoveredMsi 90`; raport `server/var/infection/` trafia do artefaktu `server-mutation-report` także przy nieudanym jobie.
+  - **Logi testów:** w `APP_ENV=test` logger jest wyciszony (`server/config/services_test.yaml`), bo Infection traktuje zapis na stderr jako błąd initial tests.
+  - **Dokumentacja:** `specification/Infrastruktura.md` opisuje joby, progi i artefakty.
 
 ## GRA-034: Wzmocnienie testów pod mutacje
 - **Kontekst:** Pierwszy przebieg Strykera (INFRA-002) dał 61% i odsłonił pliki z niskim pokryciem zachowań: `scenario.ts` (32%), `map/catalog.ts` (22%) i `state.ts` (61%). Testy sprawdzały głównie, że jednostki powstają, a nie gdzie dokładnie trafiają ani których heksów unikają.
