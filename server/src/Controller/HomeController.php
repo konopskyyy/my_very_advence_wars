@@ -17,7 +17,7 @@ final class HomeController extends AbstractController
     {
         return $this->json([
             'service' => 'server',
-            'status'  => 'ok',
+            'status' => 'ok',
             'framework' => 'Symfony ' . Kernel::VERSION,
         ]);
     }

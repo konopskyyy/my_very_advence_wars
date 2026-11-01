@@ -12,7 +12,8 @@ ADMINER_PORT ?= 18081
 .DEFAULT_GOAL := help
 
 .PHONY: help up up-tools down stop restart ps logs logs-server logs-client \
-        shell console composer cache-clear db-shell build rebuild client-install \
+        shell console composer cache-clear migrate fixtures jwt-keys test-server \
+        db-shell build rebuild client-install \
         install electron electron-build clean clean-all test mutation lint env run
 
 ## ——— Pomoc ————————————————————————————————————————————————
@@ -70,6 +71,18 @@ composer: ## Zainstaluj zależności PHP (wypełnia wolumin vendor)
 
 cache-clear: ## Wyczyść cache Symfony
 	$(COMPOSE) exec server php bin/console cache:clear
+
+migrate: ## Wykonaj migracje Doctrine
+	$(COMPOSE) exec server php bin/console doctrine:migrations:migrate --no-interaction
+
+fixtures: ## Załaduj fixtury deweloperskie (czyści tabele)
+	$(COMPOSE) exec server php bin/console doctrine:fixtures:load --no-interaction
+
+jwt-keys: ## Wygeneruj parę kluczy JWT
+	$(COMPOSE) exec server php bin/console lexik:jwt:generate-keypair --overwrite --no-interaction
+
+test-server: ## Testy backendu (PHPUnit)
+	$(COMPOSE) exec server php bin/phpunit
 
 db-shell: ## MySQL CLI w kontenerze bazy
 	$(COMPOSE) exec db sh -c 'mysql -u"$${MYSQL_USER}" -p"$${MYSQL_PASSWORD}" "$${MYSQL_DATABASE}"'
