@@ -1,10 +1,11 @@
 import Phaser from 'phaser';
-import { mapTileCount, terrainAt, toDoubled, type HexCoord } from '../core/map';
+import { findUnitAt, mapTileCount, terrainAt, toDoubled, type HexCoord } from '../core/map';
 import type { ScenarioDefinition } from '../core/scenario';
-import { countUnits, findUnitAt, type GameState } from '../core/state';
-import { TERRAIN_DEFS } from '../core/terrain';
+import { countUnits, type GameState } from '../core/state';
+import { TERRAIN_DEFS } from '../core/map/terrain';
 import { isActiveFaction, type TurnState } from '../core/turn';
-import { FACTION_DEFS, UNIT_DEFS, type Unit } from '../core/units';
+import { FACTION_DEFS, UNIT_DEFS, type FactionId, type Unit } from '../core/units';
+import { FACTION_THEMES, type FactionTheme } from './factionTheme';
 import { unitTexture } from './unitLayer';
 
 export const BAR_HEIGHT = 116;
@@ -31,6 +32,9 @@ export interface ScenarioCommandBarHandlers {
 export class ScenarioCommandBar {
   private readonly objects: Phaser.GameObjects.GameObject[] = [];
   private readonly bar: Phaser.GameObjects.Rectangle;
+  private readonly barStripe: Phaser.GameObjects.Rectangle;
+  private readonly barSeparators: Phaser.GameObjects.Rectangle[] = [];
+  private readonly endTurnButton: Phaser.GameObjects.Rectangle;
   private readonly barTurnLabel: Phaser.GameObjects.Text;
   private readonly scenarioName: Phaser.GameObjects.Text;
   private readonly preview: Phaser.GameObjects.Image;
@@ -41,19 +45,21 @@ export class ScenarioCommandBar {
   private readonly unitStatus: Phaser.GameObjects.Text;
   private readonly hud: Phaser.GameObjects.Text;
   private readonly factionText: Phaser.GameObjects.Text;
+  private theme: FactionTheme = FACTION_THEMES.blue;
 
   constructor(
     private readonly scene: Phaser.Scene,
     private readonly handlers: ScenarioCommandBarHandlers,
   ) {
     const barY = this.scene.scale.height - BAR_HEIGHT;
+    const theme = FACTION_THEMES.blue;
 
     this.factionText = this.register(
       this.scene.add
         .text(this.scene.scale.width - 20, 20, '', {
           fontFamily: 'monospace',
           fontSize: '12px',
-          color: '#d8e2dc',
+          color: theme.accentSoft,
           align: 'right',
         })
         .setOrigin(1, 0)
@@ -63,16 +69,16 @@ export class ScenarioCommandBar {
 
     this.bar = this.register(
       this.scene.add
-        .rectangle(0, barY, this.scene.scale.width, BAR_HEIGHT, 0x0b0f14, 0.94)
+        .rectangle(0, barY, this.scene.scale.width, BAR_HEIGHT, theme.barBackground, 0.94)
         .setOrigin(0, 0)
         .setScrollFactor(0)
         .setDepth(20),
     );
-    this.bar.setStrokeStyle(1, 0x3d6b4f, 1);
+    this.bar.setStrokeStyle(1, theme.accent, 1);
 
-    this.register(
+    this.barStripe = this.register(
       this.scene.add
-        .rectangle(0, barY, this.scene.scale.width, 2, 0x3d6b4f, 1)
+        .rectangle(0, barY, this.scene.scale.width, 2, theme.accent, 1)
         .setOrigin(0, 0)
         .setScrollFactor(0)
         .setDepth(21),
@@ -150,12 +156,14 @@ export class ScenarioCommandBar {
         .setDepth(22),
     );
 
-    this.register(
-      this.scene.add
-        .rectangle(404, barY + 16, 1, BAR_HEIGHT - 32, 0x2a3a31, 1)
-        .setOrigin(0, 0)
-        .setScrollFactor(0)
-        .setDepth(21),
+    this.barSeparators.push(
+      this.register(
+        this.scene.add
+          .rectangle(404, barY + 16, 1, BAR_HEIGHT - 32, theme.divider, 1)
+          .setOrigin(0, 0)
+          .setScrollFactor(0)
+          .setDepth(21),
+      ),
     );
 
     const scenarioX = 420;
@@ -189,25 +197,34 @@ export class ScenarioCommandBar {
     this.makeBarLink('MENU SCENARIUSZY', navX, barY + 20, this.handlers.onScenarioMenu);
     this.makeBarLink('MENU GŁÓWNE', navX, barY + 42, this.handlers.onMainMenu);
 
-    this.register(
-      this.scene.add
-        .rectangle(980, barY + 16, 1, BAR_HEIGHT - 32, 0x2a3a31, 1)
-        .setOrigin(0, 0)
-        .setScrollFactor(0)
-        .setDepth(21),
+    this.barSeparators.push(
+      this.register(
+        this.scene.add
+          .rectangle(980, barY + 16, 1, BAR_HEIGHT - 32, theme.divider, 1)
+          .setOrigin(0, 0)
+          .setScrollFactor(0)
+          .setDepth(21),
+      ),
     );
 
     const turnX = 1010;
     const turnWidth = this.scene.scale.width - turnX - 16;
 
-    this.makeBarButton('ZAKOŃCZ TURĘ', turnX, barY + 14, turnWidth, 42, this.handlers.onEndTurn);
+    this.endTurnButton = this.makeBarButton(
+      'ZAKOŃCZ TURĘ',
+      turnX,
+      barY + 14,
+      turnWidth,
+      42,
+      this.handlers.onEndTurn,
+    );
 
     this.barTurnLabel = this.register(
       this.scene.add
         .text(turnX, barY + 62, '', {
           fontFamily: 'monospace',
           fontSize: '11px',
-          color: '#9fb0a5',
+          color: theme.accentSoft,
         })
         .setScrollFactor(0)
         .setDepth(22),
@@ -231,6 +248,8 @@ export class ScenarioCommandBar {
   }
 
   refreshScenario({ scenario, state, turn, hover }: ScenarioBarState): void {
+    this.applyTheme(turn.faction);
+
     const counts = countUnits(state.units);
     const description = scenario.description.trim();
     const lines: string[] = [];
@@ -317,6 +336,29 @@ export class ScenarioCommandBar {
     return object;
   }
 
+  private applyTheme(faction: FactionId): void {
+    const theme = FACTION_THEMES[faction];
+
+    if (this.theme === theme) {
+      return;
+    }
+
+    this.theme = theme;
+    this.bar.setFillStyle(theme.barBackground, 0.94);
+    this.bar.setStrokeStyle(1, theme.accent, 1);
+    this.barStripe.setFillStyle(theme.accent, 1);
+
+    for (const separator of this.barSeparators) {
+      separator.setFillStyle(theme.divider, 1);
+    }
+
+    this.endTurnButton
+      .setFillStyle(theme.accentDark, 1)
+      .setStrokeStyle(1, theme.accentBright, 0.8);
+    this.barTurnLabel.setColor(theme.accentSoft);
+    this.factionText.setColor(theme.accentSoft);
+  }
+
   private makeBarLink(
     label: string,
     x: number,
@@ -335,7 +377,7 @@ export class ScenarioCommandBar {
         .setInteractive({ useHandCursor: true }),
     );
 
-    link.on('pointerover', () => link.setColor('#a6f4c5'));
+    link.on('pointerover', () => link.setColor(this.theme.accentSoft));
     link.on('pointerout', () => link.setColor('#9fb0a5'));
     link.on('pointerdown', action);
 
@@ -349,18 +391,18 @@ export class ScenarioCommandBar {
     width: number,
     height: number,
     action: () => void,
-  ): Phaser.GameObjects.Text {
+  ): Phaser.GameObjects.Rectangle {
     const background = this.register(
       this.scene.add
-        .rectangle(x, y, width, height, 0x1f6b45, 1)
+        .rectangle(x, y, width, height, this.theme.accentDark, 1)
         .setOrigin(0, 0)
         .setScrollFactor(0)
         .setDepth(21)
-        .setStrokeStyle(1, 0x6fd08c, 0.8)
+        .setStrokeStyle(1, this.theme.accentBright, 0.8)
         .setInteractive({ useHandCursor: true }),
     );
 
-    const text = this.register(
+    this.register(
       this.scene.add
         .text(x + width / 2, y + height / 2, label, {
           fontFamily: 'monospace',
@@ -372,11 +414,11 @@ export class ScenarioCommandBar {
         .setDepth(22),
     );
 
-    background.on('pointerover', () => background.setFillStyle(0x2b8a5b, 1));
-    background.on('pointerout', () => background.setFillStyle(0x1f6b45, 1));
+    background.on('pointerover', () => background.setFillStyle(this.theme.accent, 1));
+    background.on('pointerout', () => background.setFillStyle(this.theme.accentDark, 1));
     background.on('pointerdown', action);
 
-    return text;
+    return background;
   }
 }
 

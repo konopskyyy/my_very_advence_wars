@@ -1,12 +1,13 @@
 import {
+  findUnitAt,
   mapDoubledBounds,
   mapTileCount,
   terrainAt,
   toDoubled,
   type HexCoord,
 } from '../core/map';
-import { findUnitAt, type GameState } from '../core/state';
-import { TERRAIN_DEFS, type TerrainId } from '../core/terrain';
+import type { GameState } from '../core/state';
+import { TERRAIN_DEFS, type TerrainId } from '../core/map/terrain';
 import { UNIT_DEFS, type UnitKind } from '../core/units';
 import type { EditorTool } from './editorMenu';
 

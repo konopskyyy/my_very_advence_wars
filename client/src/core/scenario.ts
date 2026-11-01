@@ -12,7 +12,7 @@ import {
   type GameState,
   type UnitDeployment,
 } from './state';
-import { IMPASSABLE, TERRAIN_DEFS } from './terrain';
+import { IMPASSABLE, TERRAIN_DEFS } from './map/terrain';
 import type { FactionId, UnitKind } from './units';
 
 export interface ScenarioDefinition {

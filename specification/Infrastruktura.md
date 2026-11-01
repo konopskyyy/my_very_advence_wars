@@ -315,7 +315,7 @@ przeglądarki/Electrona.
 | ------- | ----- |
 | Baza | `localStorage['mvaw:sqlite']` (base64 pliku SQLite) |
 | Silnik | `sql.js` + `sql-wasm.wasm` (build: `client/dist/assets/sql-wasm-*.wasm`) |
-| Kod | `client/src/storage/database.ts`, `maps.ts`, `mapSerialization.ts` |
+| Kod | `client/src/integrations/sqlite/`, `client/src/storage/maps.ts`, `client/src/storage/mapSerialization.ts` |
 | Format | `GameState` jako JSON w kolumnie `maps.state` |
 | Profil Electrona (Linux) | `~/.config/@my-very-advance-wars/electron` |
 | Origin dev | `http://localhost:18573` |

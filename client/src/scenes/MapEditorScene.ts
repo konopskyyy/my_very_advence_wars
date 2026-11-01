@@ -18,7 +18,7 @@ import {
   removeUnitAt,
   type GameState,
 } from '../core/state';
-import type { TerrainId } from '../core/terrain';
+import type { TerrainId } from '../core/map/terrain';
 import type { FactionId, UnitKind } from '../core/units';
 import { devToolsEnabled } from '../devTools';
 import { createSavedMapId, saveMap } from '../storage/maps';

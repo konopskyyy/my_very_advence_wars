@@ -16,8 +16,8 @@ import {
   SCENARIO_ROWS,
 } from '../../src/core/scenario';
 import { countUnits, createInitialState, deployUnits, placeUnit } from '../../src/core/state';
-import { TERRAIN_DEFS, TERRAIN_IDS } from '../../src/core/terrain';
-import type { TerrainId } from '../../src/core/terrain';
+import { TERRAIN_DEFS, TERRAIN_IDS } from '../../src/core/map/terrain';
+import type { TerrainId } from '../../src/core/map/terrain';
 import type { FactionId, UnitKind } from '../../src/core/units';
 
 const AUTO_KINDS: readonly UnitKind[] = [

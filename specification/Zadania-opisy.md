@@ -12,7 +12,7 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
 ## GRA-002: Model jednostek
 - **Kontekst:** Potrzebny jest spójny model jednostek dla edytora i rozgrywki. Musi być wystarczający do rozstawiania w edytorze i do przyszłej logiki bitewnej.
 - **Opis:** Modele jednostek piechoty, czołgu, artylerii, zwiadu dla obu stron. Właściwości, identyfikatory, pozycjonowanie na heksach. Logika gry nie wiąże się z Phasera (ADR-001).
-- **Kryteria:** Istnieje `core/units.ts`, jednostki można stawiać w edytorze map (GRA-012), typy pokrywają się ze specyfikacją.
+- **Kryteria:** Istnieje moduł `client/src/core/units/` z modellem wspólnym (`types.ts`, `model.ts`, `faction.ts`) i osobnym plikiem na każdy rodzaj jednostki; jednostki można stawiać w edytorze map (GRA-012), typy pokrywają się ze specyfikacją.
 
 ## GRA-003: Zapis i wczytywanie map
 - **Kontekst:** Edytor produkuje mapy, które trzeba przechowywać między sesjami. Potrzebny format zapisu obejmujący teren i jednostki.
@@ -153,18 +153,18 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
 - **Kontekst:** Ruch o jedno pole (GRA-027, ADR-022) nie wykorzystywał `moveRange` ani kosztu terenu, a gracz nie widział trasy przed wykonaniem ruchu. Potrzebny był ruch po ścieżce z podglądem kosztu i potwierdzeniem.
 - **Opis:** Pathfinding po heksach z kosztem terenu (`getMovePath()`), pierwszy klik rysuje najtańszą trasę w budżecie `movesLeft`, drugi klik na jej końcu potwierdza ruch (ADR-027). Jednostka zużywa punkty ruchu za całą trasę, a `hasActed` dostaje dopiero przy zerowym ruchu. Token animuje się po kolejnych polach trasy, a dolny pasek pokazuje aktualne `movesLeft/moveRange` i koszt ruchu terenu pod kursorem.
 - **Kryteria:**
-  - **Logika:** `core/state.ts` udostępnia `getMovePath()` (najtańsza trasa), `moveTargets()` (wszystkie heksy osiągalne w budżecie) i `moveUnit()`, który odejmuje koszt trasy i ustawia `hasActed` tylko przy zerowym ruchu.
+  - **Logika:** `core/map/movement.ts` udostępnia `getMovePath()` (najtańsza trasa), `moveTargets()` (wszystkie heksy osiągalne w budżecie) i `moveUnit()`, który odejmuje koszt trasy i ustawia `hasActed` tylko przy zerowym ruchu.
   - **Teren i kolizje:** trasa omija wodę i teren nieprzechodni, nie wchodzi na zajęte heksy i nie przekracza `movesLeft`; droga jest tańsza, las, bagno i góry droższe.
   - **Interfejs:** dozwolone heksy są zielone, trasa żółta, a pasek pokazuje instrukcję „1. klik — trasa · 2. klik — potwierdzenie ruchu”; zmiana wyboru i koniec tury czyszczą trasę.
   - **Animacja:** token przesuwa się po kolejnych heksach trasy, a `UnitLayer.setUnits(units, false)` nie nadpisuje jej skokiem do celu.
-  - **Testy:** `tests/core/state.test.ts` pokrywa koszt terenu, zasięg, zajęte heksy, wodę, koniec ruchu i wybór tańszej trasy zamiast krótszej.
+  - **Testy:** `tests/core/map/movement.test.ts` pokrywa koszt terenu, zasięg, zajęte heksy, wodę, koniec ruchu i wybór tańszej trasy zamiast krótszej.
 
 ## GRA-031: Kafelki terenu SVG z wariantami
 - **Kontekst:** Autorskie kafelki SVG leżały w katalogu builda (`client/dist/assets/map/`), przez co ginęły przy `npm run build`. Część terenów ma dwa warianty tego samego kafla, a mapa nadal rysowała jednolite heksy.
 - **Opis:** Pliki przeniesione do `client/src/assets/map/` i nazwane `<TerrainId>-<wariant>.svg`. `view/terrainTiles.ts` ładuje je przez Vite i wybiera losowy wariant, a `HexMapView` podmienia teksturę przy tworzeniu i zmianie terenu (ADR-028). Tereny bez SVG zachowują proceduralny heks.
 - **Kryteria:**
   - **Nazwy:** pliki odpowiadają ID terenu (`plain`, `water`, `city`) i numerowi wariantu; duplikat `city_tile_2_1.svg` nie jest używany.
-  - **Warianty:** funkcja `pickVariantIndex(count, random)` w `core/terrain.ts` zwraca indeks z zakresu `0..count-1`, a `tests/core/terrain.test.ts` pokrywa brak wariantów i granice losowania.
+  - **Warianty:** funkcja `pickVariantIndex(count, random)` w `core/map/terrain/variants.ts` zwraca indeks z zakresu `0..count-1`, a `tests/core/map/terrain/variants.test.ts` pokrywa brak wariantów i granice losowania.
   - **Widok:** łąka, woda i miasto używają SVG w edytorze, menu, podglądach i scenariuszu; las, góry, bagno i droga wyglądają jak wcześniej.
   - **Styk kafli:** rysunek wypełnia cały heks (bez ciemnego bevelu), a sprite zachodzi o 3% na sąsiadów, więc między kaflami nie prześwituje czarne tło.
   - **Paleta edytora:** podglądy terenu zachowują rozmiar heksa (~20 px), mimo że tekstura SVG ma 256 px; wybór kafelka skaluje je względem zapisanej skali bazowej, a nie przez `setScale(1)`.
@@ -234,3 +234,27 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
   - **Scenariusz:** pusta mapa nie dodaje jednostek; brakująca strona dostaje dokładnie 10 jednostek w ustalonej kolejności rodzajów, niebieska od lewej, czerwona od prawej; woda, brakujące kafle i heksy zajmowane przez drugą stronę są pomijane, a istniejące jednostki nie są nadpisywane.
   - **Ruch:** `canMoveUnit` odrzuca ten sam heks, heks nieprzyległy, zajęty, wodę, cel droższy niż pozostały ruch i jednostkę, która już działała; `getMoveCost` zwraca `IMPASSABLE` dla brakującego kafla; `getMovePath` odrzuca cel tożsamy z pozycją, zajęty, wodę i jednostkę bez ruchu.
   - **Wynik:** pełny przebieg Strykera po zmianach daje 80,39% (676 zabitych, 21 timeoutów, 126 przeżytych, 44 bez pokrycia, 40 błędów na 907 mutantów) zamiast 61,01% przed zmianą; testy i `tsc --noEmit` pozostają zielone.
+
+## GRA-035: Kolorystyka interfejsu zależna od tury
+- **Kontekst:** Pasek dowodzenia ma stałe zielone akcenty, więc gracz nie widzi na pierwszy rzut oka, czyja jest tura — aktywną stronę zdradza tylko tekst.
+- **Opis:** Akcenty paska dowodzenia zmieniają się wraz z aktywną stroną: niebieska tura używa błękitu, czerwona — czerwieni. Paleta obejmuje tło paska, obwódkę i górną linię, separatory, przycisk „ZAKOŃCZ TURĘ” (tło, obwódka, hover), kolory hover odnośników oraz etykietę tury i wskaźnik stron. Tło i układ paska pozostają bez zmian.
+- **Kryteria:**
+  - **Zmiana tury:** po `T` lub „ZAKOŃCZ TURĘ” akcenty przełączają się na kolor nowej strony bez przebudowy sceny.
+  - **Czytelność:** teksty i przyciski pozostają czytelne na ciemnym tle, a kolory nie zmieniają znaczenia żółtej trasy ani białego kursora.
+  - **Zakres:** zmiana dotyczy wyłącznie warstwy widoku — `core/` i zapis scenariusza pozostają bez zmian.
+
+## GRA-036: Symulacja ruchu w module mapy
+- **Kontekst:** `client/src/core/state.ts` łączył stan gry (mapa, jednostki, licznik) z symulacją ruchu, choć reguły ruchu zależą głównie od mapy i terenu. Plik rósł razem z pathfindingiem i utrudniał odnalezienie operacji stanu.
+- **Opis:** Symulacja ruchu przenosi się do `client/src/core/map/movement.ts`: `findUnitAt`, `getMoveCost`, `canMoveUnit`, `getMovePath`, `moveTargets`, `moveUnit`. `core/map/index.ts` re-eksportuje moduł, więc scena i widoki importują reguły ruchu z `core/map`. `core/state.ts` zostaje przy `GameState` i mutacjach jednostek (`placeUnit`, `removeUnitAt`, `clearUnits`, `deployUnits`, `countUnits`).
+- **Kryteria:**
+  - **Brak cyklu:** `map/movement.ts` zna `GameState` wyłącznie przez import typu, a `state.ts` nie importuje modułu ruchu w czasie działania.
+  - **Zachowanie:** trasa, koszt terenu, zasięg ruchu i oznaczenie `hasActed` działają jak przed przeniesieniem.
+  - **Testy:** testy ruchu leżą w `tests/core/map/movement.test.ts`, a `tests/core/state.test.ts` pokrywa wyłącznie operacje stanu.
+
+## GRA-037: Moduł integracji z SQLite
+- **Kontekst:** Inicjalizacja `sql.js`, plik WASM i trwałość bazy w `localStorage` leżały w `client/src/storage/` obok repozytorium map. Warstwa magazynu mieszała więc dostęp do zewnętrznego silnika z logiką domenową.
+- **Opis:** Powstaje moduł `client/src/integrations/` z podmodułem `sqlite/`. `openDatabase()` i `persistDatabase()` przenoszą się do `integrations/sqlite/database.ts`, a `integrations/sqlite/index.ts` re-eksportuje publiczny interfejs. `storage/maps.ts` korzysta z integracji, zachowując schemat, seed i operacje na mapach.
+- **Kryteria:**
+  - **Granica:** `integrations/` zna wyłącznie `sql.js`, WASM i `localStorage`; nie importuje modułów gry.
+  - **Zachowanie:** baza nadal otwiera się z `mvaw:sqlite`, a zapis mapy persists plik bez zmian formatu.
+  - **Dokumentacja:** ścieżki w ADR-017, `Mapy.md`, `Interfejs.md` i `Infrastruktura.md` wskazują nowy moduł.
