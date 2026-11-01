@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { cellCoord, hexCorners, hexToPixel, type GameMap, type HexCoord } from '../core/map';
-import { TERRAIN_DEFS, TERRAIN_IDS, type TerrainId } from '../core/terrain';
+import { TERRAIN_DEFS, TERRAIN_IDS, type TerrainId } from '../core/map/terrain';
 import { terrainTileDisplaySize, terrainTileTextureKey } from './terrainTiles';
 
 export const HEX_SIZE = 22;

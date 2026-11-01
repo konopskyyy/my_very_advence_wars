@@ -1,6 +1,6 @@
 import type { GameState } from '../core/state';
-import type { TerrainId } from '../core/terrain';
-import { TERRAIN_IDS } from '../core/terrain';
+import type { TerrainId } from '../core/map/terrain';
+import { TERRAIN_IDS } from '../core/map/terrain';
 import type { FactionId, Unit } from '../core/units';
 import { FACTION_IDS, UNIT_KINDS } from '../core/units';
 

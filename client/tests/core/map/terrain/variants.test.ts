@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { pickVariantIndex } from '../../src/core/terrain';
+import { pickVariantIndex } from '../../../../src/core/map/terrain/variants';
 
 describe('pickVariantIndex', () => {
   it('zwraca 0, gdy teren nie ma wariantów', () => {

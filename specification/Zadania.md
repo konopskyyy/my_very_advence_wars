@@ -44,6 +44,9 @@ Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
 | [[Zadania-opisy#GRA-032: Pusta lista w menu map\|GRA-032]] | Pusta lista w menu map | ✅ | GRA-017, GRA-023, ADR-013, ADR-018, INTERF-004 |
 | [[Zadania-opisy#GRA-033: Nowe grafiki kafelków i las\|GRA-033]] | Nowe grafiki kafelków i las | ✅ | GRA-031, ADR-028, INTERF-003 |
 | [[Zadania-opisy#GRA-034: Wzmocnienie testów pod mutacje\|GRA-034]] | Wzmocnienie testów pod mutacje | ✅ | INFRA-002, GRA-013 |
+| [[Zadania-opisy#GRA-035: Kolorystyka interfejsu zależna od tury\|GRA-035]] | Kolorystyka interfejsu zależna od tury | ✅ | GRA-027, ADR-020, ADR-024, INTERF-005 |
+| [[Zadania-opisy#GRA-036: Symulacja ruchu w module mapy\|GRA-036]] | Symulacja ruchu w module mapy | ✅ | GRA-030, ADR-001, ADR-027 |
+| [[Zadania-opisy#GRA-037: Moduł integracji z SQLite\|GRA-037]] | Moduł integracji z SQLite | ✅ | ADR-017, GRA-025 |
 | [[Zadania-opisy#SRV-001: Warstwowy moduł auth z encją użytkownika\|SRV-001]] | Warstwowy moduł auth z encją użytkownika | ✅ | ADR-029, API-001 |
 | [[Zadania-opisy#SRV-002: Rejestracja i logowanie JWT\|SRV-002]] | Rejestracja i logowanie JWT | ✅ | SRV-001, ADR-029, API-001 |
 | [[Zadania-opisy#INFRA-001: Środowisko Docker\|INFRA-001]] | Środowisko Docker | ✅ | `specification/Infrastruktura.md` |

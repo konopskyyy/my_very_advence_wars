@@ -2,7 +2,7 @@ import type { Database } from 'sql.js';
 import { BUILT_IN_MAPS, mapTileCount } from '../core/map';
 import { BUILT_IN_SCENARIOS } from '../core/scenario';
 import { createInitialState, type GameState } from '../core/state';
-import { openDatabase, persistDatabase } from './database';
+import { openDatabase, persistDatabase } from '../integrations/sqlite';
 import { deserializeGameState, serializeGameState } from './mapSerialization';
 
 export interface SavedMapSummary {

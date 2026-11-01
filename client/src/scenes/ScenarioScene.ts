@@ -1,17 +1,12 @@
 import Phaser from 'phaser';
 import type { HexCoord } from '../core/map';
+import { findUnitAt, getMovePath, moveTargets, moveUnit } from '../core/map';
 import {
   BUILT_IN_SCENARIOS,
   ensureScenarioArmies,
   type ScenarioDefinition,
 } from '../core/scenario';
-import {
-  findUnitAt,
-  getMovePath,
-  moveTargets,
-  moveUnit,
-  type GameState,
-} from '../core/state';
+import type { GameState } from '../core/state';
 import {
   beginTurn,
   createTurnState,

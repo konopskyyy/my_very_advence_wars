@@ -1,5 +1,5 @@
 import { hexToPixel, toDoubled, type HexCoord } from './layout';
-import type { TerrainId } from '../terrain';
+import type { TerrainId } from './terrain';
 
 export interface GameMap {
   readonly cells: Readonly<Record<string, TerrainId>>;

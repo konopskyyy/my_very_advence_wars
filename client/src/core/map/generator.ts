@@ -1,5 +1,5 @@
 import { cellKey, createMap, mapBounds, type GameMap } from './model';
-import type { TerrainId } from '../terrain';
+import type { TerrainId } from './terrain';
 
 export const MAP_COLS = 22;
 export const MAP_ROWS = 14;

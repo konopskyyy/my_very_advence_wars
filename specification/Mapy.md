@@ -122,7 +122,7 @@ przy każdej zmianie zasad tur (ADR-020).
 | `road`      | Droga    |         0.5 |      0 |
 | `city`      | Miasto   |           1 |     40 |
 
-Źródło: `client/src/core/terrain.ts`. Lista `TERRAIN_IDS` jest jednocześnie
+Źródło: `client/src/core/map/terrain/` — jeden plik na teren. Lista `TERRAIN_IDS` jest jednocześnie
 listą dozwolonych wartości przy odczycie z bazy — nowy teren trzeba dodać
 również tam.
 
@@ -478,13 +478,14 @@ Node.
 
 | Plik | Rola |
 | ---- | ---- |
-| `client/src/storage/database.ts` | `sql.js`, WASM, odczyt/zapis `localStorage`, base64. |
+| `client/src/integrations/sqlite/database.ts` | `sql.js`, WASM, odczyt/zapis `localStorage`, base64. |
 | `client/src/storage/maps.ts` | `MAPS_SCHEMA`, `ensureMapsSchema`, `seedBuiltInMaps`, `upsertMap`, `listMaps`, `readMap`, `saveMap`, `listSavedMaps`, `loadSavedMap`, `createSavedMapId`. |
 | `client/src/storage/mapSerialization.ts` | serializacja i walidacja `GameState`. |
 | `client/src/core/map/model.ts` | model `GameMap`, klucze komórek, liczniki, granice. |
+| `client/src/core/map/movement.ts` | symulacja ruchu jednostek: `findUnitAt`, koszt terenu, trasa, zasięg i wykonanie ruchu. |
 | `client/src/core/state.ts` | `GameState`, jednostki, `nextUnitSeq`. |
-| `client/src/core/terrain.ts` | lista `TerrainId` i statystyki terenu. |
-| `client/src/core/units.ts` | rodzaje jednostek, strony, amunicja. |
+| `client/src/core/map/terrain/` | definicje terenu: `TerrainId`, `TerrainDef`, `TERRAIN_DEFS`, `TERRAIN_IDS`, `pickVariantIndex`; jeden plik na teren. |
+| `client/src/core/units/` | model `Unit`, `UNIT_DEFS` i `createUnit`; strony w `faction.ts`, osobny plik na każdy rodzaj jednostki. |
 | `client/tests/storage/maps.test.ts` | schemat, zapis, upsert, odczyt, ID i jednorazowy seed map startowych. |
 | `client/tests/storage/mapSerialization.test.ts` | round-trip i odrzucanie uszkodzonych danych. |
 

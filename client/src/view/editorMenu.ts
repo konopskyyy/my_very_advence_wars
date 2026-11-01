@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { TERRAIN_DEFS, TERRAIN_IDS, type TerrainId } from '../core/terrain';
+import { TERRAIN_DEFS, TERRAIN_IDS, type TerrainId } from '../core/map/terrain';
 import {
   FACTION_DEFS,
   UNIT_DEFS,
