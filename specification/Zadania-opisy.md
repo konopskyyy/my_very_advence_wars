@@ -291,3 +291,15 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
   - **Widoczność:** mgła wojny nie zmienia się; ukrytej jednostki nadal nie da się wybrać, a obrysy nie ujawniają jej pozycji.
   - **Testy:** `tests/core/ranges.test.ts` pokrywa promień, filtrowanie do kafli i wartości z `UNIT_DEFS`; testy scenariusza i map pozostają bez regresji.
   - **Dokumentacja:** ADR-031, `Mapy.md` i `Interfejs.md` opisują nową właściwość i kolory obrysów.
+
+## GRA-040: Atak jednostek z obrażeniami i usuwaniem
+- **Kontekst:** Zasięg strzału był tylko obrysem na mapie — kliknięcie wrogiej jednostki w zasięgu wybierało ją zamiast atakować. Statystyka `attack` i pole `hp` nie miały zastosowania w rozgrywce, więc walki nie było.
+- **Opis:** Czysty moduł `client/src/core/combat.ts` udostępnia `canAttack()` i `attackUnit()`. Atak jest dozwolony, gdy wybrana jednostka należy do aktywnej strony, nie działała jeszcze w tej turze, a cel jest wrogiem w promieniu `attackRange`. Obrażenia są równe `attack` atakującego i odejmowane od `hp` celu; jednostka z `hp <= 0` znika ze stanu. Atak kończy akcję jednostki (`hasActed`), więc ta sama jednostka nie zaatakuje dwa razy w turze. `ScenarioScene` przechwytuje kliknięcie w widocznego wroga w zasięgu przed wyborem jednostki i odświeża tokeny, zasięgi oraz pasek.
+- **Kryteria:**
+  - **Dozwolony atak:** własna jednostka aktywnej strony, bez `hasActed`, cel wrogi i w odległości nie większej niż `attackRange`.
+  - **Obrażenia:** `hp` celu spada o `attack` atakującego; obrona i teren nie zmniejszają obrażeń.
+  - **Śmierć:** przy `hp <= 0` jednostka jest usuwana ze `state.units`, a jej token znika z mapy.
+  - **Akcja:** po ataku atakujący dostaje `hasActed` i nie może ponownie zaatakować ani ruszyć się do końca tury.
+  - **Interakcja:** kliknięcie wroga poza zasięgiem nie zadaje obrażeń; ukrytej jednostki nadal nie da się zaatakować. Podgląd heksu pokazuje HP widocznej jednostki.
+  - **Testy:** `tests/core/combat.test.ts` pokrywa obrażenia, śmierć, zasięg, własną stronę, limit akcji i wartości z `UNIT_DEFS`.
+  - **Dokumentacja:** ADR-032, `Mapy.md` i `Interfejs.md` opisują obrażenia, warunki ataku i zachowanie sceny.
