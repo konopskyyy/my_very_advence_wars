@@ -27,6 +27,10 @@ const FACTION_BUTTON_WIDTH = 80;
 const FACTION_BUTTON_HEIGHT = 22;
 const FACTION_BUTTON_GAP = 4;
 const FACTION_BUTTONS_X = PANEL_X + 56;
+const FOG_TOP = FACTION_TOP + FACTION_BUTTON_HEIGHT + 8;
+const FOG_BUTTON_HEIGHT = 22;
+const FOG_BUTTON_X = PANEL_X + 12;
+const FOG_BUTTON_WIDTH = 226;
 const SWATCH_RADIUS = 9;
 
 export const EDITOR_PANEL_X = PANEL_X;
@@ -36,7 +40,9 @@ export const EDITOR_TERRAIN_LABEL_Y = PANEL_Y + 80;
 export const EDITOR_UNIT_LABEL_Y = UNIT_LABEL_Y;
 export const EDITOR_FACTION_TOP = FACTION_TOP;
 export const EDITOR_FACTION_BUTTON_HEIGHT = FACTION_BUTTON_HEIGHT;
-export const EDITOR_HUD_Y = FACTION_TOP + 30;
+export const EDITOR_FOG_TOP = FOG_TOP;
+export const EDITOR_FOG_BUTTON_HEIGHT = FOG_BUTTON_HEIGHT;
+export const EDITOR_HUD_Y = FOG_TOP + FOG_BUTTON_HEIGHT + 8;
 
 export type EditorTool = 'terrain' | 'unit';
 
@@ -45,12 +51,14 @@ export interface EditorMenuState {
   readonly brush: TerrainId;
   readonly unitKind: UnitKind;
   readonly faction: FactionId;
+  readonly fogOfWar: boolean;
 }
 
 export interface EditorMenuHandlers {
   readonly onTerrain: (terrain: TerrainId) => void;
   readonly onUnit: (kind: UnitKind) => void;
   readonly onFaction: (faction: FactionId) => void;
+  readonly onFog: () => void;
 }
 
 interface TerrainTile {
@@ -75,11 +83,17 @@ interface FactionButton {
   readonly label: Phaser.GameObjects.Text;
 }
 
+interface FogButton {
+  readonly background: Phaser.GameObjects.Rectangle;
+  readonly label: Phaser.GameObjects.Text;
+}
+
 export class EditorMenu {
   private state: EditorMenuState;
   private terrainTiles: TerrainTile[] = [];
   private unitTiles: UnitTile[] = [];
   private factionButtons: FactionButton[] = [];
+  private fogButton!: FogButton;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -98,6 +112,7 @@ export class EditorMenu {
     this.factionButtons = factions.map((faction, index) =>
       this.createFactionButton(faction, index),
     );
+    this.fogButton = this.createFogButton();
   }
 
   refresh(state?: EditorMenuState): void {
@@ -138,6 +153,14 @@ export class EditorMenu {
       background.setData('selected', selected);
       label.setColor(selected ? '#ffffff' : '#9fb0a5');
     });
+
+    const fog = this.state.fogOfWar;
+
+    this.fogButton.background.setFillStyle(fog ? 0x1f3a2a : 0x142018, fog ? 1 : 0.9);
+    this.fogButton.background.setStrokeStyle(fog ? 2 : 1, fog ? 0xa6f4c5 : 0x2a3f33, 1);
+    this.fogButton.label
+      .setText(`MGŁA WOJNY: ${fog ? 'WŁĄCZONA' : 'WYŁĄCZONA'}`)
+      .setColor(fog ? '#ffffff' : '#9fb0a5');
   }
 
   private createTerrainTile(terrain: TerrainId, index: number): TerrainTile {
@@ -250,6 +273,45 @@ export class EditorMenu {
       .setDepth(11);
 
     return { faction, background, label };
+  }
+
+  private createFogButton(): FogButton {
+    const centerX = FOG_BUTTON_X + FOG_BUTTON_WIDTH / 2;
+    const centerY = FOG_TOP + FOG_BUTTON_HEIGHT / 2;
+    const background = this.scene.add.rectangle(
+      centerX,
+      centerY,
+      FOG_BUTTON_WIDTH,
+      FOG_BUTTON_HEIGHT,
+      0x142018,
+      0.9,
+    );
+
+    background.setStrokeStyle(1, 0x2a3f33, 1);
+    background.setScrollFactor(0);
+    background.setDepth(10.5);
+    background.setInteractive({ useHandCursor: true });
+    background.on('pointerover', () => this.highlightTile(background));
+    background.on('pointerout', () => this.refresh());
+    background.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      if (pointer.button !== 0) {
+        return;
+      }
+
+      this.handlers.onFog();
+    });
+
+    const label = this.scene.add
+      .text(centerX, centerY, 'MGŁA WOJNY: WYŁĄCZONA', {
+        fontFamily: 'monospace',
+        fontSize: '9px',
+        color: '#9fb0a5',
+      })
+      .setOrigin(0.5, 0.5)
+      .setScrollFactor(0)
+      .setDepth(11);
+
+    return { background, label };
   }
 
   private createTileBackground(

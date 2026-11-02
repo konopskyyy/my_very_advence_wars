@@ -18,4 +18,6 @@ export interface UnitStats {
   readonly moveRange: number;
   readonly attack: number;
   readonly defense: number;
+  readonly visionRange: number;
+  readonly attackRange: number;
 }

@@ -13,6 +13,8 @@ export const ARTILLERY_STATS: UnitStats = {
   moveRange: 2,
   attack: 12,
   defense: 3,
+  visionRange: 2,
+  attackRange: 3,
 };
 
 export const ARTILLERY_AMMO = 6;

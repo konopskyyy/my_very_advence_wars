@@ -14,7 +14,7 @@ ADMINER_PORT ?= 18081
 .PHONY: help up up-tools down stop restart ps logs logs-server logs-client \
         shell console composer cache-clear migrate fixtures jwt-keys test-server \
         db-shell build rebuild client-install \
-        install electron electron-build clean clean-all test mutation lint env run
+        install electron electron-build electron-win electron-win-installer clean clean-all test mutation lint env run
 
 ## ——— Pomoc ————————————————————————————————————————————————
 
@@ -109,9 +109,17 @@ electron: ## Uruchom Electrona (dev: ładuje Vite z kontenera)
 
 run: electron ## Uruchom Electrona (alias make electron)
 
-electron-build: ## Zbuduj klienta i paczkę Electrona
+electron-build: ## Zbuduj klienta i rozpakowaną paczkę Electrona (bieżący system)
 	cd client && npm run build
 	$(ELECTRON) run build --prefix electron
+
+electron-win: ## Zbuduj klienta i paczkę ZIP dla Windows (WSL, bez wine)
+	cd client && npm run build
+	$(ELECTRON) run build:win --prefix electron
+
+electron-win-installer: ## Zbuduj instalator NSIS dla Windows (wymaga wine)
+	cd client && npm run build
+	$(ELECTRON) run build:win:installer --prefix electron
 
 ## ——— Testy / porządek ——————————————————————————————————————
 

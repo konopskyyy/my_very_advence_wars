@@ -68,7 +68,7 @@ export function extendMap(
     }
   }
 
-  return { cells };
+  return { ...map, cells };
 }
 
 export function paintRect(
@@ -85,7 +85,7 @@ export function paintRect(
     fillRow(cells, r, col, col + cols - 1, terrain);
   }
 
-  return { cells };
+  return { ...map, cells };
 }
 
 function fillRow(

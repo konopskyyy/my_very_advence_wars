@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createMap, setTerrain } from '../../src/core/map';
+import { createMap, setFogOfWar, setTerrain } from '../../src/core/map';
 import { createInitialState, placeUnit } from '../../src/core/state';
 import {
   deserializeGameState,
@@ -35,6 +35,33 @@ describe('serializacja stanu gry', () => {
 
     expect(artillery?.kind).toBe('artillery');
     expect(artillery?.kind === 'artillery' ? artillery.ammo : undefined).toBe(6);
+  });
+
+  it('zapisuje i przywraca mgłę wojny', () => {
+    const state = sampleState();
+    const foggy = { ...state, map: setFogOfWar(state.map, true) };
+
+    expect(deserializeGameState(serializeGameState(foggy)).map.fogOfWar).toBe(true);
+  });
+
+  it('traktuje brak flagi mgły w starym zapisie jako wyłączoną', () => {
+    const json = JSON.stringify({
+      map: { cells: { '0,0': 'plain' } },
+      units: [],
+      nextUnitSeq: 1,
+    });
+
+    expect(deserializeGameState(json).map.fogOfWar).toBe(false);
+  });
+
+  it('odrzuca niepoprawną flagę mgły', () => {
+    const json = JSON.stringify({
+      map: { cells: { '0,0': 'plain' }, fogOfWar: 'tak' },
+      units: [],
+      nextUnitSeq: 1,
+    });
+
+    expect(() => deserializeGameState(json)).toThrow('mgła wojny');
   });
 
   it('odrzuca uszkodzony JSON', () => {

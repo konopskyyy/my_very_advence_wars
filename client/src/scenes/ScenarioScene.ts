@@ -7,6 +7,7 @@ import {
   type ScenarioDefinition,
 } from '../core/scenario';
 import type { GameState } from '../core/state';
+import { attackTiles, visionTiles } from '../core/ranges';
 import {
   beginTurn,
   createTurnState,
@@ -14,13 +15,19 @@ import {
   type TurnState,
 } from '../core/turn';
 import type { FactionId, Unit } from '../core/units';
-import { HexMapView, outlineHex } from '../view/hexGrid';
+import { visibleUnitAt, visibleUnits } from '../core/vision';
+import { HexMapView, HEX_SIZE, outlineHex } from '../view/hexGrid';
 import { MapViewport } from '../view/mapViewport';
 import { BAR_HEIGHT, ScenarioCommandBar } from '../view/scenarioCommandBar';
 import { preloadTerrainTiles } from '../view/terrainTiles';
 import { UnitLayer } from '../view/unitLayer';
 
 const EDGE_PAN_MARGIN = 24;
+const MOVE_HINT_COLOR = 0x6fd08c;
+const VISION_HINT_COLOR = 0x5aa9e6;
+const ATTACK_HINT_COLOR = 0xe0563f;
+const VISION_HINT_SIZE = HEX_SIZE - 4;
+const ATTACK_HINT_SIZE = HEX_SIZE - 8;
 
 interface ScenarioData {
   readonly definition?: ScenarioDefinition;
@@ -45,7 +52,7 @@ export class ScenarioScene extends Phaser.Scene {
   private commandBar!: ScenarioCommandBar;
   private cursor!: Phaser.GameObjects.Graphics;
   private selection!: Phaser.GameObjects.Graphics;
-  private moveHints!: Phaser.GameObjects.Graphics;
+  private rangeHints!: Phaser.GameObjects.Graphics;
   private pathHints!: Phaser.GameObjects.Graphics;
   private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
 
@@ -80,12 +87,12 @@ export class ScenarioScene extends Phaser.Scene {
     });
 
     this.mapView = new HexMapView(this, this.state.map);
-    this.unitLayer = new UnitLayer(this, this.state.units);
+    this.unitLayer = new UnitLayer(this, visibleUnits(this.state, this.turn.faction));
 
     this.selection = this.add.graphics();
     this.selection.setDepth(4);
-    this.moveHints = this.add.graphics();
-    this.moveHints.setDepth(3);
+    this.rangeHints = this.add.graphics();
+    this.rangeHints.setDepth(3);
     this.pathHints = this.add.graphics();
     this.pathHints.setDepth(6);
     this.cursor = this.add.graphics();
@@ -142,7 +149,7 @@ export class ScenarioScene extends Phaser.Scene {
     uiCamera.ignore([
       this.cursor,
       this.selection,
-      this.moveHints,
+      this.rangeHints,
       this.pathHints,
       ...this.mapView.objects(),
       ...this.unitLayer.objects(),
@@ -152,7 +159,7 @@ export class ScenarioScene extends Phaser.Scene {
   }
 
   private refreshUnits(): void {
-    this.unitLayer.setUnits(this.state.units);
+    this.unitLayer.setUnits(visibleUnits(this.state, this.turn.faction));
     this.uiCamera?.ignore(this.unitLayer.objects());
   }
 
@@ -244,9 +251,9 @@ export class ScenarioScene extends Phaser.Scene {
     this.state = next;
     this.selected = findUnitAt(this.state, coord) ?? null;
     this.movePath = null;
-    this.unitLayer.setUnits(this.state.units, false);
+    this.unitLayer.setUnits(visibleUnits(this.state, this.turn.faction), false);
     this.drawSelection();
-    this.drawMoveHints();
+    this.drawRangeHints();
     this.drawPath();
     this.refreshHud();
     this.refreshUnitPreview();
@@ -348,7 +355,7 @@ export class ScenarioScene extends Phaser.Scene {
     this.selected = null;
     this.movePath = null;
     this.selection.clear();
-    this.moveHints.clear();
+    this.rangeHints.clear();
     this.pathHints.clear();
     this.refreshUnits();
     this.refreshHud();
@@ -360,10 +367,10 @@ export class ScenarioScene extends Phaser.Scene {
   }
 
   private selectAt(coord: HexCoord): void {
-    this.selected = findUnitAt(this.state, coord) ?? null;
+    this.selected = visibleUnitAt(this.state, coord, this.turn.faction) ?? null;
     this.movePath = null;
     this.drawSelection();
-    this.drawMoveHints();
+    this.drawRangeHints();
     this.drawPath();
     this.refreshHud();
     this.refreshUnitPreview();
@@ -377,21 +384,41 @@ export class ScenarioScene extends Phaser.Scene {
     }
   }
 
-  private drawMoveHints(): void {
-    this.moveHints.clear();
+  private drawRangeHints(): void {
+    this.rangeHints.clear();
 
-    if (!this.selected || this.selected.faction !== this.turn.faction) {
+    if (!this.selected) {
       return;
     }
 
     const unit = findUnitAt(this.state, this.selected.pos) ?? this.selected;
 
-    if (unit.hasActed || unit.movesLeft <= 0) {
+    for (const target of visionTiles(this.state.map, unit)) {
+      outlineHex(
+        this.rangeHints,
+        this.mapView.center(target),
+        VISION_HINT_COLOR,
+        2,
+        VISION_HINT_SIZE,
+      );
+    }
+
+    for (const target of attackTiles(this.state.map, unit)) {
+      outlineHex(
+        this.rangeHints,
+        this.mapView.center(target),
+        ATTACK_HINT_COLOR,
+        2,
+        ATTACK_HINT_SIZE,
+      );
+    }
+
+    if (unit.faction !== this.turn.faction || unit.hasActed || unit.movesLeft <= 0) {
       return;
     }
 
     for (const target of moveTargets(this.state, unit)) {
-      outlineHex(this.moveHints, this.mapView.center(target), 0x6fd08c, 2);
+      outlineHex(this.rangeHints, this.mapView.center(target), MOVE_HINT_COLOR, 2);
     }
   }
 

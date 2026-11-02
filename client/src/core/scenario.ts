@@ -3,6 +3,7 @@ import {
   generateMap,
   mapBounds,
   paintRect,
+  setFogOfWar,
   type GameMap,
   type HexCoord,
 } from './map';
@@ -20,6 +21,7 @@ export interface ScenarioDefinition {
   readonly name: string;
   readonly description: string;
   readonly state: GameState;
+  readonly withFogOfWar?: (state: GameState) => GameState;
 }
 
 export const SCENARIO_COLS = 48;
@@ -223,10 +225,10 @@ function buildFrontMap(): GameMap {
   map = paintRect(map, 33, 8, 2, 2, 'city');
   map = paintRect(map, 12, 22, 2, 2, 'city');
 
-  return map;
+  return setFogOfWar(map, true);
 }
 
-function buildFrontState(): GameState {
+export function buildFrontState(): GameState {
   const state = createInitialState(buildFrontMap());
   const withPlayer = deployUnits(state, 'blue', PLAYER_DEPLOYMENT);
 
@@ -242,6 +244,7 @@ export const BUILT_IN_SCENARIOS: readonly ScenarioDefinition[] = [
     description:
       'Duża mapa testowa: rzeka, góry, bagna, lasy i drogi. Niebieska strona gracza naprzeciw czerwonej.',
     state: FRONT_STATE,
+    withFogOfWar: (state) => ({ ...state, map: setFogOfWar(state.map, true) }),
   },
 ];
 

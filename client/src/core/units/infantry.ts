@@ -12,6 +12,8 @@ export const INFANTRY_STATS: UnitStats = {
   moveRange: 4,
   attack: 5,
   defense: 4,
+  visionRange: 2,
+  attackRange: 1,
 };
 
 export function createInfantry(id: string, faction: FactionId, pos: HexCoord): InfantryUnit {

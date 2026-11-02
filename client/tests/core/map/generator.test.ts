@@ -80,7 +80,7 @@ describe('extendMap', () => {
   });
 
   it('nie zmienia pustej mapy', () => {
-    const empty = { cells: {} };
+    const empty = { cells: {}, fogOfWar: false };
 
     expect(extendMap(empty, 'top', 3, 'city')).toBe(empty);
   });

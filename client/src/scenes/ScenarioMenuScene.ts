@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { mapTileCount } from '../core/map';
-import { ensureScenarioArmies, type ScenarioDefinition } from '../core/scenario';
+import { ensureScenarioArmies, findScenarioDefinition, type ScenarioDefinition } from '../core/scenario';
 import { countUnits } from '../core/state';
 import {
   listSavedMaps,
@@ -127,7 +127,11 @@ export class ScenarioMenuScene extends Phaser.Scene {
           continue;
         }
 
-        const state = ensureScenarioArmies(saved.state);
+        const scenarioDefinition = findScenarioDefinition(saved.id);
+        const armyState = ensureScenarioArmies(saved.state);
+        const state = scenarioDefinition?.withFogOfWar
+          ? scenarioDefinition.withFogOfWar(armyState)
+          : armyState;
         const counts = countUnits(state.units);
 
         if (counts.blue === 0 || counts.red === 0) {

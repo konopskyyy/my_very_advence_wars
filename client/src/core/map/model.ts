@@ -3,6 +3,7 @@ import type { TerrainId } from './terrain';
 
 export interface GameMap {
   readonly cells: Readonly<Record<string, TerrainId>>;
+  readonly fogOfWar: boolean;
 }
 
 export interface MapBounds {
@@ -38,7 +39,7 @@ export function createMap(cols: number, rows: number, fill: TerrainId = 'plain')
     }
   }
 
-  return { cells };
+  return { cells, fogOfWar: false };
 }
 
 export function terrainAt(map: GameMap, coord: HexCoord): TerrainId | undefined {
@@ -56,7 +57,7 @@ export function setTerrain(map: GameMap, coord: HexCoord, terrain: TerrainId): G
     return map;
   }
 
-  return { cells: { ...map.cells, [key]: terrain } };
+  return { ...map, cells: { ...map.cells, [key]: terrain } };
 }
 
 export function removeTerrain(map: GameMap, coord: HexCoord): GameMap {
@@ -69,7 +70,7 @@ export function removeTerrain(map: GameMap, coord: HexCoord): GameMap {
   const cells = { ...map.cells };
   delete cells[key];
 
-  return { cells };
+  return { ...map, cells };
 }
 
 export function fillMap(map: GameMap, terrain: TerrainId): GameMap {
@@ -79,11 +80,15 @@ export function fillMap(map: GameMap, terrain: TerrainId): GameMap {
     cells[key] = terrain;
   }
 
-  return { cells };
+  return { ...map, cells };
+}
+
+export function setFogOfWar(map: GameMap, enabled: boolean): GameMap {
+  return map.fogOfWar === enabled ? map : { ...map, fogOfWar: enabled };
 }
 
 export function clearMap(): GameMap {
-  return { cells: {} };
+  return { cells: {}, fogOfWar: false };
 }
 
 export function mapBounds(map: GameMap): MapBounds | undefined {

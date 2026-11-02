@@ -224,7 +224,16 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
   - **PHPUnit:** job instaluje zależności Composera z cache i obala pipeline, gdy testy backendu są czerwone.
   - **Infection:** mutuje `server/src/`, progi `minMsi 80` i `minCoveredMsi 90`; raport `server/var/infection/` trafia do artefaktu `server-mutation-report` także przy nieudanym jobie.
   - **Logi testów:** w `APP_ENV=test` logger jest wyciszony (`server/config/services_test.yaml`), bo Infection traktuje zapis na stderr jako błąd initial tests.
-  - **Dokumentacja:** `specification/Infrastruktura.md` opisuje joby, progi i artefakty.
+  - **Documentacja:** `specification/Infrastruktura.md` opisuje joby, progi i artefakty.
+
+## INFRA-004: Paczka Electrona dla Windows z WSL
+- **Kontekst:** `make electron-build` budował wyłącznie rozpakowaną paczkę dla bieżącego systemu, a `files` w `electron/package.json` nie pakowało `client/dist`. Paczka nie miała więc `index.html`, a `main.cjs` wskazywał na ścieżkę spoza `resources/`. Na WSL nie było też sposobu na zbudowanie `.exe` bez ręcznego wywoływania `electron-builder`.
+- **Opis:** `extraResources` kopiuje `client/dist` do `resources/client/dist`, a spakowane okno ładuje je przez własny schemat `app://bundle/` (`electron/distServer.cjs`) zamiast `file://`. Nowe cele: `build:win` (ZIP z `win-unpacked`, bez wine) i `build:win:installer` (NSIS + portable, wymaga wine), plus `make electron-win` i `make electron-win-installer`. `make electron` nadal ładuje Vite z kontenera, a schemat `app://` obsługuje wyłącznie paczkę.
+- **Kryteria:**
+  - **ZIP:** `make electron-win` tworzy `electron/release/My Very Advance Wars-<wersja>-win.zip` zawierający `win-unpacked` z `resources/client/dist/index.html` i `assets/`; build nie wymaga wine.
+  - **Instalator:** `make electron-win-installer` buduje NSIS i portable `.exe`; na WSL bez `wine` kończy się czytelnym błędem, a dokumentacja podaje sposób instalacji.
+  - **Działanie paczki:** `app://bundle/index.html` serwuje assety Vite, `sql-wasm.wasm` wraca `200`, a `localStorage` działa — sprawdzone sondą Electrona na `client/dist`.
+  - **Zgodność:** `make electron` i `make electron-build` zachowują dotychczasowe zachowanie, a `specification/Infrastruktura.md` i `specification/Mapy.md` opisują nowe cele, origin packaged i wymóg wine.
 
 ## GRA-034: Wzmocnienie testów pod mutacje
 - **Kontekst:** Pierwszy przebieg Strykera (INFRA-002) dał 61% i odsłonił pliki z niskim pokryciem zachowań: `scenario.ts` (32%), `map/catalog.ts` (22%) i `state.ts` (61%). Testy sprawdzały głównie, że jednostki powstają, a nie gdzie dokładnie trafiają ani których heksów unikają.
@@ -237,7 +246,7 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
 
 ## GRA-035: Kolorystyka interfejsu zależna od tury
 - **Kontekst:** Pasek dowodzenia ma stałe zielone akcenty, więc gracz nie widzi na pierwszy rzut oka, czyja jest tura — aktywną stronę zdradza tylko tekst.
-- **Opis:** Akcenty paska dowodzenia zmieniają się wraz z aktywną stroną: niebieska tura używa błękitu, czerwona — czerwieni. Paleta obejmuje tło paska, obwódkę i górną linię, separatory, przycisk „ZAKOŃCZ TURĘ” (tło, obwódka, hover), kolory hover odnośników oraz etykietę tury i wskaźnik stron. Tło i układ paska pozostają bez zmian.
+- **Opis:** Akcenty paska dowodzenia zmieniają się wraz z aktywną stroną: niebieska tura używa błękitu, czerwona — czerwieni. Paleta obejmuje tło paska, obwódkę i górną linię, separatory, przycisk „ZAKOŃCZ TURĘ” (tło, obwódka, hover), kolory hover odnośników oraz etykietę tury. Tło i układ paska pozostają bez zmian.
 - **Kryteria:**
   - **Zmiana tury:** po `T` lub „ZAKOŃCZ TURĘ” akcenty przełączają się na kolor nowej strony bez przebudowy sceny.
   - **Czytelność:** teksty i przyciski pozostają czytelne na ciemnym tle, a kolory nie zmieniają znaczenia żółtej trasy ani białego kursora.
@@ -258,3 +267,27 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
   - **Granica:** `integrations/` zna wyłącznie `sql.js`, WASM i `localStorage`; nie importuje modułów gry.
   - **Zachowanie:** baza nadal otwiera się z `mvaw:sqlite`, a zapis mapy persists plik bez zmian formatu.
   - **Dokumentacja:** ścieżki w ADR-017, `Mapy.md`, `Interfejs.md` i `Infrastruktura.md` wskazują nowy moduł.
+
+## GRA-038: Mgła wojny i zasięg wzroku jednostek
+- **Kontekst:** Scenariusz pokazywał tokeny wszystkich jednostek obu stron, więc przeciwnik był widoczny niezależnie od położenia własnego wojska. Do rozgrywki potrzebna jest mgła wojny sterowana flagą mapy i zasięgiem wzroku jednostek.
+- **Opis:** `UnitStats` dostaje `visionRange`, a `GameMap` — flagę `fogOfWar`. Czysty moduł `client/src/core/vision.ts` liczy widoczność z perspektywy aktywnej strony: własne jednostki są zawsze widoczne, a wrogie tylko wtedy, gdy leżą w zasięgu wzroku dowolnej jednostki tej strony (odległość heksagonalna). `ScenarioScene` rysuje wyłącznie widoczne tokeny, a kliknięcie i podgląd heksu nie ujawniają ukrytej jednostki. Edytor ma przełącznik `MGŁA WOJNY` w lewym panelu, a `mapSerialization` zapisuje flagę i domyśla się `false` dla starszych zapisów. Scenariusz `front-wschodni` włącza mgłę także na starszym wpisie z SQLite przez `withFogOfWar`.
+- **Kryteria:**
+  - **Dane:** piechota ma zasięg wzroku 2, czołg 3, artyleria 2, zwiad 5; wartości są w `UNIT_DEFS`.
+  - **Mapa:** `GameMap.fogOfWar` domyślnie `false`, a operacje na kaflach zachowują flagę; nowa mapa i `clearMap()` startują z wyłączoną mgłą.
+  - **Widoczność:** przy włączonej mgle tokeny wroga poza zasięgiem znikają, jednostki w zasięgu dowolnej własnej jednostki pozostają widoczne, a po zakończeniu tury widoczność przełącza się na nową stronę.
+  - **Interakcja:** ukrytej jednostki nie da się wybrać ani zobaczyć jej opisu w podglądzie heksu; edytor nadal pokazuje wszystkie jednostki.
+  - **Zapis:** flaga przechodzi round-trip w SQLite, brak flagi w starym zapisie oznacza `false`, a niepoprawna wartość jest odrzucana.
+  - **Testy:** `tests/core/vision.test.ts`, `tests/core/map/model.test.ts`, `tests/core/scenario.test.ts` i `tests/storage/mapSerialization.test.ts` pokrywają logikę i format.
+  - **Dokumentacja:** ADR-030, `Mapy.md`, `Interfejs.md` i `Zadania.md` opisują flagę, zasięgi i zachowanie scenariusza.
+
+## GRA-039: Zasięgi ruchu, wzroku i strzału na mapie
+- **Kontekst:** Po wybraniu jednostki scena rysowała wyłącznie zasięg ruchu. Zasięg wzroku istniał tylko w logice mgły wojny, a statystyka `attack` nie miała odpowiadającego jej zasięgu, więc gracz nie widział, które heksy jednostka może razić.
+- **Opis:** `UnitStats` dostaje `attackRange`, a czysty moduł `client/src/core/ranges.ts` liczy heksy w promieniu od pozycji jednostki (`hexesInRange`) oraz gotowe zestawy dla wzroku i strzału (`visionTiles`, `attackTiles`). `ScenarioScene` po wybraniu jednostki rysuje trzy zagnieżdżone obrysy: ruch (zielony, zewnętrzny), wzrok (niebieski, środkowy) i strzał (czerwony, wewnętrzny). Ruch liczy nadal `moveTargets()` i pokazuje się tylko dla jednostki aktywnej strony; wzrok i strzał pokazują się dla każdej wybranej, widocznej jednostki. Pasek dowodzenia ma osobną linię zasięgów w tych samych kolorach: ruch (`movesLeft/moveRange`), wzrok i strzał.
+- **Kryteria:**
+  - **Dane:** piechota ma zasięg strzału 1, czołg 1, artyleria 3, zwiad 1; wartości są w `UNIT_DEFS` obok `visionRange`.
+  - **Zasięgi:** obrysy obejmują wyłącznie istniejące kafle mapy, bez heksa jednostki; wzrok i strzał nie zależą od terenu ani zajętości heksu.
+  - **Ruch:** zasięg ruchu działa jak dotąd — koszt terenu, zajęte heksy i `movesLeft`; poza turą jednostki nie rysuje się.
+  - **Pasek:** wybrana jednostka pokazuje w dolnym pasku zasięg ruchu na zielono, wzroku na niebiesko i strzału na czerwono, zgodnie z kolorami obrysów.
+  - **Widoczność:** mgła wojny nie zmienia się; ukrytej jednostki nadal nie da się wybrać, a obrysy nie ujawniają jej pozycji.
+  - **Testy:** `tests/core/ranges.test.ts` pokrywa promień, filtrowanie do kafli i wartości z `UNIT_DEFS`; testy scenariusza i map pozostają bez regresji.
+  - **Dokumentacja:** ADR-031, `Mapy.md` i `Interfejs.md` opisują nową właściwość i kolory obrysów.

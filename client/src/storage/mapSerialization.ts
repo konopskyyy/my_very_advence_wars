@@ -48,8 +48,14 @@ export function deserializeGameState(json: string): GameState {
     cells[key] = terrain as TerrainId;
   }
 
+  if (parsed.map.fogOfWar !== undefined && typeof parsed.map.fogOfWar !== 'boolean') {
+    throw new Error('Nieprawidłowy stan gry: mgła wojny');
+  }
+
+  const fogOfWar = parsed.map.fogOfWar ?? false;
+
   return {
-    map: { cells },
+    map: { cells, fogOfWar },
     units: parsed.units.map(parseUnit),
     nextUnitSeq: parsed.nextUnitSeq,
   };
