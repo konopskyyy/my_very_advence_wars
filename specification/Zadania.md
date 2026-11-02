@@ -49,6 +49,7 @@ Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
 | [[Zadania-opisy#GRA-037: Moduł integracji z SQLite\|GRA-037]] | Moduł integracji z SQLite | ✅ | ADR-017, GRA-025 |
 | [[Zadania-opisy#GRA-038: Mgła wojny i zasięg wzroku jednostek\|GRA-038]] | Mgła wojny i zasięg wzroku jednostek | ✅ | GRA-002, GRA-027, ADR-003, ADR-020, ADR-030, INTERF-003, INTERF-005, `specification/Mapy.md` |
 | [[Zadania-opisy#GRA-039: Zasięgi ruchu, wzroku i strzału na mapie\|GRA-039]] | Zasięgi ruchu, wzroku i strzału na mapie | ✅ | GRA-002, GRA-027, GRA-030, GRA-038, ADR-001, ADR-003, ADR-031, INTERF-005, `specification/Mapy.md` |
+| [[Zadania-opisy#GRA-040: Atak jednostek z obrażeniami i usuwaniem\|GRA-040]] | Atak jednostek z obrażeniami i usuwaniem | ✅ | GRA-002, GRA-027, GRA-030, GRA-039, ADR-001, ADR-003, ADR-032, INTERF-005, `specification/Mapy.md` |
 | [[Zadania-opisy#SRV-001: Warstwowy moduł auth z encją użytkownika\|SRV-001]] | Warstwowy moduł auth z encją użytkownika | ✅ | ADR-029, API-001 |
 | [[Zadania-opisy#SRV-002: Rejestracja i logowanie JWT\|SRV-002]] | Rejestracja i logowanie JWT | ✅ | SRV-001, ADR-029, API-001 |
 | [[Zadania-opisy#INFRA-001: Środowisko Docker\|INFRA-001]] | Środowisko Docker | ✅ | `specification/Infrastruktura.md` |

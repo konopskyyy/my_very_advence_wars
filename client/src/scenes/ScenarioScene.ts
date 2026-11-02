@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { attackUnit, canAttack } from '../core/combat';
 import type { HexCoord } from '../core/map';
 import { findUnitAt, getMovePath, moveTargets, moveUnit } from '../core/map';
 import {
@@ -186,6 +187,10 @@ export class ScenarioScene extends Phaser.Scene {
 
     const coord = this.viewport.hexAt(pointer);
 
+    if (this.tryAttackAt(coord)) {
+      return;
+    }
+
     if (this.tryMoveAlongPath(coord)) {
       return;
     }
@@ -195,6 +200,37 @@ export class ScenarioScene extends Phaser.Scene {
     }
 
     this.selectAt(coord);
+  }
+
+  private tryAttackAt(coord: HexCoord): boolean {
+    if (!this.selected || this.selected.faction !== this.turn.faction) {
+      return false;
+    }
+
+    const attacker = findUnitAt(this.state, this.selected.pos) ?? this.selected;
+    const target = visibleUnitAt(this.state, coord, this.turn.faction);
+
+    if (!target || !canAttack(attacker, target)) {
+      return false;
+    }
+
+    const next = attackUnit(this.state, attacker.id, target.id);
+
+    if (next === this.state) {
+      return false;
+    }
+
+    this.state = next;
+    this.selected = findUnitAt(this.state, attacker.pos) ?? null;
+    this.movePath = null;
+    this.refreshUnits();
+    this.drawSelection();
+    this.drawRangeHints();
+    this.drawPath();
+    this.refreshHud();
+    this.refreshUnitPreview();
+
+    return true;
   }
 
   private trySetPath(coord: HexCoord): boolean {

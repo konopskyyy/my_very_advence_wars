@@ -254,7 +254,7 @@ export class ScenarioCommandBar {
 
     this.register(
       this.scene.add
-        .text(turnX, barY + 84, 'LPM — wybór/ruch · T — tura\nkółko — zoom · ESC — scenariusze', {
+        .text(turnX, barY + 84, 'LPM — wybór/ruch/atak · T — tura\nkółko — zoom · ESC — scenariusze', {
           fontFamily: 'monospace',
           fontSize: '10px',
           color: '#9fb0a5',
@@ -295,7 +295,7 @@ export class ScenarioCommandBar {
       const moveCost = terrain ? TERRAIN_DEFS[terrain].moveCost : 1;
       const moveCostLabel = moveCost >= 99 ? 'ruch: blokada' : `ruch: ${moveCost}`;
       const unitLabel = unit
-        ? ` · ${FACTION_DEFS[unit.faction].label} ${UNIT_DEFS[unit.kind].label}`
+        ? ` · ${FACTION_DEFS[unit.faction].label} ${UNIT_DEFS[unit.kind].label} HP ${unit.hp}/${UNIT_DEFS[unit.kind].maxHp}`
         : '';
 
       lines.push(`Heks: ${doubled.col},${doubled.row} — ${terrainLabel} · ${moveCostLabel}${unitLabel}`);

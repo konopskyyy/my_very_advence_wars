@@ -146,6 +146,12 @@ Zasięg wzroku i strzału nie jest zapisywany w jednostce — wynika z `UnitStat
 | `artillery`| Artyleria |     14 |    2 |             2 |              3 | wymagana           |
 | `scout`    | Zwiad     |      8 |    6 |             5 |              1 | —                  |
 
+**Walka:** jednostka aktywnej strony może raz na turę zaatakować wroga w promieniu
+`attackRange`. Obrażenia są równe `attack` atakującego i odejmowane od `hp` celu;
+obrona i teren nie zmniejszają obrażeń. Atak ustawia `hasActed`, więc blokuje ruch
+i kolejny atak do następnej tury. Jednostka z `hp <= 0` znika ze stanu gry. Walkę
+liczy `client/src/core/combat.ts`.
+
 Strony: `blue`, `red`, `neutral`. W edytorze dostępne są niebieska i czerwona;
 `neutral` jest obsługiwana przez model i walidację.
 
