@@ -52,3 +52,4 @@ Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
 | [[Zadania-opisy#INFRA-001: Środowisko Docker\|INFRA-001]] | Środowisko Docker | ✅ | `specification/Infrastruktura.md` |
 | [[Zadania-opisy#INFRA-002: Testy jednostkowe i mutacyjne w CI\|INFRA-002]] | Testy jednostkowe i mutacyjne w CI | ✅ | INFRA-001, `specification/Infrastruktura.md` |
 | [[Zadania-opisy#INFRA-003: Testy backendu i mutacje w CI\|INFRA-003]] | Testy backendu i mutacje w CI | ✅ | INFRA-002, SRV-001, SRV-002, `specification/Infrastruktura.md` |
+| [[Zadania-opisy#INFRA-004: Paczka Electrona dla Windows z WSL\|INFRA-004]] | Paczka Electrona dla Windows z WSL | ✅ | INFRA-001, `specification/Infrastruktura.md`, `specification/Mapy.md` |

@@ -224,7 +224,16 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
   - **PHPUnit:** job instaluje zależności Composera z cache i obala pipeline, gdy testy backendu są czerwone.
   - **Infection:** mutuje `server/src/`, progi `minMsi 80` i `minCoveredMsi 90`; raport `server/var/infection/` trafia do artefaktu `server-mutation-report` także przy nieudanym jobie.
   - **Logi testów:** w `APP_ENV=test` logger jest wyciszony (`server/config/services_test.yaml`), bo Infection traktuje zapis na stderr jako błąd initial tests.
-  - **Dokumentacja:** `specification/Infrastruktura.md` opisuje joby, progi i artefakty.
+  - **Documentacja:** `specification/Infrastruktura.md` opisuje joby, progi i artefakty.
+
+## INFRA-004: Paczka Electrona dla Windows z WSL
+- **Kontekst:** `make electron-build` budował wyłącznie rozpakowaną paczkę dla bieżącego systemu, a `files` w `electron/package.json` nie pakowało `client/dist`. Paczka nie miała więc `index.html`, a `main.cjs` wskazywał na ścieżkę spoza `resources/`. Na WSL nie było też sposobu na zbudowanie `.exe` bez ręcznego wywoływania `electron-builder`.
+- **Opis:** `extraResources` kopiuje `client/dist` do `resources/client/dist`, a spakowane okno ładuje je przez własny schemat `app://bundle/` (`electron/distServer.cjs`) zamiast `file://`. Nowe cele: `build:win` (ZIP z `win-unpacked`, bez wine) i `build:win:installer` (NSIS + portable, wymaga wine), plus `make electron-win` i `make electron-win-installer`. `make electron` nadal ładuje Vite z kontenera, a schemat `app://` obsługuje wyłącznie paczkę.
+- **Kryteria:**
+  - **ZIP:** `make electron-win` tworzy `electron/release/My Very Advance Wars-<wersja>-win.zip` zawierający `win-unpacked` z `resources/client/dist/index.html` i `assets/`; build nie wymaga wine.
+  - **Instalator:** `make electron-win-installer` buduje NSIS i portable `.exe`; na WSL bez `wine` kończy się czytelnym błędem, a dokumentacja podaje sposób instalacji.
+  - **Działanie paczki:** `app://bundle/index.html` serwuje assety Vite, `sql-wasm.wasm` wraca `200`, a `localStorage` działa — sprawdzone sondą Electrona na `client/dist`.
+  - **Zgodność:** `make electron` i `make electron-build` zachowują dotychczasowe zachowanie, a `specification/Infrastruktura.md` i `specification/Mapy.md` opisują nowe cele, origin packaged i wymóg wine.
 
 ## GRA-034: Wzmocnienie testów pod mutacje
 - **Kontekst:** Pierwszy przebieg Strykera (INFRA-002) dał 61% i odsłonił pliki z niskim pokryciem zachowań: `scenario.ts` (32%), `map/catalog.ts` (22%) i `state.ts` (61%). Testy sprawdzały głównie, że jednostki powstają, a nie gdzie dokładnie trafiają ani których heksów unikają.
@@ -237,7 +246,7 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
 
 ## GRA-035: Kolorystyka interfejsu zależna od tury
 - **Kontekst:** Pasek dowodzenia ma stałe zielone akcenty, więc gracz nie widzi na pierwszy rzut oka, czyja jest tura — aktywną stronę zdradza tylko tekst.
-- **Opis:** Akcenty paska dowodzenia zmieniają się wraz z aktywną stroną: niebieska tura używa błękitu, czerwona — czerwieni. Paleta obejmuje tło paska, obwódkę i górną linię, separatory, przycisk „ZAKOŃCZ TURĘ” (tło, obwódka, hover), kolory hover odnośników oraz etykietę tury i wskaźnik stron. Tło i układ paska pozostają bez zmian.
+- **Opis:** Akcenty paska dowodzenia zmieniają się wraz z aktywną stroną: niebieska tura używa błękitu, czerwona — czerwieni. Paleta obejmuje tło paska, obwódkę i górną linię, separatory, przycisk „ZAKOŃCZ TURĘ” (tło, obwódka, hover), kolory hover odnośników oraz etykietę tury. Tło i układ paska pozostają bez zmian.
 - **Kryteria:**
   - **Zmiana tury:** po `T` lub „ZAKOŃCZ TURĘ” akcenty przełączają się na kolor nowej strony bez przebudowy sceny.
   - **Czytelność:** teksty i przyciski pozostają czytelne na ciemnym tle, a kolory nie zmieniają znaczenia żółtej trasy ani białego kursora.

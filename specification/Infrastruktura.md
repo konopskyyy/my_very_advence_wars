@@ -265,21 +265,26 @@ Electron **celowo nie ma serwisu w Compose** i nie powinien mieć:
 Dlatego uruchamiasz i budujesz go **na hoście**:
 
 ```bash
-make electron        # dev: ładuje Vite z kontenera (localhost:18573)
-make run             # alias make electron
-make electron-build  # buduje client/dist i paczkę do electron/release
+make electron                # dev: ładuje Vite z kontenera (localhost:18573)
+make run                     # alias make electron
+make electron-build          # client/dist + rozpakowana paczka dla bieżącego systemu
+make electron-win            # client/dist + ZIP z .exe dla Windows (WSL, bez wine)
+make electron-win-installer  # instalator NSIS + portable .exe (wymaga wine)
 ```
 
 Albo równoważnie przez npm bezpośrednio:
 
 ```bash
-cd client && npm run build      # produkuje client/dist
-npm start --prefix electron     # dev: ładuje localhost:18573
-npm run build --prefix electron # buduje paczkę do electron/release
+cd client && npm run build              # produkuje client/dist
+npm start --prefix electron             # dev: ładuje localhost:18573
+npm run build --prefix electron         # paczka dla bieżącego systemu
+npm run build:win --prefix electron     # ZIP dla Windows (bez wine)
+npm run build:win:installer --prefix electron  # NSIS/portable (wymaga wine)
 ```
 
 Pliki: `electron/main.cjs` (okno — pełne ekran, bez menu, F11/Alt+Enter
-przełącza fullscreen) i `electron/preload.cjs` (contextIsolation + sandbox).
+przełącza fullscreen), `electron/preload.cjs` (contextIsolation + sandbox) i
+`electron/distServer.cjs` (serwowanie `client/dist` pod schematem `app://`).
 
 W trybie dev Electron ładuje Vite z kontenera pod `http://localhost:18573`.
 To adres domyślny — `make electron` **nie przekazuje** `CLIENT_PORT` z `.env`
@@ -289,16 +294,22 @@ do Electrona. Po zmianie portu uruchom jawnie:
 VITE_DEV_SERVER_URL=http://localhost:19000 make electron
 ```
 
-W buildzie produkcyjnym `main.cjs` ładuje statyczny
-`client/dist/index.html`.
+W buildzie produkcyjnym `main.cjs` ładuje statyczny `client/dist/index.html`
+przez własny schemat `app://bundle/`, a nie przez `file://`. Dzięki temu
+bezwzględne ścieżki `/assets/...` z Vite, moduły ES i `fetch` pliku
+`sql-wasm.wasm` działają, a `localStorage` ma stabilny origin.
 
-> [!warning] Paczka Electrona to nadal szkielet
-> `make electron-build` buduje `client/dist`, ale `electron/package.json` w
-> `files` pakuje wyłącznie `main.cjs` i `preload.cjs`. Katalog `client/dist`
-> **nie trafia** do `resources/`, więc uruchomienie paczki z
-> `electron/release/` nie znajdzie `index.html`. To nie wpływa na
-> `make electron` (dev), ale do testu produkcyjnego trzeba dodać `client/dist`
-> przez `extraResources` albo rozszerzyć `files`.
+> [!note] Gdzie trafia `client/dist`
+> `extraResources` w `electron/package.json` kopiuje `client/dist` do
+> `resources/client/dist`. `make electron-build` daje `release/*-unpacked`,
+> `make electron-win` — `release/My Very Advance Wars-<wersja>-win.zip`
+> (rozpakować na Windows i uruchomić `.exe`).
+
+> [!warning] Instalator Windows na WSL wymaga wine
+> Cel ZIP (`make electron-win`) działa bez wine. NSIS i portable
+> (`make electron-win-installer`) wołają `wine`; bez niego build kończy się
+> błędem `spawn wine ENOENT`. Instalacja: `sudo apt install wine64`
+> (na czystym WSL czasem też `wine32` po `dpkg --add-architecture i386`).
 
 DevTools Electrona nie otwierają się same — włączasz je zmienną
 `ELECTRON_DEVTOOLS=1` (`ELECTRON_DEVTOOLS=1 make electron`).
@@ -319,12 +330,14 @@ przeglądarki/Electrona.
 | Format | `GameState` jako JSON w kolumnie `maps.state` |
 | Profil Electrona (Linux) | `~/.config/@my-very-advance-wars/electron` |
 | Origin dev | `http://localhost:18573` |
+| Origin packaged | `app://bundle` |
 | MySQL/Adminer | **nie zawierają** map z edytora |
 
 `localStorage` jest przypisany do originu i profilu. Zmiana portu, hosta
-(`localhost` → `127.0.0.1`) albo uruchomienie packaged `file://` powoduje, że
-aplikacja czyta inny magazyn i pokazuje pustą listę — mimo że stara baza nadal
-istnieje. `make clean` również jej nie usuwa, bo nie jest wolumenem Compose.
+(`localhost` → `127.0.0.1`) albo uruchomienie packaged `app://bundle` zamiast
+dev `http://localhost:18573` powoduje, że aplikacja czyta inny magazyn i
+pokazuje pustą listę — mimo że stara baza nadal istnieje. `make clean` również
+jej nie usuwa, bo nie jest wolumenem Compose.
 Pełny opis schematu, formatu JSON, limitów i diagnostyki: [[Mapy]].
 
 ---
@@ -397,7 +410,9 @@ Compose bezpośrednio też działa — poniżej oba warianty.
 | Rebuild backendu (po Dockerfile)         | `make rebuild`        | `docker compose build --no-cache && docker compose up -d` |
 | Uruchom Electrona (dev)                  | `make electron`       | `npm start --prefix electron`                             |
 | Uruchom Electrona (alias)                | `make run`            | `npm start --prefix electron`                             |
-| Build klienta + Electrona                | `make electron-build` | —                                                         |
+| Build klienta + paczka Electrona (host)  | `make electron-build` | `npm run build --prefix electron`                         |
+| Paczka ZIP dla Windows (WSL)             | `make electron-win`   | `npm run build:win --prefix electron`                     |
+| Instalator Windows (wymaga wine)         | `make electron-win-installer` | `npm run build:win:installer --prefix electron`   |
 | Przebuduj klienta (po zmianach)           | —                     | `cd client && npm run build && docker compose restart client` |
 | Testy klienta (Vitest)                   | `make test`           | `cd client && npm test`                                   |
 | Testy mutacyjne klienta (Stryker)        | `make mutation`       | `cd client && npm run mutation`                           |
@@ -486,7 +501,7 @@ Compose bezpośrednio też działa — poniżej oba warianty.
 > 2. uruchomiono inny origin (np. po zmianie `CLIENT_PORT` lub
 >    `VITE_DEV_SERVER_URL`),
 > 3. uruchomiono inny profil Electrona albo przeglądarkę zamiast Electrona,
-> 4. uruchomiono packaged `file://` zamiast dev `http://localhost:18573`.
+> 4. uruchomiono packaged `app://bundle` zamiast dev `http://localhost:18573`.
 >
 > Sprawdź w DevTools: `location.origin` i
 > `localStorage.getItem('mvaw:sqlite')?.length`. Więcej: [[Mapy#Diagnostyka i kopie zapasowe]].
@@ -499,11 +514,13 @@ Compose bezpośrednio też działa — poniżej oba warianty.
 > Electrona/przeglądarki. Mapy giną dopiero po wyczyszczeniu danych profilu
 > albo `localStorage.removeItem('mvaw:sqlite')`.
 
-> [!question]- Paczka Electrona nie startuje: `ERR_FILE_NOT_FOUND`
-> Obecny `electron-build` jest szkieletem: `files` w `electron/package.json`
-> pakuje tylko `main.cjs` i `preload.cjs`, bez `client/dist`. Do testu
-> produkcyjnego dodaj `client/dist` przez `extraResources` albo używaj
-> `make electron` (dev).
+> [!question]- Paczka Electrona pokazuje biały ekran albo `ERR_FILE_NOT_FOUND`
+> `extraResources` kopiuje `client/dist` do `resources/client/dist`, a okno
+> ładuje je przez `app://bundle/index.html` (`electron/distServer.cjs`).
+> Sprawdź, czy `make electron-build` / `make electron-win` wykonał najpierw
+> `npm run build` w `client/` i czy w `release/.../resources/client/dist/`
+> jest `index.html` oraz `assets/`. Build ZIP na WSL nie wymaga wine;
+> instalator NSIS wymaga `wine` (patrz wyżej).
 
 > [!question]- Czy mapy są w MySQL/Adminerze?
 > Nie. `db` i `Adminer` dotyczą backendu Symfony. Mapy z edytora są w SQLite

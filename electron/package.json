@@ -2,11 +2,13 @@
   "name": "@my-very-advance-wars/electron",
   "version": "0.0.1",
   "private": true,
-  "description": "Opakowanie desktopowe dla My Very Advance Wars (placeholder).",
+  "description": "Opakowanie desktopowe dla My Very Advance Wars",
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder --dir"
+    "build": "electron-builder --dir",
+    "build:win": "electron-builder --win zip",
+    "build:win:installer": "electron-builder --win"
   },
   "devDependencies": {
     "electron": "^44.9.1",
@@ -17,10 +19,33 @@
     "productName": "My Very Advance Wars",
     "files": [
       "main.cjs",
-      "preload.cjs"
+      "preload.cjs",
+      "distServer.cjs"
+    ],
+    "extraResources": [
+      {
+        "from": "../client/dist",
+        "to": "client/dist"
+      }
     ],
     "directories": {
       "output": "release"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
     }
   }
 }

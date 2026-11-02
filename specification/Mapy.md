@@ -337,7 +337,7 @@ kod w innym originie lub profilu widzi inną bazę.
 | Przeglądarka na hoście | `http://localhost:18573` | profil przeglądarki | ❌ |
 | Electron dev (`make electron`) | `http://localhost:18573` | Linux: `~/.config/@my-very-advance-wars/electron` | ✅ |
 | Electron po zmianie portu | np. `http://localhost:19000` | ten sam profil, inny origin | ❌ |
-| Electron packaged | `file://.../client/dist/index.html` | katalog zależny od `productName` | ❌ |
+| Electron packaged | `app://bundle/index.html` | katalog zależny od `productName` | ❌ |
 | `http://127.0.0.1:18573` | inny host niż `localhost` | ten sam profil, inny origin | ❌ |
 
 > [!important] Zmiana portu lub hosta zmienia origin
@@ -466,7 +466,7 @@ Node.
    `ZAPISANO`; `ESC` nie zapisuje.
 2. Sprawdź `location.origin` — czy to ten sam host i port co wcześniej.
 3. Sprawdź, czy to ten sam profil Electrona (`app.getPath('userData')`), a nie
-   przeglądarka lub packaged `file://`.
+   przeglądarka lub packaged `app://bundle`.
 4. Sprawdź, czy nie patrzysz na szkic z sesji (dopisek „szkic”) zamiast stanu
    z bazy; szkic ginie po restarcie strony.
 5. Zobacz `localStorage.getItem('mvaw:sqlite')?.length` — `0`/`null` oznacza

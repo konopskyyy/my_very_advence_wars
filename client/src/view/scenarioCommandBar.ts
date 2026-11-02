@@ -3,7 +3,7 @@ import { findUnitAt, mapTileCount, terrainAt, toDoubled, type HexCoord } from '.
 import type { ScenarioDefinition } from '../core/scenario';
 import { countUnits, type GameState } from '../core/state';
 import { TERRAIN_DEFS } from '../core/map/terrain';
-import { isActiveFaction, type TurnState } from '../core/turn';
+import type { TurnState } from '../core/turn';
 import { FACTION_DEFS, UNIT_DEFS, type FactionId, type Unit } from '../core/units';
 import { FACTION_THEMES, type FactionTheme } from './factionTheme';
 import { unitTexture } from './unitLayer';
@@ -44,7 +44,6 @@ export class ScenarioCommandBar {
   private readonly unitMeta: Phaser.GameObjects.Text;
   private readonly unitStatus: Phaser.GameObjects.Text;
   private readonly hud: Phaser.GameObjects.Text;
-  private readonly factionText: Phaser.GameObjects.Text;
   private theme: FactionTheme = FACTION_THEMES.blue;
 
   constructor(
@@ -53,19 +52,6 @@ export class ScenarioCommandBar {
   ) {
     const barY = this.scene.scale.height - BAR_HEIGHT;
     const theme = FACTION_THEMES.blue;
-
-    this.factionText = this.register(
-      this.scene.add
-        .text(this.scene.scale.width - 20, 20, '', {
-          fontFamily: 'monospace',
-          fontSize: '12px',
-          color: theme.accentSoft,
-          align: 'right',
-        })
-        .setOrigin(1, 0)
-        .setScrollFactor(0)
-        .setDepth(10),
-    );
 
     this.bar = this.register(
       this.scene.add
@@ -284,7 +270,6 @@ export class ScenarioCommandBar {
       scenario.name.length > 40 ? `${scenario.name.slice(0, 39)}…` : scenario.name,
     );
     this.hud.setText(lines.join('\n'));
-    this.factionText.setText(factionLine(state, turn));
     this.barTurnLabel.setText(
       `Tura ${turn.turn} — ${FACTION_DEFS[turn.faction].label}`,
     );
@@ -356,7 +341,6 @@ export class ScenarioCommandBar {
       .setFillStyle(theme.accentDark, 1)
       .setStrokeStyle(1, theme.accentBright, 0.8);
     this.barTurnLabel.setColor(theme.accentSoft);
-    this.factionText.setColor(theme.accentSoft);
   }
 
   private makeBarLink(
@@ -420,12 +404,4 @@ export class ScenarioCommandBar {
 
     return background;
   }
-}
-
-function factionLine(state: GameState, turn: TurnState): string {
-  const counts = countUnits(state.units);
-  const blue = isActiveFaction(turn, 'blue') ? '▶ ' : '  ';
-  const red = isActiveFaction(turn, 'red') ? '▶ ' : '  ';
-
-  return `${blue}NIEBIESKA (${counts.blue})   ${red}CZERWONA (${counts.red})`;
 }

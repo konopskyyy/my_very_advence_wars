@@ -2,10 +2,21 @@
 
 const path = require('node:path');
 const { app, BrowserWindow, Menu } = require('electron');
+const { SCHEME, registerDistScheme, serveDist } = require('./distServer.cjs');
 
 // Port zgodny z CLIENT_PORT w .env.
 const DEV_URL = process.env.VITE_DEV_SERVER_URL || 'http://localhost:18573';
-const isDev = !!process.env.VITE_DEV_SERVER_URL || !app.isPackaged;
+const useDevServer = !!process.env.VITE_DEV_SERVER_URL || !app.isPackaged;
+
+registerDistScheme();
+
+function distRoot() {
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, 'client', 'dist');
+  }
+
+  return path.join(__dirname, '..', 'client', 'dist');
+}
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -23,7 +34,7 @@ function createWindow() {
     },
   });
 
-  if (isDev) {
+  if (useDevServer) {
     void win.loadURL(DEV_URL);
 
     // DevTools na życzenie: ELECTRON_DEVTOOLS=1 make electron
@@ -31,13 +42,15 @@ function createWindow() {
       win.webContents.openDevTools({ mode: 'detach' });
     }
   } else {
-    void win.loadFile(path.join(__dirname, '..', 'client', 'dist', 'index.html'));
+    // Własny schemat zamiast file:// — absolute ścieżki z Vite i fetch WASM działają.
+    void win.loadURL(`${SCHEME}://bundle/index.html`);
   }
 
   return win;
 }
 
 app.whenReady().then(() => {
+  serveDist(distRoot());
   Menu.setApplicationMenu(null);
   const win = createWindow();
 
