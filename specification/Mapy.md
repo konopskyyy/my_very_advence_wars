@@ -89,6 +89,7 @@ a mapa rośnie w każdą stronę bez przesuwania istniejących kafli.
 ```ts
 interface GameMap {
   readonly cells: Readonly<Record<string, TerrainId>>;
+  readonly fogOfWar: boolean;
 }
 
 interface GameState {
@@ -109,6 +110,11 @@ przy każdej zmianie zasad tur (ADR-020).
 - Numeracja w HUD edytora jest **podwojona** (`2 * col + (row & 1)`) — szczegóły
   w [[ADR#ADR-004: Siatka heksagonalna|ADR-004]].
 - Brak wpisu w `cells` oznacza brak kafla (czarne tło), a nie domyślną łąkę.
+- `fogOfWar` to flaga mapy: `false` (domyślnie) pokazuje w scenariuszu wszystkie
+  jednostki, a `true` włącza mgłę wojny opartą na zasięgu wzroku
+  ([[ADR#ADR-030: Mgła wojny oparta na zasięgu wzroku|ADR-030]]).
+  Operacje na kaflach (`setTerrain`, `removeTerrain`, `fillMap`, `extendMap`,
+  `paintRect`) zachowują flagę; `createMap()` i `clearMap()` ustawiają `false`.
 
 ### Tereny
 
@@ -130,13 +136,15 @@ również tam.
 
 Jednostka ma `id`, `kind`, `faction`, `pos`, `hp`, `movesLeft` i `hasActed`.
 Czołg i artyleria mają dodatkowo `ammo`; piechota i zwiad nie mają pola amunicji.
+Zasięg wzroku i strzału nie jest zapisywany w jednostce — wynika z `UnitStats` w
+`UNIT_DEFS` i służy do liczenia mgły wojny oraz obrysów zasięgów w scenariuszu.
 
-| `UnitKind` | Etykieta  | Max HP | Ruch | Amunicja w zapisie |
-| ---------- | --------- | -----: | ---: | ------------------ |
-| `infantry` | Piechota  |     10 |    4 | —                  |
-| `tank`     | Czołg     |     20 |    3 | wymagana           |
-| `artillery`| Artyleria |     14 |    2 | wymagana           |
-| `scout`    | Zwiad     |      8 |    6 | —                  |
+| `UnitKind` | Etykieta  | Max HP | Ruch | Zasięg wzroku | Zasięg strzału | Amunicja w zapisie |
+| ---------- | --------- | -----: | ---: | ------------: | -------------: | ------------------ |
+| `infantry` | Piechota  |     10 |    4 |             2 |              1 | —                  |
+| `tank`     | Czołg     |     20 |    3 |             3 |              1 | wymagana           |
+| `artillery`| Artyleria |     14 |    2 |             2 |              3 | wymagana           |
+| `scout`    | Zwiad     |      8 |    6 |             5 |              1 | —                  |
 
 Strony: `blue`, `red`, `neutral`. W edytorze dostępne są niebieska i czerwona;
 `neutral` jest obsługiwana przez model i walidację.
@@ -187,7 +195,7 @@ tiles      = 48
 units      = 1
 created_at = 2026-10-23T12:28:08.666Z
 updated_at = 2026-10-23T12:28:08.666Z
-state      = {"map":{"cells":{"0,0":"plain","1,0":"forest"}},"units":[...],"nextUnitSeq":2}
+state      = {"map":{"cells":{"0,0":"plain","1,0":"forest"},"fogOfWar":false},"units":[...],"nextUnitSeq":2}
 ```
 
 ---
@@ -204,7 +212,8 @@ state      = {"map":{"cells":{"0,0":"plain","1,0":"forest"}},"units":[...],"next
       "0,0": "plain",
       "1,0": "forest",
       "2,0": "water"
-    }
+    },
+    "fogOfWar": false
   },
   "units": [
     {
@@ -230,7 +239,10 @@ Przy odczycie `deserializeGameState()` odrzuca:
 - nieznany `TerrainId`,
 - jednostkę bez `id`, z nieznanym `kind`/`faction`, bez poprawnej pozycji,
 - jednostkę bez poprawnych `hp`, `movesLeft`, `hasActed`,
-- czołg lub artylerię bez poprawnej `ammo`.
+- czołg lub artylerię bez poprawnej `ammo`,
+- `map.fogOfWar` innego typu niż `boolean`.
+
+Brak `map.fogOfWar` w starszym zapisie jest dozwolony i oznacza `false`.
 
 Dzięki temu uszkodzony wpis nie wywraca całego menu — odczyt pojedynczej mapy
 kończy się błędem, a reszta listy może się pokazać.

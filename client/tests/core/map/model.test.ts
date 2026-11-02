@@ -7,6 +7,7 @@ import {
   mapDoubledBounds,
   mapTileCount,
   removeTerrain,
+  setFogOfWar,
   setTerrain,
   terrainAt,
 } from '../../../src/core/map/model';
@@ -84,7 +85,7 @@ describe('mapBounds', () => {
   });
 
   it('zwraca undefined dla pustej mapy', () => {
-    expect(mapBounds({ cells: {} })).toBeUndefined();
+    expect(mapBounds({ cells: {}, fogOfWar: false })).toBeUndefined();
   });
 });
 
@@ -107,7 +108,7 @@ describe('mapDoubledBounds', () => {
   });
 
   it('zwraca undefined dla pustej mapy', () => {
-    expect(mapDoubledBounds({ cells: {} })).toBeUndefined();
+    expect(mapDoubledBounds({ cells: {}, fogOfWar: false })).toBeUndefined();
   });
 });
 
@@ -117,6 +118,36 @@ describe('clearMap', () => {
 
     expect(Object.keys(map.cells)).toHaveLength(0);
     expect(mapBounds(map)).toBeUndefined();
+    expect(map.fogOfWar).toBe(false);
+  });
+});
+
+describe('mgła wojny', () => {
+  it('nowa mapa ma wyłączoną mgłę', () => {
+    expect(createMap(2, 2).fogOfWar).toBe(false);
+  });
+
+  it('zmienia flagę bez ruszania kafli', () => {
+    const map = createMap(2, 2);
+    const foggy = setFogOfWar(map, true);
+
+    expect(foggy.fogOfWar).toBe(true);
+    expect(foggy.cells).toEqual(map.cells);
+  });
+
+  it('zwraca tę samą mapę, gdy flaga się nie zmienia', () => {
+    const map = createMap(2, 2);
+
+    expect(setFogOfWar(map, false)).toBe(map);
+    expect(setFogOfWar(setFogOfWar(map, true), true).fogOfWar).toBe(true);
+  });
+
+  it('operacje na kaflach zachowują flagę', () => {
+    const map = setFogOfWar(createMap(3, 3), true);
+
+    expect(setTerrain(map, { col: 0, row: 0 }, 'city').fogOfWar).toBe(true);
+    expect(removeTerrain(map, { col: 0, row: 0 }).fogOfWar).toBe(true);
+    expect(fillMap(map, 'water').fogOfWar).toBe(true);
   });
 });
 

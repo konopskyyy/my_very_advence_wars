@@ -13,6 +13,8 @@ export const TANK_STATS: UnitStats = {
   moveRange: 3,
   attack: 9,
   defense: 7,
+  visionRange: 3,
+  attackRange: 1,
 };
 
 export const TANK_AMMO = 6;

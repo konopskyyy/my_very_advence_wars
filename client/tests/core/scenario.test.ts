@@ -136,6 +136,14 @@ describe('scenariusze', () => {
     expect(findScenarioDefinition('front-wschodni')?.description).toContain('Niebieska strona');
     expect(findScenarioDefinition('nie-ma-takiego')).toBeUndefined();
   });
+
+  it('włącza mgłę wojny także dla starszego zapisu mapy', () => {
+    const scenario = BUILT_IN_SCENARIOS[0]!;
+    const state = { ...scenario.state, map: { ...scenario.state.map, fogOfWar: false } };
+
+    expect(scenario.state.map.fogOfWar).toBe(true);
+    expect(scenario.withFogOfWar?.(state)?.map.fogOfWar).toBe(true);
+  });
 });
 
 describe('ensureScenarioArmies', () => {

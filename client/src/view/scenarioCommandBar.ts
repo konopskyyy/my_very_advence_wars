@@ -5,6 +5,7 @@ import { countUnits, type GameState } from '../core/state';
 import { TERRAIN_DEFS } from '../core/map/terrain';
 import type { TurnState } from '../core/turn';
 import { FACTION_DEFS, UNIT_DEFS, type FactionId, type Unit } from '../core/units';
+import { visibleUnitAt } from '../core/vision';
 import { FACTION_THEMES, type FactionTheme } from './factionTheme';
 import { unitTexture } from './unitLayer';
 
@@ -41,6 +42,10 @@ export class ScenarioCommandBar {
   private readonly previewHint: Phaser.GameObjects.Text;
   private readonly unitName: Phaser.GameObjects.Text;
   private readonly unitStats: Phaser.GameObjects.Text;
+  private readonly rangeLabel: Phaser.GameObjects.Text;
+  private readonly moveRangeText: Phaser.GameObjects.Text;
+  private readonly visionRangeText: Phaser.GameObjects.Text;
+  private readonly attackRangeText: Phaser.GameObjects.Text;
   private readonly unitMeta: Phaser.GameObjects.Text;
   private readonly unitStatus: Phaser.GameObjects.Text;
   private readonly hud: Phaser.GameObjects.Text;
@@ -111,7 +116,7 @@ export class ScenarioCommandBar {
 
     this.unitStats = this.register(
       this.scene.add
-        .text(unitTextX, barY + 38, '', {
+        .text(unitTextX, barY + 32, '', {
           fontFamily: 'monospace',
           fontSize: '12px',
           color: '#d8e2dc',
@@ -120,9 +125,40 @@ export class ScenarioCommandBar {
         .setDepth(22),
     );
 
+    const rangeY = barY + 52;
+    const rangeFont = { fontFamily: 'monospace', fontSize: '10px' };
+
+    this.rangeLabel = this.register(
+      this.scene.add
+        .text(unitTextX, rangeY, 'Zasięgi:', { ...rangeFont, color: '#9fb0a5' })
+        .setScrollFactor(0)
+        .setDepth(22),
+    );
+
+    this.moveRangeText = this.register(
+      this.scene.add
+        .text(unitTextX + 54, rangeY, '', { ...rangeFont, color: '#6fd08c' })
+        .setScrollFactor(0)
+        .setDepth(22),
+    );
+
+    this.visionRangeText = this.register(
+      this.scene.add
+        .text(unitTextX + 108, rangeY, '', { ...rangeFont, color: '#5aa9e6' })
+        .setScrollFactor(0)
+        .setDepth(22),
+    );
+
+    this.attackRangeText = this.register(
+      this.scene.add
+        .text(unitTextX + 162, rangeY, '', { ...rangeFont, color: '#e0563f' })
+        .setScrollFactor(0)
+        .setDepth(22),
+    );
+
     this.unitMeta = this.register(
       this.scene.add
-        .text(unitTextX, barY + 60, '', {
+        .text(unitTextX, barY + 70, '', {
           fontFamily: 'monospace',
           fontSize: '10px',
           color: '#9fb0a5',
@@ -133,7 +169,7 @@ export class ScenarioCommandBar {
 
     this.unitStatus = this.register(
       this.scene.add
-        .text(unitTextX, barY + 82, '', {
+        .text(unitTextX, barY + 88, '', {
           fontFamily: 'monospace',
           fontSize: '10px',
           color: '#6fd08c',
@@ -249,11 +285,12 @@ export class ScenarioCommandBar {
     lines.push(
       `Jednostki: ${counts.blue} nieb. · ${counts.red} czerw. · Kafle: ${mapTileCount(state.map)}`,
     );
+    lines.push(`Mgła wojny: ${state.map.fogOfWar ? 'włączona' : 'wyłączona'}`);
 
     if (hover) {
       const terrain = terrainAt(state.map, hover);
       const doubled = toDoubled(hover);
-      const unit = findUnitAt(state, hover);
+      const unit = visibleUnitAt(state, hover, turn.faction);
       const terrainLabel = terrain ? TERRAIN_DEFS[terrain].label : 'pusto';
       const moveCost = terrain ? TERRAIN_DEFS[terrain].moveCost : 1;
       const moveCostLabel = moveCost >= 99 ? 'ruch: blokada' : `ruch: ${moveCost}`;
@@ -281,6 +318,10 @@ export class ScenarioCommandBar {
       this.previewHint.setVisible(true);
       this.unitName.setText('Brak wybranej jednostki').setColor('#6c7d72');
       this.unitStats.setText('Kliknij jednostkę na mapie');
+      this.rangeLabel.setText('');
+      this.moveRangeText.setText('');
+      this.visionRangeText.setText('');
+      this.attackRangeText.setText('');
       this.unitMeta.setText('');
       this.unitStatus.setText('');
       return;
@@ -299,8 +340,12 @@ export class ScenarioCommandBar {
       .setText(`${stats.label} — ${FACTION_DEFS[current.faction].label}`)
       .setColor('#f2f5f7');
     this.unitStats.setText(
-      `HP ${current.hp}/${stats.maxHp} · ATK ${stats.attack} · DEF ${stats.defense} · Ruch: ${current.movesLeft}/${stats.moveRange}`,
+      `HP ${current.hp}/${stats.maxHp} · ATK ${stats.attack} · DEF ${stats.defense}`,
     );
+    this.rangeLabel.setText('Zasięgi:');
+    this.moveRangeText.setText(`Ruch ${current.movesLeft}/${stats.moveRange}`);
+    this.visionRangeText.setText(`Wzrok ${stats.visionRange}`);
+    this.attackRangeText.setText(`Strzał ${stats.attackRange}`);
     this.unitMeta.setText(
       `Teren: ${terrain ? TERRAIN_DEFS[terrain].label : 'pusto'} · Heks: ${doubled.col},${doubled.row}`,
     );

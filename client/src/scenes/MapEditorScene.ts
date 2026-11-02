@@ -6,6 +6,7 @@ import {
   mapMemoryUsage,
   measureMapOperation,
   removeTerrain,
+  setFogOfWar,
   setTerrain,
   terrainAt,
   type HexCoord,
@@ -192,6 +193,13 @@ export class MapEditorScene extends Phaser.Scene {
         this.faction = faction;
         this.refreshHud();
       },
+      onFog: () => {
+        this.state = this.measure(() => ({
+          ...this.state,
+          map: setFogOfWar(this.state.map, !this.state.map.fogOfWar),
+        }));
+        this.syncView();
+      },
     });
 
     this.add
@@ -311,6 +319,7 @@ export class MapEditorScene extends Phaser.Scene {
       brush: this.brush,
       unitKind: this.unitKind,
       faction: this.faction,
+      fogOfWar: this.state.map.fogOfWar,
     };
   }
 

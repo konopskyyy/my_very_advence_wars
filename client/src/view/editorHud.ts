@@ -24,6 +24,7 @@ export function buildEditorHud(input: EditorHudInput): string {
   const lines: string[] = [];
 
   lines.push(`Mapa: ${input.mapName}`);
+  lines.push(`Mgła wojny: ${input.state.map.fogOfWar ? 'włączona' : 'wyłączona'}`);
   lines.push(`Tryb: ${input.tool === 'unit' ? 'jednostki' : 'teren'}`);
 
   if (input.tool === 'unit') {
