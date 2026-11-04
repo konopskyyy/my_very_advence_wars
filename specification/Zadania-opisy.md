@@ -290,7 +290,7 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
   - **Pasek:** wybrana jednostka pokazuje w dolnym pasku zasięg ruchu na zielono, wzroku na niebiesko i strzału na czerwono, zgodnie z kolorami obrysów.
   - **Widoczność:** mgła wojny nie zmienia się; ukrytej jednostki nadal nie da się wybrać, a obrysy nie ujawniają jej pozycji.
   - **Testy:** `tests/core/ranges.test.ts` pokrywa promień, filtrowanie do kafli i wartości z `UNIT_DEFS`; testy scenariusza i map pozostają bez regresji.
-  - **Dokumentacja:** ADR-031, `Mapy.md` i `Interfejs.md` opisują nową właściwość i kolory obrysów.
+  - **Dokumentacja:** ADR-031, `Mapy.md` i `Interfejs.md` opisują nową właściwość i kolory obrysów. GRA-041 zmienia zasięg artylerii na pełną mapę.
 
 ## GRA-040: Atak jednostek z obrażeniami i usuwaniem
 - **Kontekst:** Zasięg strzału był tylko obrysem na mapie — kliknięcie wrogiej jednostki w zasięgu wybierało ją zamiast atakować. Statystyka `attack` i pole `hp` nie miały zastosowania w rozgrywce, więc walki nie było.
@@ -303,3 +303,42 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
   - **Interakcja:** kliknięcie wroga poza zasięgiem nie zadaje obrażeń; ukrytej jednostki nadal nie da się zaatakować. Podgląd heksu pokazuje HP widocznej jednostki.
   - **Testy:** `tests/core/combat.test.ts` pokrywa obrażenia, śmierć, zasięg, własną stronę, limit akcji i wartości z `UNIT_DEFS`.
   - **Dokumentacja:** ADR-032, `Mapy.md` i `Interfejs.md` opisują obrażenia, warunki ataku i zachowanie sceny.
+
+## GRA-041: Artyleria z pełnym zasięgiem i ruchowym kosztem strzału
+- **Kontekst:** Artyleria miała zasięg strzału 3 przy zasięgu wzroku 2, więc bez podpierania jej inną jednostką nie widziała celów, które mogła razić. Strzał kończył też całą akcję (`hasActed`), więc po dojściu do wroga jednostka nie mogła już atakować. Długi zasięg był w praktyce bezużyteczny, a pole `ammo` nie było widoczne ani zużywane.
+- **Opis:** `UNIT_DEFS.artillery` ma nieskończony `attackRange` i `visionRange` — artyleria widzi i razi każdy heks mapy. Strzał artylerii nie ustawia od razu `hasActed`: odejmuje od `movesLeft` stałą proporcję `moveRange / ARTILLERY_AMMO` (`ARTILLERY_SHOT_MOVE_COST`) oraz zużywa jeden pocisk. Pełny zapas ruchu wystarcza na tyle strzałów, ile wynosi `ammo`; dopiero wyczerpanie ruchu ustawia `hasActed`. Każdy atak (także czołgu) zmniejsza `ammo` o 1, a `canAttack()` odrzuca jednostkę bez pocisków. `beginTurn()` uzupełnia amunicję jednostkom aktywnej strony do wartości z `UnitStats.ammo`. Pozostałe rodzaje jednostek nadal kończą akcję po jednym ataku. Scena rysuje dla artylerii czerwone obrysy wyłącznie na widocznych wrogach i pomija niebieski obrys wzroku (cała mapa), a pasek pokazuje `Wzrok ∞`, `Strzał ∞`, `POCISKI X/6` i ułamkowy ruch z dokładnością do dwóch miejsc.
+- **Kryteria:**
+  - **Zasięg:** artyleria widzi i atakuje wroga na dowolnym heksie mapy; warunki własnej strony pozostają bez zmian.
+  - **Koszt strzału:** każdy strzał odejmuje `moveRange / ammo` od bieżącego `movesLeft`; po wyczerpaniu ruchu jednostka dostaje `hasActed`.
+  - **Amunicja:** każdy atak zużywa 1 pocisk; przy `ammo = 0` `canAttack()` zwraca `false`. Pociski wracają do maksimum na początku tury strony.
+  - **Seria:** artyleria może strzelać wielokrotnie w turze, dopóki ma ruch i pociski.
+  - **Inne jednostki:** piechota, czołg i zwiad po ataku nadal dostają `hasActed` bez zużywania ruchu; czołg dodatkowo zużywa pocisk.
+  - **Interfejs:** HUD pokazuje `Wzrok ∞`, `Strzał ∞`, `POCISKI X/6`, ruch z częścią dziesiętną, a obrysy strzału obejmują tylko widocznych wrogów zamiast całej mapy.
+  - **Testy:** `tests/core/combat.test.ts` pokrywa pełny zasięg, koszt ruchu, amunicję, serię strzałów i zachowanie innych jednostek; `vision.test.ts` i `ranges.test.ts` — pełny wzrok; `turn.test.ts` — uzupełnianie pocisków; `movement.test.ts` — ułamkowy ruch.
+  - **Dokumentacja:** ADR-033, `Mapy.md` i `Interfejs.md` opisują zasięgi, amunicję i koszt strzału artylerii.
+
+## GRA-042: Menu kampanii z wstążkami i kafelkami samouczka
+- **Kontekst:** Menu główne prowadziło tylko do scenariuszy i edytora map, więc nie było wejścia do kampanii ani samouczka. Potrzebny jest osobny ekran z zakładkami w stylu wstążki Worda, który pomieści misje samouczka i przyszłe kampanie.
+- **Opis:** Menu główne dostaje jako pierwszą pozycję „Kampanie”, która otwiera nową scenę `CampaignMenuScene`. Scena rysuje pasek trzech wstążek (`Samouczek`, `Kampania 1`, `Kampania 2`) i panel treści pod nim. Samouczek pokazuje sześć kafelków w siatce 3×2; pierwszy to „Pierwsze kroki”, a kolejne to „Ruch jednostek”, „Walka”, „Mgła wojny”, „Amunicja” i „Artyleria”. Kafelki są zapowiedziami: mają numer, tytuł, opis i status „WKRÓTCE”, a kliknięcie pokazuje komunikat o planowanej misji. Kampanie 1 i 2 pokazują pusty panel do czasu dodania misji. Dane kampanii są czystym modułem `core/campaign.ts`, a rysowanie wstążek i kafelków trafia do `view/`.
+- **Kryteria:**
+  - **Menu główne:** „Kampanie” jest pierwszą pozycją i otwiera `CampaignMenuScene`.
+  - **Wstążki:** trzy zakładki w kolejności „Samouczek”, „Kampania 1”, „Kampania 2”; aktywna jest wyróżniona, przełączanie podmienia zawartość bez zmiany sceny.
+  - **Samouczek:** sześć kafelków w siatce 3×2, pierwszy zatytułowany „Pierwsze kroki”.
+  - **Kafelki:** każdy ma numer, tytuł, krótki opis i status „WKRÓTCE”; kliknięcie zaznacza kafelek i pokazuje komunikat o planowanej misji.
+  - **Pozostałe kampanie:** panel pokazuje brak misji, a wstążki nadal działają.
+  - **Sterowanie:** LPM wybiera wstążkę lub kafelek, `ESC` i „MENU GŁÓWNE” wracają do menu głównego.
+  - **Testy:** `tests/core/campaign.test.ts` sprawdza kolejność kampanii, liczbę kafelków samouczka, tytuł pierwszego kafelka i brak kafelków w kampaniach 1/2.
+  - **Dokumentacja:** INTERF-001, INTERF-007 i ZAL-011 opisują wejście, ekran i zawartość kampanii.
+
+## GRA-043: Pierwsza misja samouczka — Pierwsze kroki
+- **Kontekst:** Kafelki samouczka były tylko zapowiedziami, więc nie dało się sprawdzić kampanii w grze. Potrzebna jest pierwsza grywalna misja i podział danych na osobne pliki, żeby kolejne misje i kampanie nie rosły w jednym module.
+- **Opis:** Dane kampanii przechodzą do katalogu `client/src/core/campaign/`: `types.ts` trzyma typy, `tutorial.ts`, `kampania-1.ts` i `kampania-2.ts` opisują kampanie, a `missions/` zawiera po jednym pliku na misję. Pierwsza misja „Pierwsze kroki” dostaje własny `missions/pierwsze-kroki.ts` z prostą mapą 16×10, trzema niebieskimi piechurami i jednym czerwonym piechurom ustawionym poza zasięgiem wzroku. Mapa ma włączoną mgłę wojny, więc wróg jest niewidoczny do czasu zbliżenia jednostki. Kafelek z gotową misją pokazuje status „GRAJ” i uruchamia `ScenarioScene`; dolny pasek prowadzi z powrotem do „MENU KAMPANII”. Pozostałe kafelki i kampanie pozostają zapowiedziami.
+- **Kryteria:**
+  - **Struktura:** każda kampania ma osobny plik, a każda misja osobny plik w `core/campaign/missions/`; `index.ts` tylko scala dane.
+  - **Mapa:** prosta mapa 16×10 z kilkoma kaflami terenu, bez przeszkód blokujących start jednostek.
+  - **Jednostki:** trzech niebieskich piechurów po lewej stronie i jeden czerwony piechur po prawej.
+  - **Mgła:** mapa ma włączoną mgłę wojny, a `visibleUnits` dla niebieskich nie zwraca czerwonego piechura na starcie.
+  - **Uruchomienie:** kliknięcie „Pierwsze kroki” otwiera scenariusz z tą mapą i armią; pozostałe kafelki nadal pokazują „WKRÓTCE”.
+  - **Powrót:** dolny pasek misji prowadzi do „MENU KAMPANII”, a nie do listy scenariuszy.
+  - **Testy:** `tests/core/campaign/` sprawdza kolejność kampanii, kafelki samouczka, skład armii i ukrycie wroga w mgle.
+  - **Dokumentacja:** ZAL-011, INTERF-007 i GRA-043 opisują strukturę plików, mapę i uruchomienie misji.

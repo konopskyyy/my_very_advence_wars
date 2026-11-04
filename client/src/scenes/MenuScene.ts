@@ -18,20 +18,23 @@ export class MenuScene extends Phaser.Scene {
     const { width, height } = this.scale;
 
     this.title = this.add
-      .text(width / 2, height / 2 - 70, 'My Very Advance Wars', {
+      .text(width / 2, height / 2 - 100, 'My Very Advance Wars', {
         fontFamily: 'monospace',
         fontSize: '28px',
         color: '#d8e2dc',
       })
       .setOrigin(0.5);
 
-    this.addMenuEntry(width / 2, height / 2 - 10, 'Scenariusze', () =>
+    this.addMenuEntry(width / 2, height / 2 - 40, 'Kampanie', () =>
+      this.scene.start('campaign-menu'),
+    );
+    this.addMenuEntry(width / 2, height / 2, 'Scenariusze', () =>
       this.scene.start('scenario-menu'),
     );
-    this.addMenuEntry(width / 2, height / 2 + 30, 'Edytor map', () =>
+    this.addMenuEntry(width / 2, height / 2 + 40, 'Edytor map', () =>
       this.scene.start('map-menu'),
     );
-    this.addMenuEntry(width / 2, height / 2 + 70, 'Wyjście', () => this.quit());
+    this.addMenuEntry(width / 2, height / 2 + 80, 'Wyjście', () => this.quit());
 
     this.hint = this.add
       .text(width / 2, height - 30, 'Wskaż opcję myszką', {

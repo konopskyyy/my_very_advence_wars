@@ -30,6 +30,27 @@ jobs:
       - name: Typy
         run: npx tsc --noEmit
 
+  build-client:
+    name: Build klienta (TS + Vite)
+    runs-on: ubuntu-latest
+    needs: [typecheck]
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+      - name: Zależności
+        run: npm ci
+      - name: Build
+        run: npm run build
+
   test:
     name: Testy jednostkowe
     runs-on: ubuntu-latest

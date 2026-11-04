@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createMap, hexDistance, hexNeighbors } from '../../src/core/map';
 import { attackTiles, hexesInRange, visionTiles } from '../../src/core/ranges';
-import { createUnit, UNIT_DEFS, type UnitKind } from '../../src/core/units';
+import { createUnit, FULL_MAP_RANGE, UNIT_DEFS, type UnitKind } from '../../src/core/units';
 
 function key(coord: { col: number; row: number }): string {
   return `${coord.col},${coord.row}`;
@@ -61,6 +61,21 @@ describe('zasięgi jednostek', () => {
     expect(attackTiles(map, unit('artillery')).length).toBeGreaterThan(
       attackTiles(map, unit('infantry')).length,
     );
+  });
+
+  it('artyleria ma skończony, duży zasięg zamiast nieskończoności', () => {
+    expect(Number.isFinite(UNIT_DEFS.artillery.visionRange)).toBe(true);
+    expect(Number.isFinite(UNIT_DEFS.artillery.attackRange)).toBe(true);
+    expect(UNIT_DEFS.artillery.visionRange).toBe(FULL_MAP_RANGE);
+    expect(UNIT_DEFS.artillery.attackRange).toBe(FULL_MAP_RANGE);
+  });
+
+  it('artyleria obejmuje wszystkie kafle mapy poza własnym heksem', () => {
+    expect(attackTiles(map, unit('artillery'))).toHaveLength(Object.keys(map.cells).length - 1);
+  });
+
+  it('artyleria widzi wszystkie kafle mapy poza własnym heksem', () => {
+    expect(visionTiles(map, unit('artillery'))).toHaveLength(Object.keys(map.cells).length - 1);
   });
 
   it('zwiad widzi dalej niż czołg', () => {

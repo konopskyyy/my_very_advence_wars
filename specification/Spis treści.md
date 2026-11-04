@@ -5,6 +5,7 @@ kotwicami Obsidiana, więc `[[ADR#ADR-022: ...]]` otwiera samą decyzję.
 
 | Dokument | Co zawiera | ID sekcji |
 | --- | --- | --- |
+| [[Zalozenia]] | reguły i dane rozgrywki | `ZAL-001`… |
 | [[ADR]] | decyzje architektoniczne | `ADR-001`… |
 | [[Wymagania]] | zakres gry | — |
 | [[Interfejs]] | ekrany i sterowanie | `INTERF-001`… |

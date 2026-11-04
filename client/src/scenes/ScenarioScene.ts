@@ -15,7 +15,7 @@ import {
   nextTurn,
   type TurnState,
 } from '../core/turn';
-import type { FactionId, Unit } from '../core/units';
+import { FULL_MAP_RANGE, UNIT_DEFS, type FactionId, type Unit } from '../core/units';
 import { visibleUnitAt, visibleUnits } from '../core/vision';
 import { HexMapView, HEX_SIZE, outlineHex } from '../view/hexGrid';
 import { MapViewport } from '../view/mapViewport';
@@ -283,52 +283,17 @@ export class ScenarioScene extends Phaser.Scene {
       return false;
     }
 
-    this.animateUnitAlongPath(unit.id, this.movePath, coord);
     this.state = next;
     this.selected = findUnitAt(this.state, coord) ?? null;
     this.movePath = null;
-    this.unitLayer.setUnits(visibleUnits(this.state, this.turn.faction), false);
+    this.unitLayer.setUnits(visibleUnits(this.state, this.turn.faction), true);
     this.drawSelection();
-    this.drawRangeHints();
+    this.rangeHints.clear();
     this.drawPath();
     this.refreshHud();
     this.refreshUnitPreview();
 
     return true;
-  }
-
-  private animateUnitAlongPath(unitId: string, path: HexCoord[], final: HexCoord): void {
-    const token = this.unitLayer.getToken(unitId);
-
-    if (!token) {
-      return;
-    }
-
-    this.tweens.killTweensOf(token);
-    const steps = [path[0] ? path[0] : final];
-
-    for (let i = 1; i < path.length; i += 1) {
-      steps.push(path[i]!);
-    }
-
-    if (steps[steps.length - 1]?.col !== final.col || steps[steps.length - 1]?.row !== final.row) {
-      steps.push(final);
-    }
-
-    let delay = 0;
-
-    for (const step of steps) {
-      const center = this.mapView.center(step);
-      this.tweens.add({
-        targets: token,
-        x: center.x,
-        y: center.y,
-        duration: 100,
-        ease: 'Linear',
-        delay,
-      });
-      delay += 100;
-    }
   }
 
   private onPointerMove(pointer: Phaser.Input.Pointer): void {
@@ -429,24 +394,42 @@ export class ScenarioScene extends Phaser.Scene {
 
     const unit = findUnitAt(this.state, this.selected.pos) ?? this.selected;
 
-    for (const target of visionTiles(this.state.map, unit)) {
-      outlineHex(
-        this.rangeHints,
-        this.mapView.center(target),
-        VISION_HINT_COLOR,
-        2,
-        VISION_HINT_SIZE,
-      );
+    if (UNIT_DEFS[unit.kind].visionRange < FULL_MAP_RANGE) {
+      for (const target of visionTiles(this.state.map, unit)) {
+        outlineHex(
+          this.rangeHints,
+          this.mapView.center(target),
+          VISION_HINT_COLOR,
+          2,
+          VISION_HINT_SIZE,
+        );
+      }
     }
 
-    for (const target of attackTiles(this.state.map, unit)) {
-      outlineHex(
-        this.rangeHints,
-        this.mapView.center(target),
-        ATTACK_HINT_COLOR,
-        2,
-        ATTACK_HINT_SIZE,
-      );
+    if (UNIT_DEFS[unit.kind].attackRange < FULL_MAP_RANGE) {
+      for (const target of attackTiles(this.state.map, unit)) {
+        outlineHex(
+          this.rangeHints,
+          this.mapView.center(target),
+          ATTACK_HINT_COLOR,
+          2,
+          ATTACK_HINT_SIZE,
+        );
+      }
+    } else {
+      for (const target of visibleUnits(this.state, this.turn.faction)) {
+        if (target.faction === unit.faction) {
+          continue;
+        }
+
+        outlineHex(
+          this.rangeHints,
+          this.mapView.center(target.pos),
+          ATTACK_HINT_COLOR,
+          2,
+          ATTACK_HINT_SIZE,
+        );
+      }
     }
 
     if (unit.faction !== this.turn.faction || unit.hasActed || unit.movesLeft <= 0) {

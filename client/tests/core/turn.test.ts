@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createMap } from '../../src/core/map';
 import { createInitialState, placeUnit, type GameState } from '../../src/core/state';
 import { beginTurn, createTurnState, isActiveFaction, nextTurn } from '../../src/core/turn';
+import { ARTILLERY_AMMO } from '../../src/core/units';
 
 function spent(state: GameState): GameState {
   return {
@@ -42,6 +43,30 @@ describe('beginTurn', () => {
     const state = placeUnit(createInitialState(createMap(10, 10)), 'scout', { col: 1, row: 1 }, 'blue');
 
     expect(beginTurn(state, 'blue')).toBe(state);
+  });
+
+  it('uzupełnia amunicję tylko jednostkom aktywnej strony', () => {
+    let state = createInitialState(createMap(10, 10));
+    state = placeUnit(state, 'artillery', { col: 0, row: 0 }, 'blue');
+    state = placeUnit(state, 'tank', { col: 5, row: 5 }, 'red');
+    const spentAmmo = {
+      ...state,
+      units: state.units.map((unit) => ({ ...unit, movesLeft: 0, hasActed: true, ammo: 0 })),
+    };
+    const reset = beginTurn(spentAmmo, 'blue');
+
+    expect(reset.units[0]).toMatchObject({
+      faction: 'blue',
+      movesLeft: 2,
+      hasActed: false,
+      ammo: ARTILLERY_AMMO,
+    });
+    expect(reset.units[1]).toMatchObject({
+      faction: 'red',
+      movesLeft: 0,
+      hasActed: true,
+      ammo: 0,
+    });
   });
 });
 

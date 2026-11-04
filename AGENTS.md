@@ -88,6 +88,7 @@ usuń komentarze, które przestały być prawdą.
   `specification/Zadania.md` (albo interfejsu, którego nie ma w
   `specification/Interfejs.md`), nie się robi. Nową pracę zaczynaj od wpisu
   w dokumentacji, a potem implementuj — inaczej kod wyprzedza specyfikację.
+  Reguły i dane rozgrywki opisuje `specification/Zalozenia.md`.
   Nowe zadanie zakładasz w tabeli `Zadania.md` (ID, nazwa, status, powiązania)
   i w `Zadania-opisy.md` (kontekst, opis, kryteria) — bez powtarzania statusu
   w opisie.
@@ -97,9 +98,9 @@ usuń komentarze, które przestały być prawdą.
 
 ## Oszczędzanie kontekstu
 
-- **Czytaj punktowo.** Dokumenty mają ID sekcji (`ADR-022`, `GRA-030`,
-  `INTERF-005`). Najpierw `grep`, potem wycinek przez `sed -n`; nie wczytuj
-  całego `ADR.md` ani `Mapy.md`.
+- **Czytaj punktowo.** Dokumenty mają ID sekcji (`ADR-022`, `ZAL-005`,
+  `GRA-030`, `INTERF-005`). Najpierw `grep`, potem wycinek przez `sed -n`; nie
+  wczytuj całego `ADR.md`, `Zalozenia.md` ani `Mapy.md`.
 - **Nie czytaj artefaktów.** Pomijaj `client/dist/`, `client/node_modules/`,
   `server/vendor/` i `package-lock.json`; do sprawdzenia użyj `grep`.
 - **Jedno źródło opisu zadania.** Status i powiązania są w

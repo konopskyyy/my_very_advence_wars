@@ -59,6 +59,28 @@ describe('ruch jednostek', () => {
     });
   });
 
+  it('zachowuje ułamkowy ruch i blokuje krok droższy niż pozostałe punkty', () => {
+    const placed = placeUnit(
+      createInitialState(createMap(10, 10)),
+      'artillery',
+      { col: 2, row: 3 },
+      'blue',
+    );
+    const state = {
+      ...placed,
+      units: placed.units.map((unit) => ({ ...unit, movesLeft: 1.5 })),
+    };
+    const unit = state.units[0]!;
+    const moved = moveUnit(state, unit.id, { col: 3, row: 3 });
+    const blocked = moveUnit(moved, unit.id, { col: 4, row: 3 });
+
+    expect(findUnitAt(moved, { col: 3, row: 3 })).toMatchObject({
+      movesLeft: 0.5,
+      hasActed: false,
+    });
+    expect(blocked).toBe(moved);
+  });
+
   it('nie pozwala ruszyć się poza zasięg ruchu', () => {
     const state = placeUnit(
       createInitialState(createMap(10, 10)),

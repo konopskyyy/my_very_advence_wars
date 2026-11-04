@@ -1,10 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { createMap, setFogOfWar, setTerrain } from '../../src/core/map';
 import { createInitialState, placeUnit } from '../../src/core/state';
-import {
-  deserializeGameState,
-  serializeGameState,
-} from '../../src/storage/mapSerialization';
+import { ARTILLERY_AMMO } from '../../src/core/units';
+import { deserializeGameState, serializeGameState } from '../../src/storage/mapSerialization';
 
 function sampleState() {
   let map = createMap(4, 3);
@@ -34,7 +32,7 @@ describe('serializacja stanu gry', () => {
     const artillery = restored.units.find((unit) => unit.kind === 'artillery');
 
     expect(artillery?.kind).toBe('artillery');
-    expect(artillery?.kind === 'artillery' ? artillery.ammo : undefined).toBe(6);
+    expect(artillery?.kind === 'artillery' ? artillery.ammo : undefined).toBe(ARTILLERY_AMMO);
   });
 
   it('zapisuje i przywraca mgłę wojny', () => {

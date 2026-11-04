@@ -40,6 +40,15 @@ describe('widoczność jednostek przy mgle wojny', () => {
     expect(isUnitVisible(state, state.units[1]!, 'blue')).toBe(true);
   });
 
+  it('artyleria widzi przeciwnika na drugim końcu mapy', () => {
+    let state = createInitialState(createMap(20, 20));
+    state = { ...state, map: { ...state.map, fogOfWar: true } };
+    state = placeUnit(state, 'artillery', { col: 0, row: 0 }, 'blue');
+    state = placeUnit(state, 'infantry', { col: 19, row: 19 }, 'red');
+
+    expect(isUnitVisible(state, state.units[1]!, 'blue')).toBe(true);
+  });
+
   it('łączy zasięg wzroku wielu jednostek', () => {
     let state = createInitialState(createMap(20, 20));
     state = { ...state, map: { ...state.map, fogOfWar: true } };

@@ -118,15 +118,9 @@ przy każdej zmianie zasad tur (ADR-020).
 
 ### Tereny
 
-| `TerrainId` | Etykieta | Koszt ruchu | Obrona |
-| ----------- | -------- | ----------: | -----: |
-| `plain`     | Łąka     |           1 |      0 |
-| `forest`    | Las      |           2 |     20 |
-| `water`     | Woda     |  nieprzech. |      0 |
-| `mountain`  | Góry     |           3 |     30 |
-| `swamp`     | Bagno    |           2 |     10 |
-| `road`      | Droga    |         0.5 |      0 |
-| `city`      | Miasto   |           1 |     40 |
+Reguły terenu — koszt ruchu, przechodniość i obrona — są w
+[[Zalozenia#ZAL-003: Mapa i teren|ZAL-003]]. `TerrainId` to jeden z:
+`plain`, `forest`, `water`, `mountain`, `swamp`, `road`, `city`.
 
 Źródło: `client/src/core/map/terrain/` — jeden plik na teren. Lista `TERRAIN_IDS` jest jednocześnie
 listą dozwolonych wartości przy odczycie z bazy — nowy teren trzeba dodać
@@ -135,22 +129,15 @@ również tam.
 ### Jednostki
 
 Jednostka ma `id`, `kind`, `faction`, `pos`, `hp`, `movesLeft` i `hasActed`.
-Czołg i artyleria mają dodatkowo `ammo`; piechota i zwiad nie mają pola amunicji.
-Zasięg wzroku i strzału nie jest zapisywany w jednostce — wynika z `UnitStats` w
-`UNIT_DEFS` i służy do liczenia mgły wojny oraz obrysów zasięgów w scenariuszu.
+Czołg i artyleria mają dodatkowo `ammo` (po 6 pocisków); piechota i zwiad nie
+mają pola amunicji. Atak zużywa pocisk, a `beginTurn()` uzupełnia amunicję
+jednostkom aktywnej strony. Zasięg wzroku i strzału nie jest zapisywany w
+jednostce — wynika z `UnitStats` w `UNIT_DEFS` i służy do liczenia mgły wojny
+oraz obrysów zasięgów w scenariuszu.
 
-| `UnitKind` | Etykieta  | Max HP | Ruch | Zasięg wzroku | Zasięg strzału | Amunicja w zapisie |
-| ---------- | --------- | -----: | ---: | ------------: | -------------: | ------------------ |
-| `infantry` | Piechota  |     10 |    4 |             2 |              1 | —                  |
-| `tank`     | Czołg     |     20 |    3 |             3 |              1 | wymagana           |
-| `artillery`| Artyleria |     14 |    2 |             2 |              3 | wymagana           |
-| `scout`    | Zwiad     |      8 |    6 |             5 |              1 | —                  |
-
-**Walka:** jednostka aktywnej strony może raz na turę zaatakować wroga w promieniu
-`attackRange`. Obrażenia są równe `attack` atakującego i odejmowane od `hp` celu;
-obrona i teren nie zmniejszają obrażeń. Atak ustawia `hasActed`, więc blokuje ruch
-i kolejny atak do następnej tury. Jednostka z `hp <= 0` znika ze stanu gry. Walkę
-liczy `client/src/core/combat.ts`.
+Statystyki jednostek (HP, ruch, atak, obrona, zasięgi, amunicja) są w
+[[Zalozenia#ZAL-004: Jednostki|ZAL-004]]. Zasady walki opisuje
+[[Zalozenia#ZAL-006: Walka|ZAL-006]], a liczy je `client/src/core/combat.ts`.
 
 Strony: `blue`, `red`, `neutral`. W edytorze dostępne są niebieska i czerwona;
 `neutral` jest obsługiwana przez model i walidację.
