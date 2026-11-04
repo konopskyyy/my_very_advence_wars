@@ -50,9 +50,12 @@ Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
 | [[Zadania-opisy#GRA-038: Mgła wojny i zasięg wzroku jednostek\|GRA-038]] | Mgła wojny i zasięg wzroku jednostek | ✅ | GRA-002, GRA-027, ADR-003, ADR-020, ADR-030, INTERF-003, INTERF-005, `specification/Mapy.md` |
 | [[Zadania-opisy#GRA-039: Zasięgi ruchu, wzroku i strzału na mapie\|GRA-039]] | Zasięgi ruchu, wzroku i strzału na mapie | ✅ | GRA-002, GRA-027, GRA-030, GRA-038, ADR-001, ADR-003, ADR-031, INTERF-005, `specification/Mapy.md` |
 | [[Zadania-opisy#GRA-040: Atak jednostek z obrażeniami i usuwaniem\|GRA-040]] | Atak jednostek z obrażeniami i usuwaniem | ✅ | GRA-002, GRA-027, GRA-030, GRA-039, ADR-001, ADR-003, ADR-032, INTERF-005, `specification/Mapy.md` |
+| [[Zadania-opisy#GRA-041: Artyleria z pełnym zasięgiem i ruchowym kosztem strzału\|GRA-041]] | Artyleria z pełnym zasięgiem i ruchowym kosztem strzału | ✅ | GRA-002, GRA-039, GRA-040, ADR-001, ADR-032, ADR-033, INTERF-005, `specification/Mapy.md` |
 | [[Zadania-opisy#SRV-001: Warstwowy moduł auth z encją użytkownika\|SRV-001]] | Warstwowy moduł auth z encją użytkownika | ✅ | ADR-029, API-001 |
 | [[Zadania-opisy#SRV-002: Rejestracja i logowanie JWT\|SRV-002]] | Rejestracja i logowanie JWT | ✅ | SRV-001, ADR-029, API-001 |
 | [[Zadania-opisy#INFRA-001: Środowisko Docker\|INFRA-001]] | Środowisko Docker | ✅ | `specification/Infrastruktura.md` |
 | [[Zadania-opisy#INFRA-002: Testy jednostkowe i mutacyjne w CI\|INFRA-002]] | Testy jednostkowe i mutacyjne w CI | ✅ | INFRA-001, `specification/Infrastruktura.md` |
 | [[Zadania-opisy#INFRA-003: Testy backendu i mutacje w CI\|INFRA-003]] | Testy backendu i mutacje w CI | ✅ | INFRA-002, SRV-001, SRV-002, `specification/Infrastruktura.md` |
 | [[Zadania-opisy#INFRA-004: Paczka Electrona dla Windows z WSL\|INFRA-004]] | Paczka Electrona dla Windows z WSL | ✅ | INFRA-001, `specification/Infrastruktura.md`, `specification/Mapy.md` |
+| [[Zadania-opisy#GRA-042: Menu kampanii z wstążkami i kafelkami samouczka\|GRA-042]] | Menu kampanii z wstążkami i kafelkami samouczka | ✅ | INTERF-001, INTERF-007, ZAL-011 |
+| [[Zadania-opisy#GRA-043: Pierwsza misja samouczka — Pierwsze kroki\|GRA-043]] | Pierwsza misja samouczka — Pierwsze kroki | 🚧 | GRA-042, INTERF-002, INTERF-007, ZAL-006, ZAL-011 |

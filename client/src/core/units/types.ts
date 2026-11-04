@@ -3,6 +3,8 @@ import type { FactionId } from './faction';
 
 export type UnitKind = 'infantry' | 'tank' | 'artillery' | 'scout';
 
+export const FULL_MAP_RANGE = 999;
+
 export interface UnitBase {
   readonly id: string;
   readonly faction: FactionId;
@@ -20,4 +22,5 @@ export interface UnitStats {
   readonly defense: number;
   readonly visionRange: number;
   readonly attackRange: number;
+  readonly ammo?: number;
 }

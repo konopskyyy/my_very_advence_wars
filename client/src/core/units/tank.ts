@@ -7,17 +7,19 @@ export interface TankUnit extends UnitBase {
   readonly ammo: number;
 }
 
+export const TANK_MOVE_RANGE = 3;
+export const TANK_AMMO = TANK_MOVE_RANGE;
+
 export const TANK_STATS: UnitStats = {
   label: 'Czołg',
   maxHp: 20,
-  moveRange: 3,
+  moveRange: TANK_MOVE_RANGE,
   attack: 9,
   defense: 7,
   visionRange: 3,
   attackRange: 1,
+  ammo: TANK_AMMO,
 };
-
-export const TANK_AMMO = 6;
 
 export function createTank(id: string, faction: FactionId, pos: HexCoord): TankUnit {
   return {

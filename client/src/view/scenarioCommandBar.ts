@@ -7,6 +7,7 @@ import type { TurnState } from '../core/turn';
 import { FACTION_DEFS, UNIT_DEFS, type FactionId, type Unit } from '../core/units';
 import { visibleUnitAt } from '../core/vision';
 import { FACTION_THEMES, type FactionTheme } from './factionTheme';
+import { formatPoints } from './format';
 import { unitTexture } from './unitLayer';
 
 export const BAR_HEIGHT = 116;
@@ -332,6 +333,11 @@ export class ScenarioCommandBar {
     const terrain = terrainAt(state.map, current.pos);
     const doubled = toDoubled(current.pos);
 
+    const ammo =
+      'ammo' in current && stats.ammo !== undefined
+        ? ` · POCISKI ${current.ammo}/${stats.ammo}`
+        : '';
+
     this.preview
       .setTexture(unitTexture(this.scene, current.kind, current.faction).key)
       .setVisible(true);
@@ -340,12 +346,12 @@ export class ScenarioCommandBar {
       .setText(`${stats.label} — ${FACTION_DEFS[current.faction].label}`)
       .setColor('#f2f5f7');
     this.unitStats.setText(
-      `HP ${current.hp}/${stats.maxHp} · ATK ${stats.attack} · DEF ${stats.defense}`,
+      `HP ${current.hp}/${stats.maxHp} · ATK ${stats.attack} · DEF ${stats.defense}${ammo}`,
     );
     this.rangeLabel.setText('Zasięgi:');
-    this.moveRangeText.setText(`Ruch ${current.movesLeft}/${stats.moveRange}`);
-    this.visionRangeText.setText(`Wzrok ${stats.visionRange}`);
-    this.attackRangeText.setText(`Strzał ${stats.attackRange}`);
+    this.moveRangeText.setText(`Ruch ${formatPoints(current.movesLeft)}/${stats.moveRange}`);
+    this.visionRangeText.setText(`Wzrok ${formatPoints(stats.visionRange)}`);
+    this.attackRangeText.setText(`Strzał ${formatPoints(stats.attackRange)}`);
     this.unitMeta.setText(
       `Teren: ${terrain ? TERRAIN_DEFS[terrain].label : 'pusto'} · Heks: ${doubled.col},${doubled.row}`,
     );
@@ -355,7 +361,7 @@ export class ScenarioCommandBar {
           ? 'Działała — ruch w następnej turze'
           : movePath && movePath.length > 0
             ? '1. klik — trasa · 2. klik — potwierdzenie ruchu'
-            : `Gotowa — pozostało ${current.movesLeft} pkt. ruchu`,
+            : `Gotowa — pozostało ${formatPoints(current.movesLeft)} pkt. ruchu`,
       )
       .setColor(current.hasActed || current.movesLeft === 0 ? '#e0a15a' : '#6fd08c');
   }

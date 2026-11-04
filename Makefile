@@ -14,7 +14,7 @@ ADMINER_PORT ?= 18081
 .PHONY: help up up-tools down stop restart ps logs logs-server logs-client \
         shell console composer cache-clear migrate fixtures jwt-keys test-server \
         db-shell build rebuild client-install \
-        install electron electron-build electron-win electron-win-installer clean clean-all test mutation lint env run
+        install electron electron-build electron-win electron-win-installer clean clean-all test mutation lint env run quality quality-client
 
 ## ——— Pomoc ————————————————————————————————————————————————
 
@@ -131,6 +131,11 @@ mutation: ## Testy mutacyjne klienta (Stryker)
 
 lint: ## Sprawdź typy klienta
 	cd client && npx tsc --noEmit
+
+quality-client: ## Ocena jakości kodu klienta (typy, zależności, martwy kod, duplikaty)
+	cd client && npm run quality
+
+quality: quality-client ## Ocena jakości (alias)
 
 clean: ## Zatrzymaj kontenery i usuń woluminy (⚠️ kasuje dane bazy)
 	$(COMPOSE) down -v

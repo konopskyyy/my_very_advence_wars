@@ -2,7 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { attackUnit, canAttack } from '../../src/core/combat';
 import { createMap, findUnitAt, type HexCoord } from '../../src/core/map';
 import { createInitialState, placeUnit, type GameState } from '../../src/core/state';
-import { createUnit, UNIT_DEFS, type UnitKind } from '../../src/core/units';
+import {
+  ARTILLERY_AMMO,
+  ARTILLERY_SHOT_MOVE_COST,
+  ARTILLERY_STATS,
+  createUnit,
+  FULL_MAP_RANGE,
+  UNIT_DEFS,
+  type UnitKind,
+} from '../../src/core/units';
 
 function stateWith(
   blue: { kind: UnitKind; pos: HexCoord },
@@ -73,6 +81,17 @@ describe('canAttack', () => {
     expect(canAttack(artillery, target)).toBe(true);
     expect(canAttack(infantry, target)).toBe(false);
   });
+
+  it('artyleria sięga każdego heksa mapy', () => {
+    const target = createUnit('target', 'infantry', 'red', { col: 0, row: 0 });
+    const artillery = createUnit('artillery', 'artillery', 'blue', { col: 40, row: 20 });
+
+    expect(UNIT_DEFS.artillery.attackRange).toBe(FULL_MAP_RANGE);
+    expect(UNIT_DEFS.artillery.visionRange).toBe(FULL_MAP_RANGE);
+    expect(Number.isFinite(UNIT_DEFS.artillery.attackRange)).toBe(true);
+    expect(Number.isFinite(UNIT_DEFS.artillery.visionRange)).toBe(true);
+    expect(canAttack(artillery, target)).toBe(true);
+  });
 });
 
 describe('attackUnit', () => {
@@ -121,6 +140,98 @@ describe('attackUnit', () => {
     const twice = attackUnit(once, attacker!.id, target!.id);
 
     expect(twice).toBe(once);
+  });
+
+  it('artyleria po strzale traci część ruchu zamiast kończyć turę', () => {
+    const state = stateWith(
+      { kind: 'artillery', pos: { col: 0, row: 0 } },
+      { kind: 'infantry', pos: { col: 8, row: 8 } },
+    );
+    const [attacker, target] = state.units;
+    const next = attackUnit(state, attacker!.id, target!.id);
+
+    expect(findUnitAt(next, attacker!.pos)).toMatchObject({
+      movesLeft: ARTILLERY_STATS.moveRange - ARTILLERY_SHOT_MOVE_COST,
+      hasActed: false,
+      ammo: ARTILLERY_AMMO - 1,
+    });
+  });
+
+  it('artyleria strzela aż wyczerpie ruch i amunicję', () => {
+    let state = stateWith(
+      { kind: 'artillery', pos: { col: 0, row: 0 } },
+      { kind: 'infantry', pos: { col: 8, row: 8 } },
+    );
+    state = withHp(state, { col: 8, row: 8 }, 1000);
+
+    for (let shot = 0; shot < ARTILLERY_AMMO; shot += 1) {
+      const attacker = findUnitAt(state, { col: 0, row: 0 })!;
+      const target = findUnitAt(state, { col: 8, row: 8 })!;
+
+      expect(canAttack(attacker, target)).toBe(true);
+      state = attackUnit(state, attacker.id, target.id);
+    }
+
+    expect(findUnitAt(state, { col: 0, row: 0 })).toMatchObject({
+      movesLeft: 0,
+      hasActed: true,
+      ammo: 0,
+    });
+    expect(findUnitAt(state, { col: 8, row: 8 })?.hp).toBe(
+      1000 - ARTILLERY_AMMO * ARTILLERY_STATS.attack,
+    );
+    expect(
+      canAttack(
+        findUnitAt(state, { col: 0, row: 0 })!,
+        findUnitAt(state, { col: 8, row: 8 })!,
+      ),
+    ).toBe(false);
+  });
+
+  it('nie pozwala atakować bez amunicji', () => {
+    const state = stateWith(
+      { kind: 'artillery', pos: { col: 0, row: 0 } },
+      { kind: 'infantry', pos: { col: 8, row: 8 } },
+    );
+    const empty = {
+      ...state,
+      units: state.units.map((unit) =>
+        unit.kind === 'artillery' ? { ...unit, ammo: 0 } : unit,
+      ),
+    };
+    const [attacker, target] = empty.units;
+
+    expect(canAttack(attacker!, target!)).toBe(false);
+    expect(attackUnit(empty, attacker!.id, target!.id)).toBe(empty);
+  });
+
+  it('czołg po ataku zużywa pocisk i kończy turę', () => {
+    const state = stateWith(
+      { kind: 'tank', pos: { col: 4, row: 4 } },
+      { kind: 'infantry', pos: { col: 5, row: 4 } },
+    );
+    const [attacker, target] = state.units;
+    const next = attackUnit(state, attacker!.id, target!.id);
+
+    expect(findUnitAt(next, attacker!.pos)).toMatchObject({
+      movesLeft: UNIT_DEFS.tank.moveRange,
+      hasActed: true,
+      ammo: (UNIT_DEFS.tank.ammo ?? 0) - 1,
+    });
+  });
+
+  it('piechota po ataku kończy turę bez zużywania ruchu', () => {
+    const state = stateWith(
+      { kind: 'infantry', pos: { col: 4, row: 4 } },
+      { kind: 'infantry', pos: { col: 5, row: 4 } },
+    );
+    const [attacker, target] = state.units;
+    const next = attackUnit(state, attacker!.id, target!.id);
+
+    expect(findUnitAt(next, attacker!.pos)).toMatchObject({
+      movesLeft: UNIT_DEFS.infantry.moveRange,
+      hasActed: true,
+    });
   });
 
   it('zwraca ten sam stan, gdy cel jest poza zasięgiem', () => {

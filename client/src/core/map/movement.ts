@@ -4,6 +4,8 @@ import { hexDistance, hexNeighbors, type HexCoord } from './layout';
 import { cellCoord, cellKey } from './model';
 import { IMPASSABLE, TERRAIN_DEFS } from './terrain';
 
+const MOVE_EPSILON = 1e-9;
+
 export function findUnitAt(state: GameState, coord: HexCoord): Unit | undefined {
   return state.units.find((unit) => unit.pos.col === coord.col && unit.pos.row === coord.row);
 }
@@ -196,13 +198,15 @@ export function moveUnit(state: GameState, unitId: string, target: HexCoord): Ga
     return state;
   }
 
+  const movesLeft = unit.movesLeft - totalCost;
+  const exhausted = movesLeft <= MOVE_EPSILON;
   const units = state.units.map((candidate) =>
     candidate.id === unitId
       ? {
           ...candidate,
           pos: target,
-          movesLeft: unit.movesLeft - totalCost,
-          hasActed: unit.movesLeft - totalCost === 0,
+          movesLeft: exhausted ? 0 : movesLeft,
+          hasActed: exhausted,
         }
       : candidate,
   );

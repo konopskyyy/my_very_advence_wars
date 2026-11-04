@@ -28,13 +28,23 @@ export function beginTurn(state: GameState, faction: FactionId): GameState {
       return unit;
     }
 
-    const movesLeft = UNIT_DEFS[unit.kind].moveRange;
+    const stats = UNIT_DEFS[unit.kind];
+    const movesLeft = stats.moveRange;
+    const maxAmmo = 'ammo' in unit ? stats.ammo ?? unit.ammo : undefined;
 
-    if (unit.movesLeft === movesLeft && !unit.hasActed) {
+    if (
+      unit.movesLeft === movesLeft &&
+      !unit.hasActed &&
+      (!('ammo' in unit) || unit.ammo === maxAmmo)
+    ) {
       return unit;
     }
 
     changed = true;
+
+    if ('ammo' in unit && maxAmmo !== undefined) {
+      return { ...unit, movesLeft, hasActed: false, ammo: maxAmmo };
+    }
 
     return { ...unit, movesLeft, hasActed: false };
   });
