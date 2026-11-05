@@ -39,6 +39,24 @@ Uruchamianie: `make test` (albo `cd client && npm test`); tryb watch:
 (`test.include` w `client/vite.config.ts`), a `tsc --noEmit` sprawdza także
 testy, bo `tests/` jest w `client/tsconfig.json`.
 
+## Krótkie logi komend
+
+Polecenia, które dużo wypisują (testy, `tsc`, build), uruchamiaj przez
+`scripts/compact-run.sh`. Na ekran trafia status, rozmiar i końcówka logu
+(20 linii przy sukcesie, 40 przy błędzie), a pełny wynik zostaje w
+`${TMPDIR:-/tmp}/opencode/mvaw`. Logi starsze niż doba są usuwane przy
+następnym uruchomieniu.
+
+```bash
+scripts/compact-run.sh --label test -- npm test
+scripts/compact-run.sh --last   # końcówka ostatniego logu
+```
+
+Zmienne `COMPACT_LOG_DIR`, `COMPACT_RETENTION_MINUTES`,
+`COMPACT_TAIL_LINES` i `COMPACT_FAIL_TAIL_LINES` zmieniają kolejno katalog,
+retencję i liczbę wypisywanych linii. Cele `make check`, `test`, `lint`
+i `client-build` korzystają z tego skryptu.
+
 ## Backend Symfony
 
 - Nowe funkcje backendu są **modułami** w `server/src/<Moduł>/`, dzielonymi na

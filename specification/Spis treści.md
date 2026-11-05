@@ -14,7 +14,9 @@ kotwicami Obsidiana, więc `[[ADR#ADR-022: ...]]` otwiera samą decyzję.
 | [[Zadania]] | tabela zadań, statusy, powiązania | `GRA-001`…, `SRV-001`…, `INFRA-001` |
 | [[Zadania-opisy]] | kontekst, opis i kryteria zadań | `GRA-001`…, `SRV-001`… |
 | [[Infrastruktura]] | Docker, porty, CI | `INFRA-001` |
-| [[Konwencje]] | testy, dokumentacja, styl | — |
+| [[Konwencje]] | testy, logi, dokumentacja, styl | — |
 
-Przykład: `grep -n "ADR-022" specification/ADR.md`, potem wycinek przez
+Przykład: `scripts/spec.sh ADR-022` pokazuje tylko jedną decyzję, a
+`scripts/spec.sh --list` — spis wszystkich sekcji. Bez skryptu:
+`grep -n "ADR-022" specification/ADR.md`, potem wycinek przez
 `sed -n '120,132p' specification/ADR.md`.
