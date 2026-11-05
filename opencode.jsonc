@@ -1,0 +1,32 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+
+  // Czytamy punktowo. Bez tych blokad model potrafi wciągnąć do kontekstu
+  // całe dist/, node_modules/ albo vendor/, co powtarza się w każdym kroku.
+  "permissions": [
+    { "action": "read", "resource": "client/dist/*", "effect": "deny" },
+    { "action": "read", "resource": "client/node_modules/*", "effect": "deny" },
+    { "action": "read", "resource": "client/reports/*", "effect": "deny" },
+    { "action": "read", "resource": "client/.stryker-tmp/*", "effect": "deny" },
+    { "action": "read", "resource": "client/package-lock.json", "effect": "deny" },
+    { "action": "read", "resource": "server/vendor/*", "effect": "deny" },
+    { "action": "read", "resource": "server/composer.lock", "effect": "deny" },
+    { "action": "read", "resource": "*.log", "effect": "deny" }
+  ],
+
+  // Jeden wynik narzędzia to maks. ~4 tys. tokenów. Pliki większe niż 500
+  // linii lub 16 KiB trzeba czytać wycinkami (read offset/limit, sed -n).
+  "tool_output": {
+    "max_lines": 500,
+    "max_bytes": 16384
+  },
+
+  "watcher": {
+    "ignore": [
+      "client/dist/**",
+      "client/node_modules/**",
+      "client/reports/**",
+      "server/vendor/**"
+    ]
+  }
+}

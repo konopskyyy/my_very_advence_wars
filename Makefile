@@ -14,7 +14,8 @@ ADMINER_PORT ?= 18081
 .PHONY: help up up-tools down stop restart ps logs logs-server logs-client \
         shell console composer cache-clear migrate fixtures jwt-keys test-server \
         db-shell build rebuild client-install \
-        install electron electron-build electron-win electron-win-installer clean clean-all test mutation lint env run quality quality-client
+        install electron electron-build electron-win electron-win-installer clean clean-all test mutation lint env run quality quality-client \
+        check client-build verify
 
 ## ——— Pomoc ————————————————————————————————————————————————
 
@@ -123,14 +124,23 @@ electron-win-installer: ## Zbuduj instalator NSIS dla Windows (wymaga wine)
 
 ## ——— Testy / porządek ——————————————————————————————————————
 
-test: ## Testy klienta (Vitest)
-	cd client && npm test
+test: ## Testy klienta (Vitest, krótka końcówka)
+	@scripts/compact-run.sh --label test bash -c 'cd client && npm test'
+
+check: ## Typy i testy klienta (krótkie końcówki, pełny log w tmp)
+	@scripts/compact-run.sh --label check bash -c 'cd client && npx tsc --noEmit && npm test'
+
+client-build: ## Zbuduj klienta i zrestartuj Vite
+	@scripts/compact-run.sh --label build bash -c 'cd client && npm run build'
+	@scripts/compact-run.sh --label vite bash -c '$(COMPOSE) restart client'
+
+verify: check client-build ## Typy, testy, build i restart Vite (jedno polecenie)
 
 mutation: ## Testy mutacyjne klienta (Stryker)
 	cd client && npm run mutation
 
-lint: ## Sprawdź typy klienta
-	cd client && npx tsc --noEmit
+lint: ## Sprawdź typy klienta (krótka końcówka)
+	@scripts/compact-run.sh --label lint bash -c 'cd client && npx tsc --noEmit'
 
 quality-client: ## Ocena jakości kodu klienta (typy, zależności, martwy kod, duplikaty)
 	cd client && npm run quality

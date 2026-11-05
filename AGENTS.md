@@ -35,14 +35,22 @@ stan. Zmiany zbieraj w serię i przebudowuj **raz na końcu**, nie po każdym
 drobiazgu:
 
 ```bash
-cd client && npm run build 2>&1 | tail -n 20   # odświeża client/dist (Electron ładuje ten katalog)
-docker compose restart client                  # Vite rozwiązuje importy od nowa
+make verify   # typy, testy, build i restart Vite; krótkie końcówki logów
 ```
 
-Nie wklejaj pełnego logu builda do rozmowy — wystarczy końcówka albo kod
-wyjścia. HMR nie nadąża po zmianie struktury modułów (`core/map.ts` →
-`core/map/`), a `client/dist` bywa starszy od kodu. Bez tego przeglądarka
-pokazuje starą wersję, a diagnoza zachowania jest myląca.
+Tylko przebudowa bez testów: `make client-build`. `make check` uruchamia same
+typy i testy. Nie powtarzaj tych komend po każdej drobnej zmianie.
+
+Cele `check`, `test`, `lint` i `client-build` przechodzą przez
+`scripts/compact-run.sh`: na ekran idzie status i 20–40 końcowych linii, a pełny
+log ląduje w `${TMPDIR:-/tmp}/opencode/mvaw` i jest kasowany po dobie. Gdy
+końcówka nie wystarcza, `scripts/compact-run.sh --last` pokazuje ostatni log.
+Nie czytaj logów w całości ani nie wklejaj ich do rozmowy — wystarczy status,
+ścieżka i fragment.
+
+HMR nie nadąża po zmianie struktury modułów (`core/map.ts` → `core/map/`),
+a `client/dist` bywa starszy od kodu. Bez przebudowy przeglądarka pokazuje
+starą wersję, a diagnoza zachowania jest myląca.
 
 ## Komentarze — tylko gdy wnoszą wiedzę
 
@@ -98,11 +106,23 @@ usuń komentarze, które przestały być prawdą.
 
 ## Oszczędzanie kontekstu
 
+- **Nowy temat = nowa sesja.** Po zakończeniu zadania zacznij nową sesję
+  zamiast ciągnąć jedną przez kilka funkcji. Każdy krok wysyła całą historię,
+  więc długie sesje kosztują kwadratowo.
 - **Czytaj punktowo.** Dokumenty mają ID sekcji (`ADR-022`, `ZAL-005`,
-  `GRA-030`, `INTERF-005`). Najpierw `grep`, potem wycinek przez `sed -n`; nie
-  wczytuj całego `ADR.md`, `Zalozenia.md` ani `Mapy.md`.
+  `GRA-030`, `INTERF-005`). Użyj `scripts/spec.sh ADR-022` (albo
+  `scripts/spec.sh --list`); nie wczytuj całego `ADR.md`, `Zadania-opisy.md`,
+  `Mapy.md` ani `Infrastruktura.md`.
+- **Pliki >200 linii tylko wycinkami.** Najpierw `grep -n`, potem `read`
+  z `offset`/`limit` (max ~120 linii) albo `sed -n`. Nie powtarzaj `read`
+  tego samego pliku; po edycji wystarczy `git diff --stat`. Jeśli wynik
+  narzędzia zostanie ucięty przez `tool_output`, dociągnij tylko brakujący
+  zakres.
+- **Grupuj narzędzia.** Niezależne odczyty, grepy i edycje wywołuj w jednym
+  kroku. Testy, `tsc` i build uruchamiaj raz na partię zmian: `make verify`.
 - **Nie czytaj artefaktów.** Pomijaj `client/dist/`, `client/node_modules/`,
-  `server/vendor/` i `package-lock.json`; do sprawdzenia użyj `grep`.
+  `server/vendor/`, `client/reports/` i locki; `opencode.jsonc` blokuje ich
+  odczyt. Do sprawdzenia użyj `grep`.
 - **Jedno źródło opisu zadania.** Status i powiązania są w
   `specification/Zadania.md`, pełny opis i kryteria wyłącznie w
   `specification/Zadania-opisy.md`. Nie kopiuj treści między plikami.

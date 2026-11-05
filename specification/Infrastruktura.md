@@ -413,10 +413,13 @@ Compose bezpośrednio też działa — poniżej oba warianty.
 | Build klienta + paczka Electrona (host)  | `make electron-build` | `npm run build --prefix electron`                         |
 | Paczka ZIP dla Windows (WSL)             | `make electron-win`   | `npm run build:win --prefix electron`                     |
 | Instalator Windows (wymaga wine)         | `make electron-win-installer` | `npm run build:win:installer --prefix electron`   |
-| Przebuduj klienta (po zmianach)           | —                     | `cd client && npm run build && docker compose restart client` |
-| Testy klienta (Vitest)                   | `make test`           | `cd client && npm test`                                   |
+| Przebuduj klienta (po zmianach)           | `make client-build`   | `cd client && npm run build && docker compose restart client` |
+| Testy klienta (Vitest)                   | `make test`           | `scripts/compact-run.sh --label test -- bash -c 'cd client && npm test'` |
+| Typy i testy klienta (krótki log)        | `make check`          | `scripts/compact-run.sh --label check -- bash -c 'cd client && npx tsc --noEmit && npm test'` |
+| Weryfikacja klienta (typy, testy, build, restart) | `make verify` | `make check && make client-build`                    |
 | Testy mutacyjne klienta (Stryker)        | `make mutation`       | `cd client && npm run mutation`                           |
-| Typy klienta                             | `make lint`           | `cd client && npx tsc --noEmit`                           |
+| Typy klienta (krótki log)                | `make lint`           | `scripts/compact-run.sh --label lint -- bash -c 'cd client && npx tsc --noEmit'` |
+| Ostatni pełny log komendy klienta        | —                     | `scripts/compact-run.sh --last`                           |
 | Typy klienta w CI                        | —                     | GitHub Actions: `.github/workflows/ci.yml` (push, PR)     |
 | Testy jednostkowe w CI                   | —                     | GitHub Actions: `.github/workflows/ci.yml` (`npm test`)   |
 | Testy mutacyjne w CI                     | —                     | GitHub Actions: `.github/workflows/ci.yml` (`npm run mutation`) |
@@ -424,6 +427,11 @@ Compose bezpośrednio też działa — poniżej oba warianty.
 | Testy mutacyjne backendu w CI            | —                     | GitHub Actions: `.github/workflows/ci.yml` (`vendor/bin/infection`) |
 | Zatrzymaj wszystko                       | `make down`           | `docker compose down`                                     |
 | Zatrzymaj i usuń woluminy (⚠️ MySQL)      | `make clean`          | `docker compose down -v`                                  |
+
+Cele `test`, `check`, `lint` i `client-build` uruchamiają
+`scripts/compact-run.sh`: pełny log trafia do `${TMPDIR:-/tmp}/opencode/mvaw`
+i jest usuwany po dobie, a na ekran idzie tylko końcówka. Ostatni log otwiera
+`scripts/compact-run.sh --last`.
 
 > [!tip] `make console` przyjmuje argumenty
 > `make console about`, `make console debug:router` itd. — argumenty po nazwie
