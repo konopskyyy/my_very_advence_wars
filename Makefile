@@ -82,8 +82,8 @@ fixtures: ## Załaduj fixtury deweloperskie (czyści tabele)
 jwt-keys: ## Wygeneruj parę kluczy JWT
 	$(COMPOSE) exec server php bin/console lexik:jwt:generate-keypair --overwrite --no-interaction
 
-test-server: ## Testy backendu (PHPUnit)
-	$(COMPOSE) exec server php bin/phpunit
+test-server: ## Testy backendu (PHPUnit, krótka końcówka)
+	@scripts/compact-run.sh --label test-server -- $(COMPOSE) exec server php bin/phpunit
 
 db-shell: ## MySQL CLI w kontenerze bazy
 	$(COMPOSE) exec db sh -c 'mysql -u"$${MYSQL_USER}" -p"$${MYSQL_PASSWORD}" "$${MYSQL_DATABASE}"'

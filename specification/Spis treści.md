@@ -17,6 +17,7 @@ kotwicami Obsidiana, więc `[[ADR#ADR-022: ...]]` otwiera samą decyzję.
 | [[Konwencje]] | testy, logi, dokumentacja, styl | — |
 
 Przykład: `scripts/spec.sh ADR-022` pokazuje tylko jedną decyzję, a
-`scripts/spec.sh --list` — spis wszystkich sekcji. Bez skryptu:
-`grep -n "ADR-022" specification/ADR.md`, potem wycinek przez
+`scripts/spec.sh --list` — spis wszystkich sekcji. Gdy znasz temat, ale nie ID:
+`scripts/spec.sh --find "mgła"` zwraca pliki i nagłówki pasujących sekcji. Bez
+skryptu: `grep -n "ADR-022" specification/ADR.md`, potem wycinek przez
 `sed -n '120,132p' specification/ADR.md`.

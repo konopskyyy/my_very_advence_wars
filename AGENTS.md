@@ -106,20 +106,41 @@ usuń komentarze, które przestały być prawdą.
 
 ## Oszczędzanie kontekstu
 
+Pomiar z 12 sesji w tym repo (31.10–06.11): 558 wywołań `shell` dało
+~1,28 mln znaków wyniku, a `read` — ~327 tys. Najdroższe były zrzuty
+specyfikacji (84 wywołania, ~478 tys.), szerokie `grep -rn` (84, ~242 tys.)
+i czytanie całych plików >8 tys. znaków (12, ~172 tys.). To rząd 200 tys.
+tokenów, z których większość była do uniknięcia.
+
 - **Nowy temat = nowa sesja.** Po zakończeniu zadania zacznij nową sesję
   zamiast ciągnąć jedną przez kilka funkcji. Każdy krok wysyła całą historię,
   więc długie sesje kosztują kwadratowo.
 - **Czytaj punktowo.** Dokumenty mają ID sekcji (`ADR-022`, `ZAL-005`,
-  `GRA-030`, `INTERF-005`). Użyj `scripts/spec.sh ADR-022` (albo
-  `scripts/spec.sh --list`); nie wczytuj całego `ADR.md`, `Zadania-opisy.md`,
-  `Mapy.md` ani `Infrastruktura.md`.
+  `GRA-030`, `INTERF-005`). Nie znasz ID? `scripts/spec.sh --find "fraza"`
+  zwraca tylko pliki i nagłówki pasujących sekcji. Potem `scripts/spec.sh ID`
+  — jedna sekcja na wywołanie. Nie wczytuj całego `ADR.md`,
+  `Zadania-opisy.md`, `Mapy.md` ani `Infrastruktura.md`.
+- **Budżet wyniku ~8 tys. znaków.** Jeden `read` to max ~80 linii, jeden
+  `grep`/`rg` — konkretny plik i wzorzec, nie całe drzewo. Większy wynik
+  prawie zawsze oznacza, że najpierw trzeba było zawęzić zapytanie.
+- **`grep -rn` tylko po wskazaniu plików.** Najpierw `grep -rl` albo
+  narzędzie `grep` z `path`/`include`, potem `grep -n` w jednym pliku.
+  `grep -rn ... | head -60` nie oszczędza: cały wynik i tak powstaje.
+- **Zero `cat`/`sed` na całych dokumentach.** `cat docker-compose.yml`,
+  `cat Makefile`, `sed -n '1,200p' specification/...` to zrzuty po 10–20 tys.
+  znaków. Wybierz sekcję przez `scripts/spec.sh` albo zawęź `grep -n`.
 - **Pliki >200 linii tylko wycinkami.** Najpierw `grep -n`, potem `read`
-  z `offset`/`limit` (max ~120 linii) albo `sed -n`. Nie powtarzaj `read`
+  z `offset`/`limit` (max ~80 linii) albo `sed -n`. Nie powtarzaj `read`
   tego samego pliku; po edycji wystarczy `git diff --stat`. Jeśli wynik
   narzędzia zostanie ucięty przez `tool_output`, dociągnij tylko brakujący
   zakres.
+- **Diff tylko statystyką albo jednym plikiem.** `git diff --stat`,
+  `git show --stat`; pełny diff dopiero dla pliku, którego dotyczy zmiana.
 - **Grupuj narzędzia.** Niezależne odczyty, grepy i edycje wywołuj w jednym
   kroku. Testy, `tsc` i build uruchamiaj raz na partię zmian: `make verify`.
+- **Testy przez `make`.** `make verify`/`make check`, backend przez
+  `make test-server` (opakowany w `compact-run.sh`) zamiast
+  `make test-server 2>&1 | tail -80`.
 - **Nie czytaj artefaktów.** Pomijaj `client/dist/`, `client/node_modules/`,
   `server/vendor/`, `client/reports/` i locki; `opencode.jsonc` blokuje ich
   odczyt. Do sprawdzenia użyj `grep`.
@@ -134,6 +155,7 @@ usuń komentarze, które przestały być prawdą.
 - **Odpowiedzi bez kodu.** Nie wklejaj całych plików ani diffów; podawaj
   ścieżki, numery linii i krótki fragment tylko wtedy, gdy bez niego nie da się
   zrozumieć decyzji. Logi builda i testów skracaj do końcówki.
-- **Narzędzia filtruj.** `git diff --stat`, `tail`, `grep` zamiast `cat`
-  i pełnych diffów. Output narzędzi trafia do kontekstu nawet wtedy, gdy
+- **Nie powtarzaj informacji.** Po edycji nie czytaj pliku od nowa i nie
+  wklejaj outputu narzędzia do odpowiedzi; wystarczy ścieżka, numer linii
+  i krótki wynik. Output narzędzi trafia do kontekstu nawet wtedy, gdy
   interfejs go zwija — ukrycie w UI samo z siebie nic nie oszczędza.

@@ -405,7 +405,7 @@ Compose bezpośrednio też działa — poniżej oba warianty.
 | Migracje Doctrine                        | `make migrate`        | `docker compose exec server php bin/console doctrine:migrations:migrate` |
 | Fixtury (konta testowe)                  | `make fixtures`       | `docker compose exec server php bin/console doctrine:fixtures:load` |
 | Klucze JWT                               | `make jwt-keys`       | `docker compose exec server php bin/console lexik:jwt:generate-keypair --overwrite` |
-| Testy backendu                           | `make test-server`    | `docker compose exec server php bin/phpunit`              |
+| Testy backendu                           | `make test-server`    | `scripts/compact-run.sh --label test-server -- docker compose exec server php bin/phpunit` |
 | MySQL CLI                                | `make db-shell`       | —                                                         |
 | Rebuild backendu (po Dockerfile)         | `make rebuild`        | `docker compose build --no-cache && docker compose up -d` |
 | Uruchom Electrona (dev)                  | `make electron`       | `npm start --prefix electron`                             |
@@ -428,7 +428,7 @@ Compose bezpośrednio też działa — poniżej oba warianty.
 | Zatrzymaj wszystko                       | `make down`           | `docker compose down`                                     |
 | Zatrzymaj i usuń woluminy (⚠️ MySQL)      | `make clean`          | `docker compose down -v`                                  |
 
-Cele `test`, `check`, `lint` i `client-build` uruchamiają
+Cele `test`, `check`, `lint`, `client-build` i `test-server` uruchamiają
 `scripts/compact-run.sh`: pełny log trafia do `${TMPDIR:-/tmp}/opencode/mvaw`
 i jest usuwany po dobie, a na ekran idzie tylko końcówka. Ostatni log otwiera
 `scripts/compact-run.sh --last`.
