@@ -4,16 +4,20 @@ import { ARTILLERY_SHOT_MOVE_COST, UNIT_DEFS, type Unit } from './units';
 
 const MOVE_EPSILON = 1e-9;
 
+export function canAttackThisTurn(unit: Unit): boolean {
+  if (unit.hasActed) {
+    return false;
+  }
+
+  return !('ammo' in unit) || unit.ammo > 0;
+}
+
 export function canAttack(attacker: Unit, target: Unit): boolean {
   if (attacker.id === target.id || attacker.faction === target.faction) {
     return false;
   }
 
-  if (attacker.hasActed) {
-    return false;
-  }
-
-  if ('ammo' in attacker && attacker.ammo <= 0) {
+  if (!canAttackThisTurn(attacker)) {
     return false;
   }
 

@@ -112,7 +112,10 @@ przy każdej zmianie zasad tur (ADR-020).
 - Brak wpisu w `cells` oznacza brak kafla (czarne tło), a nie domyślną łąkę.
 - `fogOfWar` to flaga mapy: `false` (domyślnie) pokazuje w scenariuszu wszystkie
   jednostki, a `true` włącza mgłę wojny opartą na zasięgu wzroku
-  ([[ADR#ADR-030: Mgła wojny oparta na zasięgu wzroku|ADR-030]]).
+  ([[ADR#ADR-030: Mgła wojny oparta na zasięgu wzroku|ADR-030]],
+  [[ADR#ADR-034: Mgła wojny z pamięcią odkrytych pól|ADR-034]]). Pamięć
+  odkrytych pól jest per strona i żyje tylko w sesji scenariusza — nie ma jej
+  w formacie JSON ani w schemacie SQLite.
   Operacje na kaflach (`setTerrain`, `removeTerrain`, `fillMap`, `extendMap`,
   `paintRect`) zachowują flagę; `createMap()` i `clearMap()` ustawiają `false`.
 

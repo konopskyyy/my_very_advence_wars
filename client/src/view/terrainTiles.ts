@@ -6,7 +6,7 @@ const HEX_ART_SIZE = 240;
 // Nakładka maskuje półprzezroczysty rant tekstury na styku heksów.
 const TILE_OVERLAP_SCALE = 1.03;
 
-const TILE_URLS = import.meta.glob<string>('../assets/map/*.svg', {
+const TILE_URLS = import.meta.glob<string>('../assets/map/**/*.svg', {
   eager: true,
   query: '?url',
   import: 'default',

@@ -1,5 +1,6 @@
-import type { HexCoord } from './map';
+import { cellKey, type HexCoord } from './map';
 import { hexDistance } from './map/layout';
+import { visionTiles } from './ranges';
 import type { GameState } from './state';
 import { UNIT_DEFS, type FactionId, type Unit } from './units';
 
@@ -13,6 +14,24 @@ export function isUnitVisible(state: GameState, unit: Unit, viewer: FactionId): 
       spotter.faction === viewer &&
       hexDistance(spotter.pos, unit.pos) <= UNIT_DEFS[spotter.kind].visionRange,
   );
+}
+
+export function visibleTileKeys(state: GameState, viewer: FactionId): Set<string> {
+  const keys = new Set<string>();
+
+  for (const unit of state.units) {
+    if (unit.faction !== viewer) {
+      continue;
+    }
+
+    keys.add(cellKey(unit.pos));
+
+    for (const coord of visionTiles(state.map, unit)) {
+      keys.add(cellKey(coord));
+    }
+  }
+
+  return keys;
 }
 
 export function visibleUnits(state: GameState, viewer: FactionId): Unit[] {

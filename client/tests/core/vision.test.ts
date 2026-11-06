@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { createMap } from '../../src/core/map';
+import { cellKey, createMap } from '../../src/core/map';
 import { createInitialState, placeUnit } from '../../src/core/state';
-import { isUnitVisible, visibleUnitAt, visibleUnits } from '../../src/core/vision';
+import {
+  isUnitVisible,
+  visibleTileKeys,
+  visibleUnitAt,
+  visibleUnits,
+} from '../../src/core/vision';
 
 describe('widoczność jednostek przy mgle wojny', () => {
   it('bez mgły wszystkie jednostki są widoczne dla dowolnej strony', () => {
@@ -57,6 +62,30 @@ describe('widoczność jednostek przy mgle wojny', () => {
     state = placeUnit(state, 'infantry', { col: 12, row: 0 }, 'red');
 
     expect(isUnitVisible(state, state.units[2]!, 'blue')).toBe(true);
+  });
+
+  it('łączy kafle wzroku wszystkich jednostek strony i dołącza ich pozycje', () => {
+    let state = createInitialState(createMap(20, 20));
+    state = { ...state, map: { ...state.map, fogOfWar: true } };
+    state = placeUnit(state, 'infantry', { col: 0, row: 0 }, 'blue');
+    state = placeUnit(state, 'infantry', { col: 10, row: 0 }, 'blue');
+    state = placeUnit(state, 'scout', { col: 5, row: 5 }, 'red');
+
+    const keys = visibleTileKeys(state, 'blue');
+
+    expect(keys.has(cellKey({ col: 0, row: 0 }))).toBe(true);
+    expect(keys.has(cellKey({ col: 10, row: 0 }))).toBe(true);
+    expect(keys.has(cellKey({ col: 1, row: 0 }))).toBe(true);
+    expect(keys.has(cellKey({ col: 9, row: 0 }))).toBe(true);
+    expect(keys.has(cellKey({ col: 5, row: 5 }))).toBe(false);
+  });
+
+  it('artyleria odsłania wszystkie kafle mapy', () => {
+    let state = createInitialState(createMap(8, 6));
+    state = { ...state, map: { ...state.map, fogOfWar: true } };
+    state = placeUnit(state, 'artillery', { col: 0, row: 0 }, 'blue');
+
+    expect(visibleTileKeys(state, 'blue').size).toBe(48);
   });
 
   it('znajduje widoczną jednostkę na heksie', () => {

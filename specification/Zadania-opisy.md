@@ -161,7 +161,7 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
 
 ## GRA-031: Kafelki terenu SVG z wariantami
 - **Kontekst:** Autorskie kafelki SVG leżały w katalogu builda (`client/dist/assets/map/`), przez co ginęły przy `npm run build`. Część terenów ma dwa warianty tego samego kafla, a mapa nadal rysowała jednolite heksy.
-- **Opis:** Pliki przeniesione do `client/src/assets/map/` i nazwane `<TerrainId>-<wariant>.svg`. `view/terrainTiles.ts` ładuje je przez Vite i wybiera losowy wariant, a `HexMapView` podmienia teksturę przy tworzeniu i zmianie terenu (ADR-028). Tereny bez SVG zachowują proceduralny heks.
+- **Opis:** Pliki przeniesione do `client/src/assets/map/ai/` i nazwane `<TerrainId>-<wariant>.svg`. `view/terrainTiles.ts` ładuje je przez Vite i wybiera losowy wariant, a `HexMapView` podmienia teksturę przy tworzeniu i zmianie terenu (ADR-028). Tereny bez SVG zachowują proceduralny heks.
 - **Kryteria:**
   - **Nazwy:** pliki odpowiadają ID terenu (`plain`, `water`, `city`) i numerowi wariantu; duplikat `city_tile_2_1.svg` nie jest używany.
   - **Warianty:** funkcja `pickVariantIndex(count, random)` w `core/map/terrain/variants.ts` zwraca indeks z zakresu `0..count-1`, a `tests/core/map/terrain/variants.test.ts` pokrywa brak wariantów i granice losowania.
@@ -177,7 +177,7 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
 
 ## GRA-033: Nowe grafiki kafelków i las
 - **Kontekst:** Do `client/dist/assets` trafiła nowa partia autorskich kafelków SVG z nazwami z pobierania (`meadow_tile_1 (1).svg`, `city_tile_2 (2).svg`), obok starych plików. Las nie miał dotąd żadnego kafla SVG — rysowała go proceduralna tekstura.
-- **Opis:** Pliki przeniesione do `client/src/assets/map/` pod nazwy `<TerrainId>-<wariant>.svg`, stare grafiki zastąpione nowymi. `view/terrainTiles.ts` dostaje dwa warianty lasu i miasta (ADR-028).
+- **Opis:** Pliki przeniesione do `client/src/assets/map/ai/` pod nazwy `<TerrainId>-<wariant>.svg`, stare grafiki zastąpione nowymi. `view/terrainTiles.ts` dostaje dwa warianty lasu i miasta (ADR-028).
 - **Kryteria:**
   - **Nazwy:** pliki odpowiadają ID terenu (`plain`, `forest`, `water`, `city`) i numerowi wariantu; w katalogu nie zostają nazwy z pobierania ze spacjami i nawiasami.
   - **Las:** dwa kafelki (`forest-1.svg`, `forest-2.svg`) są wpisane w `terrainTiles.ts` i tasują się jak pozostałe.
@@ -282,12 +282,12 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
 
 ## GRA-039: Zasięgi ruchu, wzroku i strzału na mapie
 - **Kontekst:** Po wybraniu jednostki scena rysowała wyłącznie zasięg ruchu. Zasięg wzroku istniał tylko w logice mgły wojny, a statystyka `attack` nie miała odpowiadającego jej zasięgu, więc gracz nie widział, które heksy jednostka może razić.
-- **Opis:** `UnitStats` dostaje `attackRange`, a czysty moduł `client/src/core/ranges.ts` liczy heksy w promieniu od pozycji jednostki (`hexesInRange`) oraz gotowe zestawy dla wzroku i strzału (`visionTiles`, `attackTiles`). `ScenarioScene` po wybraniu jednostki rysuje trzy zagnieżdżone obrysy: ruch (zielony, zewnętrzny), wzrok (niebieski, środkowy) i strzał (czerwony, wewnętrzny). Ruch liczy nadal `moveTargets()` i pokazuje się tylko dla jednostki aktywnej strony; wzrok i strzał pokazują się dla każdej wybranej, widocznej jednostki. Pasek dowodzenia ma osobną linię zasięgów w tych samych kolorach: ruch (`movesLeft/moveRange`), wzrok i strzał.
+- **Opis:** `UnitStats` dostaje `attackRange`, a czysty moduł `client/src/core/ranges.ts` liczy heksy w promieniu od pozycji jednostki (`hexesInRange`) oraz gotowe zestawy dla wzroku i strzału (`visionTiles`, `attackTiles`). `ScenarioScene` po wybraniu jednostki rysuje zagnieżdżone podpowiedzi: ruch (zielony, zewnętrzny) i strzał (czerwony, wewnętrzny); wzrok był niebieskim obrysem, później zastąpionym mgłą w GRA-048. Ruch liczy nadal `moveTargets()` i pokazuje się tylko dla jednostki aktywnej strony; wzrok i strzał pokazują się dla każdej wybranej, widocznej jednostki. Pasek dowodzenia ma osobną linię zasięgów w tych samych kolorach: ruch (`movesLeft/moveRange`), wzrok i strzał.
 - **Kryteria:**
   - **Dane:** piechota ma zasięg strzału 1, czołg 1, artyleria 3, zwiad 1; wartości są w `UNIT_DEFS` obok `visionRange`.
   - **Zasięgi:** obrysy obejmują wyłącznie istniejące kafle mapy, bez heksa jednostki; wzrok i strzał nie zależą od terenu ani zajętości heksu.
   - **Ruch:** zasięg ruchu działa jak dotąd — koszt terenu, zajęte heksy i `movesLeft`; poza turą jednostki nie rysuje się.
-  - **Pasek:** wybrana jednostka pokazuje w dolnym pasku zasięg ruchu na zielono, wzroku na niebiesko i strzału na czerwono, zgodnie z kolorami obrysów.
+  - **Pasek:** wybrana jednostka pokazuje w dolnym pasku zasięg ruchu na zielono, wzroku na niebiesko i strzału na czerwono, zgodnie z kolorami podpowiedzi na mapie.
   - **Widoczność:** mgła wojny nie zmienia się; ukrytej jednostki nadal nie da się wybrać, a obrysy nie ujawniają jej pozycji.
   - **Testy:** `tests/core/ranges.test.ts` pokrywa promień, filtrowanie do kafli i wartości z `UNIT_DEFS`; testy scenariusza i map pozostają bez regresji.
   - **Dokumentacja:** ADR-031, `Mapy.md` i `Interfejs.md` opisują nową właściwość i kolory obrysów. GRA-041 zmienia zasięg artylerii na pełną mapę.
@@ -306,7 +306,7 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
 
 ## GRA-041: Artyleria z pełnym zasięgiem i ruchowym kosztem strzału
 - **Kontekst:** Artyleria miała zasięg strzału 3 przy zasięgu wzroku 2, więc bez podpierania jej inną jednostką nie widziała celów, które mogła razić. Strzał kończył też całą akcję (`hasActed`), więc po dojściu do wroga jednostka nie mogła już atakować. Długi zasięg był w praktyce bezużyteczny, a pole `ammo` nie było widoczne ani zużywane.
-- **Opis:** `UNIT_DEFS.artillery` ma nieskończony `attackRange` i `visionRange` — artyleria widzi i razi każdy heks mapy. Strzał artylerii nie ustawia od razu `hasActed`: odejmuje od `movesLeft` stałą proporcję `moveRange / ARTILLERY_AMMO` (`ARTILLERY_SHOT_MOVE_COST`) oraz zużywa jeden pocisk. Pełny zapas ruchu wystarcza na tyle strzałów, ile wynosi `ammo`; dopiero wyczerpanie ruchu ustawia `hasActed`. Każdy atak (także czołgu) zmniejsza `ammo` o 1, a `canAttack()` odrzuca jednostkę bez pocisków. `beginTurn()` uzupełnia amunicję jednostkom aktywnej strony do wartości z `UnitStats.ammo`. Pozostałe rodzaje jednostek nadal kończą akcję po jednym ataku. Scena rysuje dla artylerii czerwone obrysy wyłącznie na widocznych wrogach i pomija niebieski obrys wzroku (cała mapa), a pasek pokazuje `Wzrok ∞`, `Strzał ∞`, `POCISKI X/6` i ułamkowy ruch z dokładnością do dwóch miejsc.
+- **Opis:** `UNIT_DEFS.artillery` ma nieskończony `attackRange` i `visionRange` — artyleria widzi i razi każdy heks mapy. Strzał artylerii nie ustawia od razu `hasActed`: odejmuje od `movesLeft` stałą proporcję `moveRange / ARTILLERY_AMMO` (`ARTILLERY_SHOT_MOVE_COST`) oraz zużywa jeden pocisk. Pełny zapas ruchu wystarcza na tyle strzałów, ile wynosi `ammo`; dopiero wyczerpanie ruchu ustawia `hasActed`. Każdy atak (także czołgu) zmniejsza `ammo` o 1, a `canAttack()` odrzuca jednostkę bez pocisków. `beginTurn()` uzupełnia amunicję jednostkom aktywnej strony do wartości z `UnitStats.ammo`. Pozostałe rodzaje jednostek nadal kończą akcję po jednym ataku. Scena rysuje dla artylerii czerwone obrysy wyłącznie na widocznych wrogach i pomija mgłę wzroku (cała mapa), a pasek pokazuje `Wzrok ∞`, `Strzał ∞`, `POCISKI X/6` i ułamkowy ruch z dokładnością do dwóch miejsc.
 - **Kryteria:**
   - **Zasięg:** artyleria widzi i atakuje wroga na dowolnym heksie mapy; warunki własnej strony pozostają bez zmian.
   - **Koszt strzału:** każdy strzał odejmuje `moveRange / ammo` od bieżącego `movesLeft`; po wyczerpaniu ruchu jednostka dostaje `hasActed`.
@@ -342,3 +342,91 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
   - **Powrót:** dolny pasek misji prowadzi do „MENU KAMPANII”, a nie do listy scenariuszy.
   - **Testy:** `tests/core/campaign/` sprawdza kolejność kampanii, kafelki samouczka, skład armii i ukrycie wroga w mgle.
   - **Dokumentacja:** ZAL-011, INTERF-007 i GRA-043 opisują strukturę plików, mapę i uruchomienie misji.
+
+## GRA-044: Zasięg strzału zgodny z akcją jednostki
+- **Kontekst:** W pierwszej misji samouczka czerwony piechur jest widoczny z odległości dwóch heksów, ale piechota atakuje tylko z jednego. Po dojściu na sąsiedni heks wyczerpanie ruchu ustawia `hasActed`, a scena nadal rysuje czerwony obrys zasięgu strzału. Kliknięcie wroga nie zadaje wtedy obrażeń, więc interfejs obiecuje akcję, której `canAttack()` nie pozwala wykonać. Po ruchu scena dodatkowo czyści wszystkie obrysy, więc znika też informacja o pozostałym ruchu i wzroku.
+- **Opis:** Czysty moduł `client/src/core/combat.ts` dostaje `canAttackThisTurn()`, które wydziela warunki atakującego: brak `hasActed` i dodatnią amunicję. `canAttack()` korzysta z tej funkcji, więc zasady walki pozostają bez zmian. `ScenarioScene` rysuje czerwony zasięg strzału wyłącznie dla jednostki aktywnej strony, która może jeszcze atakować; po potwierdzeniu ruchu odtwarza obrysy przez `drawRangeHints()` zamiast je czyścić, dzięki czemu nadal zaznaczona jednostka pokazuje aktualny ruch, wzrok i ewentualny zasięg strzału.
+- **Kryteria:**
+  - **Zasięg strzału:** czerwony obrys pojawia się tylko dla jednostki aktywnej strony bez `hasActed` i z dodatnią amunicją; jednostka po ataku albo po wyczerpaniu ruchu go nie pokazuje.
+  - **Po ruchu:** nadal zaznaczona jednostka od razu pokazuje aktualne obrysy; zielony ruch znika, gdy `movesLeft` spadnie do zera, a wzrok i strzał wynikają z bieżącego stanu.
+  - **Zasady:** `canAttack()` zachowuje dotychczasowe warunki i zachowanie; nowa funkcja nie zmienia ruchu, obrażeń ani amunicji.
+  - **Testy:** `tests/core/combat.test.ts` pokrywa `canAttackThisTurn()` dla jednostki gotowej, po akcji i bez amunicji.
+  - **Dokumentacja:** INTERF-005 i GRA-044 opisują widoczność obrysu strzału oraz odświeżanie zasięgów po ruchu.
+
+## GRA-044: Zasięg strzału zgodny z akcją jednostki
+- **Kontekst:** W pierwszej misji samouczka czerwony piechur jest widoczny z odległości dwóch heksów, ale piechota atakuje tylko z jednego. Po dojściu na sąsiedni heks wyczerpanie ruchu ustawia `hasActed`, a scena nadal rysuje czerwony obrys zasięgu strzału. Kliknięcie wroga nie zadaje wtedy obrażeń, więc interfejs obiecuje akcję, której `canAttack()` nie pozwala wykonać. Po ruchu scena dodatkowo czyści wszystkie obrysy, więc znika też informacja o pozostałym ruchu i wzroku.
+- **Opis:** Czysty moduł `client/src/core/combat.ts` dostaje `canAttackThisTurn()`, które wydziela warunki atakującego: brak `hasActed` i dodatnią amunicję. `canAttack()` korzysta z tej funkcji, więc zasady walki pozostają bez zmian. `ScenarioScene` rysuje czerwony zasięg strzału wyłącznie dla jednostki aktywnej strony, która może jeszcze atakować; po potwierdzeniu ruchu odtwarza obrysy przez `drawRangeHints()` zamiast je czyścić, dzięki czemu nadal zaznaczona jednostka pokazuje aktualny ruch, wzrok i ewentualny zasięg strzału.
+- **Kryteria:**
+  - **Zasięg strzału:** czerwony obrys pojawia się tylko dla jednostki aktywnej strony bez `hasActed` i z dodatnią amunicją; jednostka po ataku albo po wyczerpaniu ruchu go nie pokazuje.
+  - **Po ruchu:** nadal zaznaczona jednostka od razu pokazuje aktualne obrysy; zielony ruch znika, gdy `movesLeft` spadnie do zera, a wzrok i strzał wynikają z bieżącego stanu.
+  - **Zasady:** `canAttack()` zachowuje dotychczasowe warunki i zachowanie; nowa funkcja nie zmienia ruchu, obrażeń ani amunicji.
+  - **Testy:** `tests/core/combat.test.ts` pokrywa `canAttackThisTurn()` dla jednostki gotowej, po akcji i bez amunicji.
+  - **Dokumentacja:** INTERF-005 i GRA-044 opisują widoczność obrysu strzału oraz odświeżanie zasięgów po ruchu.
+
+## GRA-045: Obrys zasięgu wzroku po krawędziach heksów
+- **Kontekst:** Zasięg wzroku był rysowany jako osobny, pomniejszony obrys w każdym heksie. Sąsiednie kafle dublowały wspólne krawędzie, więc obszar wyglądał jak siatka wewnętrznych ramek, a nie jak jeden zasięg. Granica nie pokrywała się też z rzeczywistymi krawędziami heksów.
+- **Opis:** Czysta funkcja `hexBoundaryEdges()` w `client/src/core/map/layout.ts` zbiera krawędzie heksów z podanych środków i zwraca tylko te, które występują raz — czyli zewnętrzną granicę obszaru, także wokół dziur po brakujących kaflach. `view/hexGrid.ts` dostaje `outlineHexArea()`, które rysuje tę granicę jedną niebieską linią. `ScenarioScene` używa jej dla zasięgu wzroku zamiast obrysowywać każdy kafel osobno; ruch i strzał nadal korzystają z obrysów kafli. Wzrok jest rysowany po ruchu i strzale, więc niebieska granica leży nad zielonymi i czerwonymi obrysami i jest widoczna od razu po wybraniu jednostki. Rozwiązanie zostało zastąpione przez GRA-048 (mgiełka zamiast obrysu).
+- **Kryteria:**
+  - **Granica:** pojedynczy heks daje sześć krawędzi, dwa sąsiednie heksy dziesięć, a dwa rozłączne dwanaście.
+  - **Rysowanie:** zasięg wzroku to jedna linia po zewnętrznych krawędziach heksów, bez wewnętrznych ramek i bez dublowania wspólnych krawędzi.
+  - **Widoczność:** wzrok pojawia się natychmiast po wybraniu jednostki, także gdy jednostka ma jeszcze ruch; kolejność warstw nie pozwala zielonym obrysom ruchu zasłonić niebieskiej granicy.
+  - **Zakres:** zmiana dotyczy wyłącznie wizualizacji wzroku; ruch, strzał, mgła wojny i zasady gry pozostają bez zmian.
+  - **Testy:** `tests/core/map/layout.test.ts` pokrywa liczbę i unikalność krawędzi granicy dla jednego heksa, pary sąsiadów i obszarów rozłącznych.
+  - **Dokumentacja:** ADR-031 i INTERF-005 opisują obrys wzroku po krawędziach heksów.
+
+## GRA-046: Przycisk kupowania jednostek z oknem podglądu
+- **Kontekst:** Dolny pasek scenariusza nie miał wejścia do rekrutacji, a gracz nie mógł zobaczyć jednostki przed dodaniem jej do armii. Ekonomia i właściwa rekrutacja są poza zakresem (ZAL-009), więc potrzebne jest najpierw miejsce i okno podglądu.
+- **Opis:** `ScenarioCommandBar` dostaje pionowy przycisk `KUP` (44×88) w środkowej części paska, pod skrótami menu, z ikoną piechura w kolorze aktywnej strony i podpisem `KUP`. Kliknięcie otwiera nowe modalne okno `view/recruitDialog.ts`: przyciemnione tło, panel w kolorach aktywnej strony, po lewej lista czterech rodzajów jednostek (ikona, nazwa, rola), po prawej portret wybranego. Dla piechoty `view/recruitPortrait.ts` rysuje proceduralny obrys żołnierza, którego kolory zmieniają się po wyborze wyposażenia: kask, mundur, broń i plecak (po trzy warianty każde). Dla pojazdów prawa strona pokazuje powiększony token jednostki, a ich listy wyposażenia (pancerz, wieża, działo itd.) pozostają podglądem. Okno pokazuje też nazwę, rolę i statystyki z `UNIT_DEFS` (HP, atak, obrona, amunicja, ruch, wzrok, strzał). Jest częścią kamery interfejsu, blokuje kliknięcia w mapę i zamyka się przyciskiem `ZAMKNIJ`, kliknięciem w tło albo `ESC`. Nie zmienia `GameState`, nie pobiera punktów i nie stawia jednostki; wybór wyposażenia jest kosmetyczny.
+- **Kryteria:**
+  - **Przycisk:** pionowy `KUP` z grafiką piechura jest widoczny w pasku dowodzenia i otwiera okno po kliknięciu.
+  - **Lista:** po lewej stronie okna widać cztery rodzaje jednostek; kliknięcie wiersza przełącza podgląd i podświetla wybór.
+  - **Podgląd i wyposażenie:** piechota ma obrys żołnierza reagujący na kask, mundur, broń i plecak; pojazdy pokazują powiększony token, a ich opcje wyposażenia działają jako podgląd.
+  - **Modalność:** przy otwartym oknie kliknięcia i kółko myszy nie sterują mapą; `ESC` zamyka okno zamiast wychodzić ze scenariusza.
+  - **Brak wpływu na stan:** otwarcie, zamknięcie i zmiana wyposażenia nie zmieniają jednostek, tur, ruchu ani zapisu mapy.
+  - **Dokumentacja:** INTERF-005 opisuje przycisk, listę jednostek i podgląd wyposażenia.
+
+## GRA-047: Ruch w pasku po akcji jednostki
+- **Kontekst:** Piechota, czołg i zwiad po ataku dostają `hasActed`, ale zachowują pełne `movesLeft`. Dolny pasek pokazywał wtedy np. `Ruch 2/2`, więc wyglądało to tak, jakby jednostka nadal mogła się ruszyć, mimo że ruch był zablokowany.
+- **Opis:** `ScenarioCommandBar.refreshUnit()` liczy `canMove` z `!current.hasActed && current.movesLeft > 0`. Gdy jednostka nie może już działać, pasek pokazuje `Ruch 0/moveRange` i szarzeje tę wartość; jednostka gotowa do ruchu nadal pokazuje rzeczywiste `movesLeft` na zielono. Status „Działała — ruch w następnej turze” pozostaje bez zmian. Poprawka jest wyłącznie prezentacyjna i nie zmienia `GameState`.
+- **Kryteria:**
+  - **Po akcji:** jednostka z `hasActed` pokazuje `Ruch 0/...` i nie sugeruje dostępnego ruchu.
+  - **Gotowa:** jednostka bez `hasActed` i z `movesLeft > 0` pokazuje rzeczywisty zapas ruchu na zielono.
+  - **Artyleria:** po strzale z pozostałym ruchem nadal pokazuje ułamkowe `movesLeft`; dopiero `hasActed` zeruje prezentowany ruch.
+  - **Brak wpływu na stan:** zmiana nie modyfikuje jednostek, tur ani zapisu mapy.
+  - **Dokumentacja:** INTERF-005 opisuje zachowanie wskaźnika ruchu po akcji.
+
+## GRA-048: Mgiełka zasięgu wzroku
+- **Kontekst:** Zasięg wzroku był niebieską linią po krawędziach heksów. Granica czytała się jak geometria, a nie jak obszar widzenia; gracz chciał lekkiej mgiełki zamiast obrysu.
+- **Opis:** Opis dotyczy pierwotnej wersji; od GRA-050 mgła zasięgu jest częścią mgły wojny i korzysta z kafelka `assets/map/ai/fog_of_war_tile.svg`. Nowy `client/src/view/visionFog.ts` generuje powtarzalny wzór mgły (periodyczny szum, jasnoniebieska barwa, alpha 10–32%) na osobnej kanwie 192 px. `CanvasTexture` jest dopasowywana do prostokąta otaczającego kafle zasięgu, a `Image` z originem `(0, 0)` leży na głębokości 1 — nad terenem (0), pod jednostkami (2) — więc nie zasłania tokenów. Przy każdej zmianie wyboru mgła jest rysowana od nowa: pomocnicza kanwa przycina się do sumy heksów zasięgu ścieżkami Canvas 2D, wypełnia wzorem przesuniętym o dryf i trafia do tekstury z rozmyciem 3 px. `update()` przesuwa wzór i odświeża teksturę co 120 ms, więc mgła delikatnie dryfuje. `ScenarioScene.drawRangeHints()` pokazuje ją dla wybranej jednostki z skończonym `visionRange`, a ukrywa przy braku wyboru, dla artylerii (`∞`) i po zakończeniu tury. Obrys wzroku i pomocnicze `outlineHexArea()` / `hexBoundaryEdges()` zostały usunięte. Świadomie nie użyto `GeometryMask`, bo w Phaserze 4 działa ona tylko w rendererze Canvas, a gra korzysta z WebGL.
+- **Kryteria:**
+  - **Wygląd:** zasięg wzroku to półprzezroczysta, chmurna mgiełka na heksach, bez niebieskiej linii i bez wewnętrznych ramek.
+  - **Zakres:** mgła pokrywa wyłącznie kafle w zasięgu wybranej jednostki i zmienia się po ruchu, ataku oraz zmianie wyboru.
+  - **Warstwy:** mgła jest nad terenem, ale pod tokenami jednostek; nie zasłania jednostek ani obrysów ruchu i strzału.
+  - **Widoczność:** mgła pojawia się od razu po wybraniu jednostki i znika przy braku wyboru, dla `visionRange = ∞` oraz po zakończeniu tury.
+  - **Wydajność:** jedna tekstura i jeden `Image` na scenę, ponowne malowanie tylko przy zmianie wyboru oraz co 120 ms dryfu.
+  - **Dokumentacja:** ADR-031 i INTERF-005 opisują mgłę zasięgu wzroku.
+
+## GRA-049: Ruch w pasku zgodny z rzeczywistymi możliwościami
+- **Kontekst:** GRA-047 zerowała prezentowany ruch tylko przy `hasActed`. Jednostka z ułamkowym albo resztkowym `movesLeft`, której żaden sąsiedni kafel nie mieści się w budżecie (np. po drodze została resztka mniejsza niż koszt najtańszego sąsiada), nadal pokazywała w pasku dodatni ruch, choć nie mogła wykonać żadnego kroku. Pasek obiecywał akcję, której `moveTargets()` nie zwraca.
+- **Opis:** Czysty moduł `client/src/core/map/movement.ts` dostaje `canMoveNow()`, które łączy warunki `hasActed`, dodatniego `movesLeft` i niepustego `moveTargets()`. `ScenarioCommandBar.refreshUnit()` używa tej funkcji do wyświetlenia `Ruch movesLeft/moveRange`; gdy jednostka nie ma dokąd pójść, pokazuje `Ruch 0/moveRange` i szary kolor, a status zmienia się na „Zablokowana — brak dostępnego ruchu”. Rzeczywisty `movesLeft` pozostaje nietknięty, więc po wejściu na tańszy teren lub po następnej turze jednostka znowu może się ruszyć bez zmiany zapisu.
+- **Kryteria:**
+  - **Zablokowana:** jednostka z `movesLeft > 0`, ale bez żadnego osiągalnego sąsiada, pokazuje `Ruch 0/...` i nie sugeruje ruchu.
+  - **Ułamkowy ruch:** resztka wystarczająca na drogę (koszt 0.5) nadal pozwala na ruch i pokazuje rzeczywistą wartość.
+  - **Po akcji:** `hasActed` nadal zeruje prezentowany ruch.
+  - **Brak wpływu na stan:** zmiana jest prezentacyjna; `movesLeft`, `hasActed`, tury i zapis mapy pozostają bez zmian.
+  - **Testy:** `tests/core/map/movement.test.ts` pokrywa jednostkę otoczoną wodą, ułamek ruchu na drodze oraz `hasActed` i zerowy budżet.
+  - **Dokumentacja:** INTERF-005 opisuje zachowanie wskaźnika ruchu.
+
+## GRA-050: Mgła wojny z pamięcią odkrytych pól
+- **Kontekst:** Mgła z GRA-048 pokrywała kafle w zasięgu wybranej jednostki, a nie obszar poza zasięgiem całej armii. Po odznaczeniu jednostki albo po ataku mgła znikała, więc teren poza wzrokiem był odsłonięty. Gracz potrzebuje stałej osłony i rozróżnienia między terenem już widzianym i nigdy niewidzianym.
+- **Opis:** `client/src/core/vision.ts` dostaje `visibleTileKeys(state, viewer)`, które sumuje `visionTiles()` wszystkich jednostek strony i dołącza ich własne heksy. `ScenarioScene` prowadzi `Map<FactionId, Set<string>>` odkrytych pól: klucze z bieżącego widzenia trafiają do zbioru strony i zostają do końca scenariusza. `view/visionFog.ts` rysuje jedną teksturę na `mapPixelBounds`: bieżąco widoczne heksy są przezroczyste, odkryte wcześniej dostają kafelek `assets/map/ai/fog_of_war_tile.svg` przycięty do heksu i obracany o wielokrotność 60°, a nigdy niewidziane — nieprzezroczyste ciemne tło. Kafelek mgły ma tę samą geometrię co kafle terenu, więc pokrywa je bez szczelin. Nakładka odświeża się po ruchu, ataku i zmianie tury. Pamięć jest per strona, więc w hot-seacie strony nie dzielą odkryć; nie trafia do `GameState` ani SQLite. Gdy własna artyleria widzi całą mapę, mgła znika.
+- **Kryteria:**
+  - **Obszar:** mgła pokrywa wszystkie kafle poza sumą zasięgów wzroku własnych jednostek, niezależnie od wyboru.
+  - **Stany:** bieżąco widziane — odsłonięte; odkryte wcześniej — jaśniejsza mgła; nigdy niewidziane — czarny kafel.
+  - **Pamięć:** odkryte pola zostają widoczne po odejściu jednostki, po ataku i po zmianie tury; pamięć jest osobna dla niebieskich i czerwonych.
+  - **Bez mgły:** mapa z `fogOfWar = false` nie dostaje nakładki.
+  - **Pełny wzrok:** artyleria odsłania całą mapę i ukrywa mgłę.
+  - **Warstwy:** mgła leży nad terenem i pod tokenami jednostek; nie zasłania własnych jednostek.
+  - **Wydajność:** jedna tekstura i jedno `Image` na scenę; przemalowanie zależy wyłącznie od zmiany widoczności, a nie od liczby klatek.
+  - **Testy:** `tests/core/vision.test.ts` pokrywa sumę zasięgów wielu jednostek, dołączenie ich pozycji i pełny zasięg artylerii.
+  - **Dokumentacja:** ZAL-007, ADR-034, INTERF-005 i `Mapy.md` opisują pamięć odkrytych pól.

@@ -175,6 +175,14 @@ export function moveTargets(state: GameState, unit: Unit): HexCoord[] {
   return Array.from(targets.values());
 }
 
+export function canMoveNow(state: GameState, unit: Unit): boolean {
+  if (unit.hasActed || unit.movesLeft <= 0) {
+    return false;
+  }
+
+  return moveTargets(state, unit).length > 0;
+}
+
 export function moveUnit(state: GameState, unitId: string, target: HexCoord): GameState {
   const unit = state.units.find((candidate) => candidate.id === unitId);
 
