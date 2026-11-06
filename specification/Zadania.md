@@ -59,3 +59,10 @@ Status: ✅ zrobione · 🚧 w toku · ⬜ do zrobienia
 | [[Zadania-opisy#INFRA-004: Paczka Electrona dla Windows z WSL\|INFRA-004]] | Paczka Electrona dla Windows z WSL | ✅ | INFRA-001, `specification/Infrastruktura.md`, `specification/Mapy.md` |
 | [[Zadania-opisy#GRA-042: Menu kampanii z wstążkami i kafelkami samouczka\|GRA-042]] | Menu kampanii z wstążkami i kafelkami samouczka | ✅ | INTERF-001, INTERF-007, ZAL-011 |
 | [[Zadania-opisy#GRA-043: Pierwsza misja samouczka — Pierwsze kroki\|GRA-043]] | Pierwsza misja samouczka — Pierwsze kroki | 🚧 | GRA-042, INTERF-002, INTERF-007, ZAL-006, ZAL-011 |
+| [[Zadania-opisy#GRA-044: Zasięg strzału zgodny z akcją jednostki\|GRA-044]] | Zasięg strzału zgodny z akcją jednostki | ✅ | GRA-039, GRA-040, GRA-041, ADR-031, ADR-032, ADR-033, INTERF-005 |
+| [[Zadania-opisy#GRA-045: Obrys zasięgu wzroku po krawędziach heksów\|GRA-045]] | Obrys zasięgu wzroku po krawędziach heksów | ✅ | GRA-038, GRA-039, ADR-001, ADR-031, INTERF-005 |
+| [[Zadania-opisy#GRA-046: Przycisk kupowania jednostek z oknem podglądu\|GRA-046]] | Przycisk kupowania jednostek z oknem podglądu | ✅ | GRA-027, ADR-001, ADR-020, INTERF-005 |
+| [[Zadania-opisy#GRA-047: Ruch w pasku po akcji jednostki\|GRA-047]] | Ruch w pasku po akcji jednostki | ✅ | GRA-027, GRA-041, INTERF-005 |
+| [[Zadania-opisy#GRA-048: Mgiełka zasięgu wzroku\|GRA-048]] | Mgiełka zasięgu wzroku | ✅ | GRA-038, GRA-039, GRA-045, ADR-001, ADR-031, INTERF-005 |
+| [[Zadania-opisy#GRA-049: Ruch w pasku zgodny z rzeczywistymi możliwościami\|GRA-049]] | Ruch w pasku zgodny z rzeczywistymi możliwościami | ✅ | GRA-041, GRA-047, ADR-033, INTERF-005 |
+| [[Zadania-opisy#GRA-050: Mgła wojny z pamięcią odkrytych pól\|GRA-050]] | Mgła wojny z pamięcią odkrytych pól | ✅ | GRA-038, GRA-048, ADR-001, ADR-030, ADR-034, INTERF-005, `specification/Mapy.md` |

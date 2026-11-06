@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createMap, removeTerrain, setTerrain } from '../../../src/core/map';
 import {
+  canMoveNow,
   canMoveUnit,
   findUnitAt,
   getMoveCost,
@@ -154,6 +155,52 @@ describe('ruch jednostek', () => {
     });
   });
 });
+describe('canMoveNow', () => {
+  it('odrzuca jednostkę, która nie ma dokąd pójść mimo zapasu ruchu', () => {
+    let map = createMap(5, 5);
+
+    for (const coord of [
+      { col: 2, row: 2 },
+      { col: 1, row: 1 },
+      { col: 0, row: 1 },
+      { col: 0, row: 2 },
+      { col: 0, row: 3 },
+      { col: 1, row: 3 },
+    ]) {
+      map = setTerrain(map, coord, 'water');
+    }
+
+    const state = placeUnit(createInitialState(map), 'infantry', { col: 1, row: 2 }, 'blue');
+    const unit = state.units[0]!;
+
+    expect(unit.movesLeft).toBe(4);
+    expect(canMoveNow(state, unit)).toBe(false);
+  });
+
+  it('pozwala ruszyć się za ułamek ruchu po drodze', () => {
+    const map = setTerrain(createMap(5, 5), { col: 2, row: 2 }, 'road');
+    const placed = placeUnit(createInitialState(map), 'artillery', { col: 1, row: 2 }, 'blue');
+    const state = {
+      ...placed,
+      units: placed.units.map((unit) => ({ ...unit, movesLeft: 0.5 })),
+    };
+
+    expect(canMoveNow(state, state.units[0]!)).toBe(true);
+  });
+
+  it('odrzuca jednostkę po akcji i bez ruchu', () => {
+    const state = placeUnit(
+      createInitialState(createMap(5, 5)),
+      'infantry',
+      { col: 1, row: 2 },
+      'blue',
+    );
+
+    expect(canMoveNow(state, { ...state.units[0]!, hasActed: true })).toBe(false);
+    expect(canMoveNow(state, { ...state.units[0]!, movesLeft: 0 })).toBe(false);
+  });
+});
+
 describe('getMoveCost', () => {
   it('zwraca koszt terenu, a dla brakującego kafla IMPASSABLE', () => {
     let map = createMap(4, 4);

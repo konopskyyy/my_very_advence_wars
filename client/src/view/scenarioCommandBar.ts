@@ -1,5 +1,12 @@
 import Phaser from 'phaser';
-import { findUnitAt, mapTileCount, terrainAt, toDoubled, type HexCoord } from '../core/map';
+import {
+  canMoveNow,
+  findUnitAt,
+  mapTileCount,
+  terrainAt,
+  toDoubled,
+  type HexCoord,
+} from '../core/map';
 import type { ScenarioDefinition } from '../core/scenario';
 import { countUnits, type GameState } from '../core/state';
 import { TERRAIN_DEFS } from '../core/map/terrain';
@@ -27,6 +34,7 @@ export interface ScenarioUnitState {
 
 export interface ScenarioCommandBarHandlers {
   readonly onEndTurn: () => void;
+  readonly onRecruit: () => void;
   readonly onScenarioMenu: () => void;
   readonly onMainMenu: () => void;
 }
@@ -36,6 +44,9 @@ export class ScenarioCommandBar {
   private readonly bar: Phaser.GameObjects.Rectangle;
   private readonly barStripe: Phaser.GameObjects.Rectangle;
   private readonly barSeparators: Phaser.GameObjects.Rectangle[] = [];
+  private readonly recruitButton: Phaser.GameObjects.Rectangle;
+  private readonly recruitIcon: Phaser.GameObjects.Image;
+  private readonly recruitLabel: Phaser.GameObjects.Text;
   private readonly endTurnButton: Phaser.GameObjects.Rectangle;
   private readonly barTurnLabel: Phaser.GameObjects.Text;
   private readonly scenarioName: Phaser.GameObjects.Text;
@@ -219,6 +230,43 @@ export class ScenarioCommandBar {
 
     this.makeBarLink('MENU SCENARIUSZY', navX, barY + 20, this.handlers.onScenarioMenu);
     this.makeBarLink('MENU GŁÓWNE', navX, barY + 42, this.handlers.onMainMenu);
+    this.recruitButton = this.register(
+      this.scene.add
+        .rectangle(930, barY + 14, 44, 88, theme.accentDark, 1)
+        .setOrigin(0, 0)
+        .setScrollFactor(0)
+        .setDepth(21)
+        .setStrokeStyle(1, theme.accentBright, 0.8)
+        .setInteractive({ useHandCursor: true }),
+    );
+
+    this.recruitIcon = this.register(
+      this.scene.add
+        .image(952, barY + 48, unitTexture(this.scene, 'infantry', 'blue').key)
+        .setScale(1.15)
+        .setScrollFactor(0)
+        .setDepth(22),
+    );
+
+    this.recruitLabel = this.register(
+      this.scene.add
+        .text(952, barY + 76, 'KUP', {
+          fontFamily: 'monospace',
+          fontSize: '11px',
+          color: '#ffffff',
+        })
+        .setOrigin(0.5)
+        .setScrollFactor(0)
+        .setDepth(22),
+    );
+
+    this.recruitButton.on('pointerover', () =>
+      this.recruitButton.setFillStyle(this.theme.accent, 1),
+    );
+    this.recruitButton.on('pointerout', () =>
+      this.recruitButton.setFillStyle(this.theme.accentDark, 1),
+    );
+    this.recruitButton.on('pointerup', this.handlers.onRecruit);
 
     this.barSeparators.push(
       this.register(
@@ -348,8 +396,12 @@ export class ScenarioCommandBar {
     this.unitStats.setText(
       `HP ${current.hp}/${stats.maxHp} · ATK ${stats.attack} · DEF ${stats.defense}${ammo}`,
     );
+    const canMove = canMoveNow(state, current);
+
     this.rangeLabel.setText('Zasięgi:');
-    this.moveRangeText.setText(`Ruch ${formatPoints(current.movesLeft)}/${stats.moveRange}`);
+    this.moveRangeText
+      .setText(`Ruch ${formatPoints(canMove ? current.movesLeft : 0)}/${stats.moveRange}`)
+      .setColor(canMove ? '#6fd08c' : '#9fb0a5');
     this.visionRangeText.setText(`Wzrok ${formatPoints(stats.visionRange)}`);
     this.attackRangeText.setText(`Strzał ${formatPoints(stats.attackRange)}`);
     this.unitMeta.setText(
@@ -357,13 +409,15 @@ export class ScenarioCommandBar {
     );
     this.unitStatus
       .setText(
-        current.hasActed || current.movesLeft === 0
+        current.hasActed
           ? 'Działała — ruch w następnej turze'
-          : movePath && movePath.length > 0
-            ? '1. klik — trasa · 2. klik — potwierdzenie ruchu'
-            : `Gotowa — pozostało ${formatPoints(current.movesLeft)} pkt. ruchu`,
+          : !canMove
+            ? 'Zablokowana — brak dostępnego ruchu'
+            : movePath && movePath.length > 0
+              ? '1. klik — trasa · 2. klik — potwierdzenie ruchu'
+              : `Gotowa — pozostało ${formatPoints(current.movesLeft)} pkt. ruchu`,
       )
-      .setColor(current.hasActed || current.movesLeft === 0 ? '#e0a15a' : '#6fd08c');
+      .setColor(canMove ? '#6fd08c' : '#e0a15a');
   }
 
   private register<T extends Phaser.GameObjects.GameObject>(object: T): T {
@@ -388,6 +442,11 @@ export class ScenarioCommandBar {
       separator.setFillStyle(theme.divider, 1);
     }
 
+    this.recruitButton
+      .setFillStyle(theme.accentDark, 1)
+      .setStrokeStyle(1, theme.accentBright, 0.8);
+    this.recruitIcon.setTexture(unitTexture(this.scene, 'infantry', faction).key);
+    this.recruitLabel.setColor(theme.accentSoft);
     this.endTurnButton
       .setFillStyle(theme.accentDark, 1)
       .setStrokeStyle(1, theme.accentBright, 0.8);
@@ -426,6 +485,7 @@ export class ScenarioCommandBar {
     width: number,
     height: number,
     action: () => void,
+    trigger: 'pointerdown' | 'pointerup' = 'pointerdown',
   ): Phaser.GameObjects.Rectangle {
     const background = this.register(
       this.scene.add
@@ -451,7 +511,7 @@ export class ScenarioCommandBar {
 
     background.on('pointerover', () => background.setFillStyle(this.theme.accent, 1));
     background.on('pointerout', () => background.setFillStyle(this.theme.accentDark, 1));
-    background.on('pointerdown', action);
+    background.on(trigger, action);
 
     return background;
   }

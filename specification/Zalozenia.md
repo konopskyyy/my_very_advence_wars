@@ -115,7 +115,10 @@
   własnej jednostki.
 - Ukryta jednostka nadal zajmuje heks i blokuje ruch, ale nie da się jej
   wybrać ani zobaczyć w podglądzie heksu.
-- Teren nie zasłania widoku, a pola nie pozostają odkryte na stałe.
+- Teren nie zasłania widoku. Kafle poza sumą zasięgów wzroku wszystkich
+  własnych jednostek są zakryte: wcześniej widziane dostają jaśniejszą mgłę
+  i pozostają odkryte do końca scenariusza, a nigdy niewidziane są czarne.
+- Pamięć odkrytych pól jest per strona i sesyjna — nie trafia do zapisu mapy.
 - Edytor zawsze pokazuje wszystkie jednostki; mgła działa dopiero
   w scenariuszu.
 

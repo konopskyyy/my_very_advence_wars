@@ -1,0 +1,5 @@
+1. po skonczonym ruchu w pasku dolnym jednostka ma ruch mimo ze fizycznie go nie ma
+2. zasieg wzroku zrob lekka mgielka (wygeneruj) zamiast robic obrysy dla jednostek
+3. zrob analize narzedzi do oceny kodu co warto miec? czasy budowania, najdluzsze klasy, najwiecej odpowiedzialnosci, pokrycie testami, mutacje
+4. prosta animacja strzalu i dzwiek gdy trafimy, pliki wygenerowane przeniesc w assetach do katalogu src/assets/ai , wygenerowane przeze mnie beda w katalogu craft
+5. rownolegle ruchy zamiast pojedynczych, klik na jednostce potem w miejsce ruchu i dopiero po potwierdzeniu guzikiem tura wykonuje sie na raz, przeliczyc ruchy zeby wszystkie konczyly sie w tym samym momencie i nie mozna sie zatrzymac jak zobacza wroga

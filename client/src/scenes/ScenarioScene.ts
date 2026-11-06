@@ -1,14 +1,20 @@
 import Phaser from 'phaser';
-import { attackUnit, canAttack } from '../core/combat';
+import { attackUnit, canAttack, canAttackThisTurn } from '../core/combat';
 import type { HexCoord } from '../core/map';
-import { findUnitAt, getMovePath, moveTargets, moveUnit } from '../core/map';
+import {
+  findUnitAt,
+  getMovePath,
+  mapTileCount,
+  moveTargets,
+  moveUnit,
+} from '../core/map';
 import {
   BUILT_IN_SCENARIOS,
   ensureScenarioArmies,
   type ScenarioDefinition,
 } from '../core/scenario';
 import type { GameState } from '../core/state';
-import { attackTiles, visionTiles } from '../core/ranges';
+import { attackTiles } from '../core/ranges';
 import {
   beginTurn,
   createTurnState,
@@ -16,18 +22,19 @@ import {
   type TurnState,
 } from '../core/turn';
 import { FULL_MAP_RANGE, UNIT_DEFS, type FactionId, type Unit } from '../core/units';
-import { visibleUnitAt, visibleUnits } from '../core/vision';
+import { visibleTileKeys, visibleUnitAt, visibleUnits } from '../core/vision';
 import { HexMapView, HEX_SIZE, outlineHex } from '../view/hexGrid';
 import { MapViewport } from '../view/mapViewport';
+import { RecruitDialog } from '../view/recruitDialog';
 import { BAR_HEIGHT, ScenarioCommandBar } from '../view/scenarioCommandBar';
+import { preloadFogTile } from '../view/fogTile';
 import { preloadTerrainTiles } from '../view/terrainTiles';
 import { UnitLayer } from '../view/unitLayer';
+import { VisionFog } from '../view/visionFog';
 
 const EDGE_PAN_MARGIN = 24;
 const MOVE_HINT_COLOR = 0x6fd08c;
-const VISION_HINT_COLOR = 0x5aa9e6;
 const ATTACK_HINT_COLOR = 0xe0563f;
-const VISION_HINT_SIZE = HEX_SIZE - 4;
 const ATTACK_HINT_SIZE = HEX_SIZE - 8;
 
 interface ScenarioData {
@@ -45,12 +52,15 @@ export class ScenarioScene extends Phaser.Scene {
   private hover: HexCoord | null = null;
   private selected: Unit | null = null;
   private movePath: HexCoord[] | null = null;
+  private readonly exploredByFaction = new Map<FactionId, Set<string>>();
 
   private viewport!: MapViewport;
   private mapView!: HexMapView;
   private unitLayer!: UnitLayer;
+  private visionFog!: VisionFog;
   private uiCamera?: Phaser.Cameras.Scene2D.Camera;
   private commandBar!: ScenarioCommandBar;
+  private recruitDialog!: RecruitDialog;
   private cursor!: Phaser.GameObjects.Graphics;
   private selection!: Phaser.GameObjects.Graphics;
   private rangeHints!: Phaser.GameObjects.Graphics;
@@ -63,6 +73,7 @@ export class ScenarioScene extends Phaser.Scene {
 
   preload(): void {
     preloadTerrainTiles(this);
+    preloadFogTile(this);
   }
 
   init(data: ScenarioData): void {
@@ -73,6 +84,7 @@ export class ScenarioScene extends Phaser.Scene {
     this.hover = null;
     this.selected = null;
     this.movePath = null;
+    this.exploredByFaction.clear();
   }
 
   create(): void {
@@ -89,6 +101,7 @@ export class ScenarioScene extends Phaser.Scene {
 
     this.mapView = new HexMapView(this, this.state.map);
     this.unitLayer = new UnitLayer(this, visibleUnits(this.state, this.turn.faction));
+    this.visionFog = new VisionFog(this, this.state.map);
 
     this.selection = this.add.graphics();
     this.selection.setDepth(4);
@@ -101,9 +114,11 @@ export class ScenarioScene extends Phaser.Scene {
 
     this.commandBar = new ScenarioCommandBar(this, {
       onEndTurn: () => this.endTurn(),
+      onRecruit: () => this.recruitDialog.show(this.turn.faction),
       onScenarioMenu: () => this.scene.start('scenario-menu'),
       onMainMenu: () => this.scene.start('menu'),
     });
+    this.recruitDialog = new RecruitDialog(this);
 
     this.setupUiCamera();
 
@@ -129,9 +144,14 @@ export class ScenarioScene extends Phaser.Scene {
     this.viewport.centerOn(start);
     this.refreshHud();
     this.refreshUnitPreview();
+    this.refreshFog();
   }
 
   update(_time: number, delta: number): void {
+    if (this.recruitDialog?.isOpen) {
+      return;
+    }
+
     this.viewport.update(delta, {
       left: (this.cursors?.left.isDown ?? false) || this.isDown('A'),
       right: (this.cursors?.right.isDown ?? false) || this.isDown('D'),
@@ -146,7 +166,10 @@ export class ScenarioScene extends Phaser.Scene {
     uiCamera.setName('scenario-ui');
     uiCamera.setScroll(0, 0);
 
-    this.cameras.main.ignore([...this.commandBar.uiObjects]);
+    this.cameras.main.ignore([
+      ...this.commandBar.uiObjects,
+      ...this.recruitDialog.uiObjects,
+    ]);
     uiCamera.ignore([
       this.cursor,
       this.selection,
@@ -154,6 +177,7 @@ export class ScenarioScene extends Phaser.Scene {
       this.pathHints,
       ...this.mapView.objects(),
       ...this.unitLayer.objects(),
+      ...this.visionFog.objects,
     ]);
 
     this.uiCamera = uiCamera;
@@ -162,6 +186,31 @@ export class ScenarioScene extends Phaser.Scene {
   private refreshUnits(): void {
     this.unitLayer.setUnits(visibleUnits(this.state, this.turn.faction));
     this.uiCamera?.ignore(this.unitLayer.objects());
+    this.refreshFog();
+  }
+
+  private refreshFog(): void {
+    if (!this.state.map.fogOfWar) {
+      this.visionFog.hide();
+      return;
+    }
+
+    const visible = visibleTileKeys(this.state, this.turn.faction);
+    const explored =
+      this.exploredByFaction.get(this.turn.faction) ?? new Set<string>();
+
+    for (const key of visible) {
+      explored.add(key);
+    }
+
+    this.exploredByFaction.set(this.turn.faction, explored);
+
+    if (visible.size >= mapTileCount(this.state.map)) {
+      this.visionFog.hide();
+      return;
+    }
+
+    this.visionFog.show(visible, explored);
   }
 
   private refreshUnitPreview(): void {
@@ -286,9 +335,9 @@ export class ScenarioScene extends Phaser.Scene {
     this.state = next;
     this.selected = findUnitAt(this.state, coord) ?? null;
     this.movePath = null;
-    this.unitLayer.setUnits(visibleUnits(this.state, this.turn.faction), true);
+    this.refreshUnits();
     this.drawSelection();
-    this.rangeHints.clear();
+    this.drawRangeHints();
     this.drawPath();
     this.refreshHud();
     this.refreshUnitPreview();
@@ -340,6 +389,14 @@ export class ScenarioScene extends Phaser.Scene {
   }
 
   private onKeyDown(event: KeyboardEvent): void {
+    if (this.recruitDialog.isOpen) {
+      if (event.key === 'Escape') {
+        this.recruitDialog.hide();
+      }
+
+      return;
+    }
+
     if (event.key === 'Escape') {
       this.scene.start(event.shiftKey ? 'menu' : 'scenario-menu');
       return;
@@ -393,20 +450,17 @@ export class ScenarioScene extends Phaser.Scene {
     }
 
     const unit = findUnitAt(this.state, this.selected.pos) ?? this.selected;
+    const canStrike = unit.faction === this.turn.faction && canAttackThisTurn(unit);
+    const canMove =
+      unit.faction === this.turn.faction && !unit.hasActed && unit.movesLeft > 0;
 
-    if (UNIT_DEFS[unit.kind].visionRange < FULL_MAP_RANGE) {
-      for (const target of visionTiles(this.state.map, unit)) {
-        outlineHex(
-          this.rangeHints,
-          this.mapView.center(target),
-          VISION_HINT_COLOR,
-          2,
-          VISION_HINT_SIZE,
-        );
+    if (canMove) {
+      for (const target of moveTargets(this.state, unit)) {
+        outlineHex(this.rangeHints, this.mapView.center(target), MOVE_HINT_COLOR, 2);
       }
     }
 
-    if (UNIT_DEFS[unit.kind].attackRange < FULL_MAP_RANGE) {
+    if (canStrike && UNIT_DEFS[unit.kind].attackRange < FULL_MAP_RANGE) {
       for (const target of attackTiles(this.state.map, unit)) {
         outlineHex(
           this.rangeHints,
@@ -416,7 +470,7 @@ export class ScenarioScene extends Phaser.Scene {
           ATTACK_HINT_SIZE,
         );
       }
-    } else {
+    } else if (canStrike) {
       for (const target of visibleUnits(this.state, this.turn.faction)) {
         if (target.faction === unit.faction) {
           continue;
@@ -432,13 +486,6 @@ export class ScenarioScene extends Phaser.Scene {
       }
     }
 
-    if (unit.faction !== this.turn.faction || unit.hasActed || unit.movesLeft <= 0) {
-      return;
-    }
-
-    for (const target of moveTargets(this.state, unit)) {
-      outlineHex(this.rangeHints, this.mapView.center(target), MOVE_HINT_COLOR, 2);
-    }
   }
 
   private drawPath(): void {
@@ -474,7 +521,7 @@ export class ScenarioScene extends Phaser.Scene {
   }
 
   private pointerOverUi(pointer: Phaser.Input.Pointer): boolean {
-    return pointer.y >= this.scale.height - BAR_HEIGHT;
+    return this.recruitDialog?.isOpen || pointer.y >= this.scale.height - BAR_HEIGHT;
   }
 
   private refreshHud(): void {

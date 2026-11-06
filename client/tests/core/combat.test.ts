@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { attackUnit, canAttack } from '../../src/core/combat';
+import { attackUnit, canAttack, canAttackThisTurn } from '../../src/core/combat';
 import { createMap, findUnitAt, type HexCoord } from '../../src/core/map';
 import { createInitialState, placeUnit, type GameState } from '../../src/core/state';
 import {
@@ -91,6 +91,33 @@ describe('canAttack', () => {
     expect(Number.isFinite(UNIT_DEFS.artillery.attackRange)).toBe(true);
     expect(Number.isFinite(UNIT_DEFS.artillery.visionRange)).toBe(true);
     expect(canAttack(artillery, target)).toBe(true);
+  });
+});
+
+describe('canAttackThisTurn', () => {
+  it('pozwala atakować jednostce gotowej do akcji', () => {
+    const unit = createUnit('unit', 'infantry', 'blue', { col: 4, row: 4 });
+
+    expect(canAttackThisTurn(unit)).toBe(true);
+  });
+
+  it('blokuje jednostkę, która już działała', () => {
+    const unit = { ...createUnit('unit', 'infantry', 'blue', { col: 4, row: 4 }), hasActed: true };
+
+    expect(canAttackThisTurn(unit)).toBe(false);
+  });
+
+  it('blokuje jednostkę bez amunicji', () => {
+    const unit = { ...createUnit('unit', 'tank', 'blue', { col: 4, row: 4 }), ammo: 0 };
+
+    expect(canAttackThisTurn(unit)).toBe(false);
+  });
+
+  it('nie blokuje piechoty, która nie ma amunicji', () => {
+    const unit = createUnit('unit', 'infantry', 'blue', { col: 4, row: 4 });
+
+    expect('ammo' in unit).toBe(false);
+    expect(canAttackThisTurn(unit)).toBe(true);
   });
 });
 
