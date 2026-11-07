@@ -57,6 +57,10 @@ Zmienne `COMPACT_LOG_DIR`, `COMPACT_RETENTION_MINUTES`,
 retencję i liczbę wypisywanych linii. Cele `make check`, `test`, `lint`
 i `client-build` korzystają z tego skryptu.
 
+Pliki czytaj przez `read` z `offset`/`limit`, a szukaj przez `grep`
+z `path`/`include`. Shell `cat`, `sed`, `head`, `tail`, `grep` i `find` jest
+zablokowany w `opencode.jsonc`, żeby jeden zrzut nie zjadał budżetu wyniku.
+
 ## Backend Symfony
 
 - Nowe funkcje backendu są **modułami** w `server/src/<Moduł>/`, dzielonymi na

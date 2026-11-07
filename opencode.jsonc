@@ -11,14 +11,27 @@
     { "action": "read", "resource": "client/package-lock.json", "effect": "deny" },
     { "action": "read", "resource": "server/vendor/*", "effect": "deny" },
     { "action": "read", "resource": "server/composer.lock", "effect": "deny" },
-    { "action": "read", "resource": "*.log", "effect": "deny" }
+    { "action": "read", "resource": "*.log", "effect": "deny" },
+
+    // Shell nie zastępuje read/grep/glob — inaczej jeden `grep -rn` zjada
+    // cały budżet wyniku, zanim model zdąży zawęzić zapytanie.
+    { "action": "shell", "resource": "cat *", "effect": "deny" },
+    { "action": "shell", "resource": "sed *", "effect": "deny" },
+    { "action": "shell", "resource": "head *", "effect": "deny" },
+    { "action": "shell", "resource": "tail *", "effect": "deny" },
+    { "action": "shell", "resource": "less *", "effect": "deny" },
+    { "action": "shell", "resource": "more *", "effect": "deny" },
+    { "action": "shell", "resource": "grep *", "effect": "deny" },
+    { "action": "shell", "resource": "egrep *", "effect": "deny" },
+    { "action": "shell", "resource": "rg *", "effect": "deny" },
+    { "action": "shell", "resource": "find *", "effect": "deny" }
   ],
 
-  // Jeden wynik narzędzia to maks. ~4 tys. tokenów. Pliki większe niż 500
-  // linii lub 16 KiB trzeba czytać wycinkami (read offset/limit, sed -n).
+  // Jeden wynik narzędzia to maks. ~2 tys. tokenów. Pliki większe niż 200
+  // linii lub 8 KiB trzeba czytać wycinkami (read offset/limit).
   "tool_output": {
-    "max_lines": 500,
-    "max_bytes": 16384
+    "max_lines": 200,
+    "max_bytes": 8192
   },
 
   "watcher": {

@@ -10,9 +10,10 @@ Cel: wynik jednego narzędzia poniżej ~8 tys. znaków. Najpierw adres, potem tr
 1. **Specyfikacja.** Nie znasz ID? `scripts/spec.sh --find "fraza"` zwraca
    same pliki i nagłówki. Potem `scripts/spec.sh ID` — jedna sekcja na
    wywołanie. Nie używaj `cat`/`sed` na `specification/*.md`.
-2. **Kod.** `grep -rl "symbol" client/src` albo narzędzie `grep` z
-   `path`/`include` wskazuje pliki. Potem `grep -n "symbol" plik` i `read`
-   z `offset`/`limit` (max 80 linii). Nie `grep -rn ... | head -60`.
+2. **Kod.** Narzędzie `grep` z `path`/`include` wskazuje pliki i numery
+   linii. Potem `read` z `offset`/`limit` (max 80 linii) na wycinek wokół
+   trafienia. Shell `grep`/`cat`/`sed`/`head`/`tail` jest zablokowany —
+   nie obchodź nim budżetu.
 3. **Diff.** Najpierw `git diff --stat`, potem `git diff -- jeden/plik`.
    Nie pełny diff całego repo.
 4. **Testy.** `make verify` (klient) albo `make test-server` (backend).
