@@ -1,8 +1,8 @@
 # Infrastruktura
 
 Środowisko deweloperskie gry: Docker Compose dla klienta i backendu, oraz
-osobny, hostowy proces dla Electrona. Dokumentacja odzwierciedla stan kodu
-w `docker-compose.yml`, `docker/` i `electron/`.
+osobny, hostowy proces dla Electrona oraz hooki git. Dokumentacja odzwierciedla
+stan kodu w `docker-compose.yml`, `docker/`, `electron/` i `.husky/`.
 
 > [!important] Ta notatka musi nadążać za kodem
 > Ten dokument opisuje **faktyczny stan** infrastruktury, nie plany. Przy **każdej**
@@ -12,6 +12,7 @@ w `docker-compose.yml`, `docker/` i `electron/`.
 > - edycja `docker/php/Dockerfile` lub `docker/nginx/default.conf`,
 > - zmiana celów w `Makefile`,
 > - zmiana pipeline'u CI (`.github/workflows/`),
+> - zmiana hooków git (`.husky/`, `package.json` w katalogu głównym),
 > - zmiana sposobu uruchamiania Electrona (`electron/`).
 >
 > Zacznij od sekcji [[#Mapa sieci i portów]] i [[#Codzienna praca]] — to one
@@ -28,8 +29,9 @@ w `docker-compose.yml`, `docker/` i `electron/`.
 > 7. [[#Electron (poza Compose)]]
 > 8. [[#Baza map w kliencie (SQLite)]]
 > 9. [[#CI (GitHub Actions)]]
-> 10. [[#Codzienna praca]]
-> 11. [[#Rozwiązywanie problemów]]
+> 10. [[#Hooki git (Husky)]]
+> 11. [[#Codzienna praca]]
+> 12. [[#Rozwiązywanie problemów]]
 
 ---
 
@@ -385,6 +387,26 @@ Pipeline nie buduje aplikacji ani nie uruchamia Dockera — nie wymaga sekretów
 
 ---
 
+## Hooki git (Husky)
+
+Hooki instaluje Husky 9 z `package.json` w katalogu głównym. `npm install`
+uruchamia skrypt `prepare` (`husky`), który ustawia `core.hooksPath` na
+`.husky/_`; ten sam efekt daje `make hooks`.
+
+- **Zakres:** `.husky/pre-commit` uruchamia `make check` (typy i testy Vitest)
+  tylko wtedy, gdy commit zawiera pliki z `client/`. Commit bez zmian klienta
+  nie uruchamia testów.
+- **Blokada:** czerwony `tsc` albo Vitest przerywa commit. Log przechodzi przez
+  `scripts/compact-run.sh`, więc pełny zapis leży w
+  `${TMPDIR:-/tmp}/opencode/mvaw`, a na ekran idzie końcówka.
+- **Backend:** hook nie uruchamia PHPUnit ani Dockera — testy backendu zostają
+  w CI i w `make test-server`.
+- **Bez hooków:** `HUSKY=0 git commit …` pomija hook pojedynczo; `git commit
+  --no-verify` robi to samo. Katalog `.husky/_/` jest generowany i ignorowany
+  przez git.
+
+---
+
 ## Codzienna praca
 
 Wygodnym frontem jest `Makefile` w katalogu głównym (`make help` pokazuje listę).
@@ -425,6 +447,8 @@ Compose bezpośrednio też działa — poniżej oba warianty.
 | Testy mutacyjne w CI                     | —                     | GitHub Actions: `.github/workflows/ci.yml` (`npm run mutation`) |
 | Testy backendu w CI                      | —                     | GitHub Actions: `.github/workflows/ci.yml` (`php bin/phpunit`) |
 | Testy mutacyjne backendu w CI            | —                     | GitHub Actions: `.github/workflows/ci.yml` (`vendor/bin/infection`) |
+| Zainstaluj hooki git (Husky)             | `make hooks`          | `npm install` w katalogu głównym                          |
+| Pomiń hooki przy commicie                | —                     | `HUSKY=0 git commit …` lub `git commit --no-verify`       |
 | Zatrzymaj wszystko                       | `make down`           | `docker compose down`                                     |
 | Zatrzymaj i usuń woluminy (⚠️ MySQL)      | `make clean`          | `docker compose down -v`                                  |
 
