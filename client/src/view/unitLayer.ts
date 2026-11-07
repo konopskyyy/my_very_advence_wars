@@ -321,6 +321,12 @@ export class UnitLayer {
 
   private animateMove(token: Phaser.GameObjects.Image, x: number, y: number): void {
     this.scene.tweens.killTweensOf(token);
-    token.setPosition(x, y);
+    this.scene.tweens.add({
+      targets: token,
+      x,
+      y,
+      duration: 250,
+      ease: 'Cubic.easeOut',
+    });
   }
 }
