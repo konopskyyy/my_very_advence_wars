@@ -100,6 +100,9 @@ usuń komentarze, które przestały być prawdą.
   Nowe zadanie zakładasz w tabeli `Zadania.md` (ID, nazwa, status, powiązania)
   i w `Zadania-opisy.md` (kontekst, opis, kryteria) — bez powtarzania statusu
   w opisie.
+- **Archiwum zadań to nie źródło pracy.** `specification/Archiwum-zadan.md`
+  zawiera duplikaty i wersje zastąpione późniejszą pracą; aktualne zadania są
+  wyłącznie w `specification/Zadania.md` i `specification/Zadania-opisy.md`.
 - Kod gry (logika `core/` bez zależności od Phasera) — patrz ADR-001 w
   `specification/ADR.md`. Nie wiąż logiki gry z silnikiem.
 - Nie commituj sekretów: `.env` i `server/.env` są w `.gitignore` i mają tam zostać.
