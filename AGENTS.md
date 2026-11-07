@@ -123,20 +123,19 @@ tokenów, z których większość była do uniknięcia.
   zwraca tylko pliki i nagłówki pasujących sekcji. Potem `scripts/spec.sh ID`
   — jedna sekcja na wywołanie. Nie wczytuj całego `ADR.md`,
   `Zadania-opisy.md`, `Mapy.md` ani `Infrastruktura.md`.
-- **Budżet wyniku ~8 tys. znaków.** Jeden `read` to max ~80 linii, jeden
-  `grep`/`rg` — konkretny plik i wzorzec, nie całe drzewo. Większy wynik
-  prawie zawsze oznacza, że najpierw trzeba było zawęzić zapytanie.
-- **`grep -rn` tylko po wskazaniu plików.** Najpierw `grep -rl` albo
-  narzędzie `grep` z `path`/`include`, potem `grep -n` w jednym pliku.
-  `grep -rn ... | head -60` nie oszczędza: cały wynik i tak powstaje.
-- **Zero `cat`/`sed` na całych dokumentach.** `cat docker-compose.yml`,
-  `cat Makefile`, `sed -n '1,200p' specification/...` to zrzuty po 10–20 tys.
-  znaków. Wybierz sekcję przez `scripts/spec.sh` albo zawęź `grep -n`.
-- **Pliki >200 linii tylko wycinkami.** Najpierw `grep -n`, potem `read`
-  z `offset`/`limit` (max ~80 linii) albo `sed -n`. Nie powtarzaj `read`
-  tego samego pliku; po edycji wystarczy `git diff --stat`. Jeśli wynik
-  narzędzia zostanie ucięty przez `tool_output`, dociągnij tylko brakujący
-  zakres.
+- **Budżet wyniku ~8 KiB.** Jeden `read` to max ~80 linii, jedno wywołanie
+  `grep` — jeden plik i wzorzec. Większy wynik prawie zawsze oznacza, że
+  najpierw trzeba było zawęzić zapytanie.
+- **Shell nie służy do czytania.** `cat`, `sed`, `head`, `tail`, `grep`,
+  `egrep`, `rg`, `find`, `less` i `more` są zablokowane w `opencode.jsonc`.
+  Do plików jest `read` (`offset`/`limit`), do szukania `grep`
+  (`path`/`include`), do listowania `glob`. Shell zostaje dla `make`, `git`,
+  `docker`, `npm` i `scripts/*`.
+- **Najpierw `grep`, potem `read`.** Narzędzie `grep` z `path`/`include`
+  wskazuje plik i numer linii; dopiero potem `read` z `offset`/`limit` na
+  wycinek wokół trafienia. Nie powtarzaj `read` tego samego pliku; po edycji
+  wystarczy `git diff --stat`. Jeśli wynik narzędzia zostanie ucięty przez
+  `tool_output`, dociągnij tylko brakujący zakres.
 - **Diff tylko statystyką albo jednym plikiem.** `git diff --stat`,
   `git show --stat`; pełny diff dopiero dla pliku, którego dotyczy zmiana.
 - **Grupuj narzędzia.** Niezależne odczyty, grepy i edycje wywołuj w jednym
@@ -146,7 +145,8 @@ tokenów, z których większość była do uniknięcia.
   `make test-server 2>&1 | tail -80`.
 - **Nie czytaj artefaktów.** Pomijaj `client/dist/`, `client/node_modules/`,
   `server/vendor/`, `client/reports/` i locki; `opencode.jsonc` blokuje ich
-  odczyt. Do sprawdzenia użyj `grep`.
+  odczyt przez `read`. Nie obchodź blokady shellem — `cat` i `grep` też są
+  zablokowane.
 - **Jedno źródło opisu zadania.** Status i powiązania są w
   `specification/Zadania.md`, pełny opis i kryteria wyłącznie w
   `specification/Zadania-opisy.md`. Nie kopiuj treści między plikami.
