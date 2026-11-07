@@ -235,6 +235,16 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
   - **Działanie paczki:** `app://bundle/index.html` serwuje assety Vite, `sql-wasm.wasm` wraca `200`, a `localStorage` działa — sprawdzone sondą Electrona na `client/dist`.
   - **Zgodność:** `make electron` i `make electron-build` zachowują dotychczasowe zachowanie, a `specification/Infrastruktura.md` i `specification/Mapy.md` opisują nowe cele, origin packaged i wymóg wine.
 
+## INFRA-005: Hooki git z Husky i pre-commit
+- **Kontekst:** Typy i testy klienta sprawdzał dopiero CI po pushu, więc literówka w typach albo czerwony Vitest trafiały do historii commitów. Lokalnie trzeba było pamiętać o `make check` ręcznie.
+- **Opis:** Husky 9 z `package.json` w katalogu głównym instaluje `.husky/pre-commit` przez skrypt `prepare`; `make hooks` uruchamia to samo `npm install`. Hook odpala `make check` tylko wtedy, gdy commit dotyka `client/`, i przerywa commit przy błędzie typów lub testów.
+- **Kryteria:**
+  - **Instalacja:** `npm install` albo `make hooks` w katalogu głównym ustawia `core.hooksPath` na `.husky/_`; `make install` robi to przy okazji konfiguracji `.env`.
+  - **Zakres:** commit ze zmianą w `client/` uruchamia `make check`; commit wyłącznie w `server/`, `specification/` lub plikach głównych nie uruchamia testów klienta.
+  - **Blokada:** czerwony `tsc --noEmit` albo Vitest kończy hook kodem błędu i commit nie powstaje; pełny log zostaje w `${TMPDIR:-/tmp}/opencode/mvaw`.
+  - **Pominięcie:** `HUSKY=0 git commit …` i `git commit --no-verify` działają bez hooka.
+  - **Dokumentacja:** `specification/Infrastruktura.md` opisuje instalację, zakres i pomijanie hooków.
+
 ## GRA-034: Wzmocnienie testów pod mutacje
 - **Kontekst:** Pierwszy przebieg Strykera (INFRA-002) dał 61% i odsłonił pliki z niskim pokryciem zachowań: `scenario.ts` (32%), `map/catalog.ts` (22%) i `state.ts` (61%). Testy sprawdzały głównie, że jednostki powstają, a nie gdzie dokładnie trafiają ani których heksów unikają.
 - **Opis:** Nowe testy katalogu map (metadane, wymiary, konkretne kafle malowane prostokątami) oraz rozbudowa testów scenariusza (puste mapy, dokładne kolumny i rzędy rozmieszczenia, pomijanie wody, brakujących kafli i heksów zajętych) i ruchu (`canMoveUnit`, `getMovePath`, `getMoveCost`, zachowanie przy zużytym ruchu).

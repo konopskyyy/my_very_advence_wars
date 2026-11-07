@@ -14,7 +14,7 @@ ADMINER_PORT ?= 18081
 .PHONY: help up up-tools down stop restart ps logs logs-server logs-client \
         shell console composer cache-clear migrate fixtures jwt-keys test-server \
         db-shell build rebuild client-install \
-        install electron electron-build electron-win electron-win-installer clean clean-all test mutation lint env run quality quality-client \
+        install hooks electron electron-build electron-win electron-win-installer clean clean-all test mutation lint env run quality quality-client \
         check client-build verify
 
 ## ——— Pomoc ————————————————————————————————————————————————
@@ -99,9 +99,12 @@ rebuild: ## Przebuduj bez cache i podnieś od nowa
 client-install: ## Zainstaluj zależności klienta na hoście (opcjonalne)
 	cd client && npm install
 
-install: ## Skopiuj .env.example -> .env (jeśli brak) i postaw środowisko
+install: hooks ## Skopiuj .env.example -> .env (jeśli brak) i zainstaluj hooki git
 	@test -f .env || cp .env.example .env
 	@echo "Plik .env gotowy. Uruchom 'make up'."
+
+hooks: ## Zainstaluj hooki git (Husky)
+	npm install
 
 ## ——— Electron (na hoście, poza compose) ———————————————————
 
