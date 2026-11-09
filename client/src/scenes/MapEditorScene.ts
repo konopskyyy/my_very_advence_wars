@@ -288,7 +288,7 @@ export class MapEditorScene extends Phaser.Scene {
   private syncView(): void {
     const started = performance.now();
     this.mapView.setMap(this.state.map);
-    this.unitView.setUnits(this.state.units);
+    this.unitView.setUnits(this.state.units, false);
     this.mapCpuMs += performance.now() - started;
     this.mapBytes = mapMemoryUsage(this.state.map);
 

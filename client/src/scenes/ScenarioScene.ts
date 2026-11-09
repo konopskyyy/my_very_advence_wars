@@ -27,7 +27,9 @@ import { HexMapView, HEX_SIZE, outlineHex } from '../view/hexGrid';
 import { MapViewport } from '../view/mapViewport';
 import { RecruitDialog } from '../view/recruitDialog';
 import { BAR_HEIGHT, ScenarioCommandBar } from '../view/scenarioCommandBar';
+import { playHitSound, playMoveSound, playShotSound, preloadCombatAudio } from '../view/combatAudio';
 import { preloadFogTile } from '../view/fogTile';
+import { playShotEffect } from '../view/shotEffect';
 import { preloadTerrainTiles } from '../view/terrainTiles';
 import { UnitLayer } from '../view/unitLayer';
 import { VisionFog } from '../view/visionFog';
@@ -52,6 +54,7 @@ export class ScenarioScene extends Phaser.Scene {
   private hover: HexCoord | null = null;
   private selected: Unit | null = null;
   private movePath: HexCoord[] | null = null;
+  private firing = false;
   private readonly exploredByFaction = new Map<FactionId, Set<string>>();
 
   private viewport!: MapViewport;
@@ -74,6 +77,7 @@ export class ScenarioScene extends Phaser.Scene {
   preload(): void {
     preloadTerrainTiles(this);
     preloadFogTile(this);
+    preloadCombatAudio();
   }
 
   init(data: ScenarioData): void {
@@ -84,6 +88,7 @@ export class ScenarioScene extends Phaser.Scene {
     this.hover = null;
     this.selected = null;
     this.movePath = null;
+    this.firing = false;
     this.exploredByFaction.clear();
   }
 
@@ -114,7 +119,11 @@ export class ScenarioScene extends Phaser.Scene {
 
     this.commandBar = new ScenarioCommandBar(this, {
       onEndTurn: () => this.endTurn(),
-      onRecruit: () => this.recruitDialog.show(this.turn.faction),
+      onRecruit: () => {
+        if (!this.firing) {
+          this.recruitDialog.show(this.turn.faction);
+        }
+      },
       onScenarioMenu: () => this.scene.start('scenario-menu'),
       onMainMenu: () => this.scene.start('menu'),
     });
@@ -145,9 +154,13 @@ export class ScenarioScene extends Phaser.Scene {
     this.refreshHud();
     this.refreshUnitPreview();
     this.refreshFog();
+
+    (globalThis as { __mvawScene?: ScenarioScene }).__mvawScene = this;
   }
 
   update(_time: number, delta: number): void {
+    this.unitLayer.update(delta);
+
     if (this.recruitDialog?.isOpen) {
       return;
     }
@@ -222,6 +235,10 @@ export class ScenarioScene extends Phaser.Scene {
   }
 
   private onPointerDown(pointer: Phaser.Input.Pointer): void {
+    if (this.firing) {
+      return;
+    }
+
     if (this.pointerOverUi(pointer)) {
       return;
     }
@@ -252,7 +269,7 @@ export class ScenarioScene extends Phaser.Scene {
   }
 
   private tryAttackAt(coord: HexCoord): boolean {
-    if (!this.selected || this.selected.faction !== this.turn.faction) {
+    if (this.firing || !this.selected || this.selected.faction !== this.turn.faction) {
       return false;
     }
 
@@ -269,17 +286,31 @@ export class ScenarioScene extends Phaser.Scene {
       return false;
     }
 
+    this.firing = true;
+    playShotSound(UNIT_DEFS[attacker.kind].weapon);
+    playShotEffect(
+      this,
+      this.unitLayer.center(attacker.pos),
+      this.unitLayer.center(target.pos),
+      () => this.applyAttack(attacker.id, next),
+      (object) => this.uiCamera?.ignore(object),
+    );
+
+    return true;
+  }
+
+  private applyAttack(attackerId: string, next: GameState): void {
     this.state = next;
-    this.selected = findUnitAt(this.state, attacker.pos) ?? null;
+    this.selected = this.state.units.find((unit) => unit.id === attackerId) ?? null;
     this.movePath = null;
+    this.firing = false;
+    playHitSound();
     this.refreshUnits();
     this.drawSelection();
     this.drawRangeHints();
     this.drawPath();
     this.refreshHud();
     this.refreshUnitPreview();
-
-    return true;
   }
 
   private trySetPath(coord: HexCoord): boolean {
@@ -332,6 +363,7 @@ export class ScenarioScene extends Phaser.Scene {
       return false;
     }
 
+    playMoveSound(UNIT_DEFS[unit.kind].moveSound);
     this.state = next;
     this.selected = findUnitAt(this.state, coord) ?? null;
     this.movePath = null;
@@ -397,6 +429,10 @@ export class ScenarioScene extends Phaser.Scene {
       return;
     }
 
+    if (this.firing) {
+      return;
+    }
+
     if (event.key === 'Escape') {
       this.scene.start(event.shiftKey ? 'menu' : 'scenario-menu');
       return;
@@ -408,6 +444,10 @@ export class ScenarioScene extends Phaser.Scene {
   }
 
   private endTurn(): void {
+    if (this.firing) {
+      return;
+    }
+
     this.turn = nextTurn(this.turn);
     this.state = beginTurn(this.state, this.turn.faction);
     this.selected = null;

@@ -13,8 +13,9 @@ else
     SOUND_PKG="libasound2"
 fi
 
+# libpulse0 — dźwięk Electrona w WSL (WSLg wystawia tylko serwer PulseAudio).
 # Instalacja zaktualizowanej listy zależności
-sudo apt install -y wget libfuse2 libgtk-3-0 libxml2-dev libxslt1-dev "$SOUND_PKG" libgbm1 libxss1 libnss3
+sudo apt install -y wget libfuse2 libgtk-3-0 libxml2-dev libxslt1-dev "$SOUND_PKG" libpulse0 libgbm1 libxss1 libnss3
 
 echo "=== Pobieranie najnowszej wersji Obsidian ==="
 LATEST_URL=$(curl -s https://api.github.com/repos/obsidianmd/obsidian-releases/releases/latest | grep "browser_download_url.*AppImage" | tail -n 1 | cut -d '"' -f 4)

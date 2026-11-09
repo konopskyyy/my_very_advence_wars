@@ -554,6 +554,21 @@ i jest usuwany po dobie, a na ekran idzie tylko końcówka. Ostatni log otwiera
 > jest `index.html` oraz `assets/`. Build ZIP na WSL nie wymaga wine;
 > instalator NSIS wymaga `wine` (patrz wyżej).
 
+> [!question]- W Electronie nie ma dźwięku (WSL)
+> **Przyczyna:** Chromium w Electronie ładuje `libpulse.so.0` dynamicznie. Na
+> czystym WSL biblioteki klienta PulseAudio nie ma, więc dźwięk spada na ALSA —
+> a WSLg nie wystawia karty dźwiękowej (`/proc/asound/cards` nie istnieje).
+> W logach widać `PcmOpen: default,No such file or directory`. Przeglądarka
+> w Windows gra, bo korzysta z audio hosta, nie z WSL.
+>
+> **Rozwiązanie:**
+> ```bash
+> sudo apt install -y libpulse0   # ciągnie libsndfile1 i kodeki
+> ```
+> Zrestartuj Electrona (`make electron`). Dźwięk trafi do
+> `PULSE_SERVER=unix:/mnt/wslg/PulseServer`; błędy ALSA znikną. Ten pakiet
+> instaluje też `scripts/install_obsidian.sh` (zależności GUI dla WSL).
+
 > [!question]- Czy mapy są w MySQL/Adminerze?
 > Nie. `db` i `Adminer` dotyczą backendu Symfony. Mapy z edytora są w SQLite
 > w `localStorage` klienta — patrz [[Mapy#Schemat bazy]].

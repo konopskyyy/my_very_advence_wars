@@ -10,6 +10,17 @@ import { colorToCss, HEX_SIZE } from './hexGrid';
 
 export const UNIT_TOKEN_SIZE = 26;
 
+const MOVE_DURATION = 250;
+
+interface TokenMotion {
+  readonly token: Phaser.GameObjects.Image;
+  readonly fromX: number;
+  readonly fromY: number;
+  readonly toX: number;
+  readonly toY: number;
+  elapsed: number;
+}
+
 const textureCache = new Map<string, Phaser.Textures.CanvasTexture>();
 const INK = 'rgba(11, 15, 20, 0.92)';
 const LIGHT = '#f2f5f7';
@@ -231,6 +242,7 @@ export function createUnitToken(
 export class UnitLayer {
   private readonly tokens = new Map<string, Phaser.GameObjects.Image>();
   private readonly positions = new Map<string, HexCoord>();
+  private readonly motions = new Map<string, TokenMotion>();
 
   private units: readonly Unit[];
 
@@ -260,6 +272,24 @@ export class UnitLayer {
     this.sync(animate);
   }
 
+  update(delta: number): void {
+    for (const [id, motion] of this.motions) {
+      motion.elapsed = Math.min(MOVE_DURATION, motion.elapsed + delta);
+      const progress = motion.elapsed / MOVE_DURATION;
+      const eased = 1 - (1 - progress) ** 3;
+
+      motion.token.setPosition(
+        motion.fromX + (motion.toX - motion.fromX) * eased,
+        motion.fromY + (motion.toY - motion.fromY) * eased,
+      );
+
+      if (motion.elapsed >= MOVE_DURATION) {
+        motion.token.setPosition(motion.toX, motion.toY);
+        this.motions.delete(id);
+      }
+    }
+  }
+
   center(coord: HexCoord): { x: number; y: number } {
     return hexToPixel(coord, this.size);
   }
@@ -271,6 +301,7 @@ export class UnitLayer {
 
     this.tokens.clear();
     this.positions.clear();
+    this.motions.clear();
   }
 
   private sync(animate = true): void {
@@ -290,6 +321,7 @@ export class UnitLayer {
       token.destroy();
       this.tokens.delete(id);
       this.positions.delete(id);
+      this.motions.delete(id);
     }
 
     for (const unit of this.units) {
@@ -300,6 +332,7 @@ export class UnitLayer {
         token.setDepth(2);
         this.tokens.set(unit.id, token);
         this.positions.set(unit.id, unit.pos);
+        this.motions.delete(unit.id);
         const center = this.center(unit.pos);
         token.setPosition(center.x, center.y);
         continue;
@@ -308,25 +341,30 @@ export class UnitLayer {
       const prev = this.positions.get(unit.id);
       const center = this.center(unit.pos);
 
-      if (!prev || prev.col !== unit.pos.col || prev.row !== unit.pos.row) {
-        if (animate) {
-          this.animateMove(token, center.x, center.y);
+      if (prev && prev.col === unit.pos.col && prev.row === unit.pos.row) {
+        if (!this.motions.has(unit.id)) {
+          token.setPosition(center.x, center.y);
         }
-        this.positions.set(unit.id, unit.pos);
-      } else {
-        token.setPosition(center.x, center.y);
-      }
-    }
-  }
 
-  private animateMove(token: Phaser.GameObjects.Image, x: number, y: number): void {
-    this.scene.tweens.killTweensOf(token);
-    this.scene.tweens.add({
-      targets: token,
-      x,
-      y,
-      duration: 250,
-      ease: 'Cubic.easeOut',
-    });
+        continue;
+      }
+
+      this.positions.set(unit.id, unit.pos);
+
+      if (!animate) {
+        this.motions.delete(unit.id);
+        token.setPosition(center.x, center.y);
+        continue;
+      }
+
+      this.motions.set(unit.id, {
+        token,
+        fromX: token.x,
+        fromY: token.y,
+        toX: center.x,
+        toY: center.y,
+        elapsed: 0,
+      });
+    }
   }
 }

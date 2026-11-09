@@ -1,6 +1,7 @@
 import type { HexCoord } from '../map';
 import type { FactionId } from './faction';
 import type { UnitBase, UnitStats } from './types';
+import { RIFLE } from './weapons';
 
 export interface InfantryUnit extends UnitBase {
   readonly kind: 'infantry';
@@ -14,6 +15,8 @@ export const INFANTRY_STATS: UnitStats = {
   defense: 4,
   visionRange: 2,
   attackRange: 1,
+  weapon: RIFLE,
+  moveSound: 'step',
 };
 
 export function createInfantry(id: string, faction: FactionId, pos: HexCoord): InfantryUnit {

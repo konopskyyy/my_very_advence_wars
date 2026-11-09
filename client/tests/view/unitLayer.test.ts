@@ -33,15 +33,7 @@ function fakeContext(): CanvasRenderingContext2D {
   });
 }
 
-function fakeScene(): {
-  scene: Phaser.Scene;
-  tweens: { killTweensOf: ReturnType<typeof vi.fn>; add: ReturnType<typeof vi.fn> };
-} {
-  const tweens = {
-    killTweensOf: vi.fn(),
-    add: vi.fn(),
-  };
-
+function fakeScene(): Phaser.Scene {
   const scene = {
     textures: {
       exists: vi.fn(() => false),
@@ -58,10 +50,9 @@ function fakeScene(): {
         return token;
       }),
     },
-    tweens,
   };
 
-  return { scene: scene as unknown as Phaser.Scene, tweens };
+  return scene as unknown as Phaser.Scene;
 }
 
 function unitAt(id: string, col: number, row: number) {
@@ -69,31 +60,33 @@ function unitAt(id: string, col: number, row: number) {
 }
 
 describe('UnitLayer — animacja ruchu', () => {
-  it('przesuwa token tweenem zamiast skakać od razu do celu', () => {
-    const { scene, tweens } = fakeScene();
+  it('przesuwa token po kolejnych aktualizacjach zamiast skakać do celu', () => {
+    const scene = fakeScene();
     const layer = new UnitLayer(scene, [unitAt('u1', 1, 1)]);
     const token = layer.getToken('u1') as unknown as FakeToken;
     const target = { col: 3, row: 2 };
     const destination = layer.center(target);
-
-    expect(token.setPosition).toHaveBeenCalledTimes(1);
+    const startX = token.x;
+    const startY = token.y;
 
     layer.setUnits([unitAt('u1', target.col, target.row)]);
 
-    expect(tweens.killTweensOf).toHaveBeenCalledWith(token);
-    expect(tweens.add).toHaveBeenCalledTimes(1);
-    expect(tweens.add).toHaveBeenCalledWith({
-      targets: token,
-      x: destination.x,
-      y: destination.y,
-      duration: expect.any(Number),
-      ease: expect.any(String),
-    });
-    expect(token.setPosition).not.toHaveBeenCalledWith(destination.x, destination.y);
+    expect(token.x).toBe(startX);
+    expect(token.y).toBe(startY);
+
+    layer.update(125);
+
+    expect(token.x).not.toBe(startX);
+    expect(token.x).not.toBe(destination.x);
+
+    layer.update(125);
+
+    expect(token.x).toBeCloseTo(destination.x);
+    expect(token.y).toBeCloseTo(destination.y);
   });
 
-  it('nie nadpisuje trwającej animacji skokiem, gdy animate jest wyłączone', () => {
-    const { scene, tweens } = fakeScene();
+  it('ustawia token od razu w celu, gdy animacja jest wyłączona', () => {
+    const scene = fakeScene();
     const layer = new UnitLayer(scene, [unitAt('u1', 1, 1)]);
     const token = layer.getToken('u1') as unknown as FakeToken;
     const target = { col: 2, row: 2 };
@@ -101,13 +94,33 @@ describe('UnitLayer — animacja ruchu', () => {
 
     layer.setUnits([unitAt('u1', target.col, target.row)], false);
 
-    expect(tweens.add).not.toHaveBeenCalled();
-    expect(token.setPosition).toHaveBeenCalledTimes(1);
-    expect(token.setPosition).not.toHaveBeenCalledWith(destination.x, destination.y);
+    expect(token.setPosition).toHaveBeenLastCalledWith(destination.x, destination.y);
+    expect(token.x).toBeCloseTo(destination.x);
+    expect(token.y).toBeCloseTo(destination.y);
+  });
+
+  it('nie cofa tokenu, gdy odświeżenie przyjdzie w trakcie animacji', () => {
+    const scene = fakeScene();
+    const layer = new UnitLayer(scene, [unitAt('u1', 1, 1)]);
+    const token = layer.getToken('u1') as unknown as FakeToken;
+    const target = { col: 2, row: 1 };
+    const destination = layer.center(target);
+
+    layer.setUnits([unitAt('u1', target.col, target.row)]);
+    layer.update(100);
+    const midway = token.x;
+
+    layer.setUnits([unitAt('u1', target.col, target.row)]);
+
+    expect(token.x).toBe(midway);
+
+    layer.update(150);
+
+    expect(token.x).toBeCloseTo(destination.x);
   });
 
   it('animuje token po rzeczywistym ruchu wykonanym przez moveUnit', () => {
-    const { scene, tweens } = fakeScene();
+    const scene = fakeScene();
     const state = placeUnit(
       createInitialState(createMap(9, 9)),
       'infantry',
@@ -121,16 +134,15 @@ describe('UnitLayer — animacja ruchu', () => {
 
     const next = moveUnit(state, unit!.id, { col: 2, row: 1 });
     const destination = layer.center({ col: 2, row: 1 });
+    const token = layer.getToken(unit!.id) as unknown as FakeToken;
+    const startX = token.x;
 
     expect(next).not.toBe(state);
 
     layer.setUnits(visibleUnits(next, 'blue'));
+    layer.update(250);
 
-    expect(tweens.add).toHaveBeenCalledWith(
-      expect.objectContaining({
-        x: destination.x,
-        y: destination.y,
-      }),
-    );
+    expect(token.x).toBeCloseTo(destination.x);
+    expect(token.x).not.toBe(startX);
   });
 });

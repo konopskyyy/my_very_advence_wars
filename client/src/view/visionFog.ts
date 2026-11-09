@@ -15,6 +15,7 @@ const FOG_DEPTH = 1;
 // Ten sam kolor co tło gry, żeby prostokąt tekstury nie rysował ramki wokół mapy.
 const UNKNOWN_COLOR = '#0b0b0b';
 const BOUNDS_MARGIN_RATIO = 0.06;
+const FOG_TILE_ALPHA = 0.45;
 const CLEAR_OVERLAP = 0.75;
 const ROTATION_STEPS = 6;
 
@@ -182,6 +183,7 @@ export class VisionFog {
       const half = this.tileDisplaySize / 2;
 
       paint.save();
+      paint.globalAlpha = FOG_TILE_ALPHA;
       paint.beginPath();
       traceHex(paint, cell, HEX_SIZE + CLEAR_OVERLAP);
       paint.clip();

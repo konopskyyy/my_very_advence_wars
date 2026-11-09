@@ -68,3 +68,6 @@ zadań do wykonania.
 | [[Zadania-opisy#GRA-046: Przycisk kupowania jednostek z oknem podglądu\|GRA-046]] | Przycisk kupowania jednostek z oknem podglądu | ✅ | GRA-027, ADR-001, ADR-020, INTERF-005 |
 | [[Zadania-opisy#GRA-049: Ruch w pasku zgodny z rzeczywistymi możliwościami\|GRA-049]] | Ruch w pasku zgodny z rzeczywistymi możliwościami | ✅ | GRA-041, GRA-047 (archiwum), ADR-033, INTERF-005 |
 | [[Zadania-opisy#GRA-050: Mgła wojny z pamięcią odkrytych pól\|GRA-050]] | Mgła wojny z pamięcią odkrytych pól | ✅ | GRA-038, GRA-048 (archiwum), ADR-001, ADR-030, ADR-034, INTERF-005, `specification/Mapy.md` |
+| [[Zadania-opisy#GRA-051: Animacja strzału i dźwięki walki\|GRA-051]] | Animacja strzału i dźwięki walki | ✅ | GRA-040, ADR-001, ADR-032, ADR-035, INTERF-005 |
+| [[Zadania-opisy#GRA-052: Dźwięk ruchu piechoty\|GRA-052]] | Dźwięk ruchu piechoty | ✅ | GRA-051, ADR-001, ADR-035, INTERF-005 |
+| [[Zadania-opisy#GRA-053: Klasa broni i dźwięki jako dane jednostki\|GRA-053]] | Klasa broni i dźwięki jako dane jednostki | ✅ | GRA-051, GRA-052, ADR-001, ADR-035, ADR-037, INTERF-005, ZAL-004 |
