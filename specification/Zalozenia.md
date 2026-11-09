@@ -70,6 +70,11 @@
 - Jednostka zajmuje jeden heks; na jednym heksie stoi najwyżej jedna jednostka.
 - Strony jednostek to `blue`, `red` i `neutral`; edytor i rozgrywka używają
   niebieskiej i czerwonej.
+- Piechota ma domyślnie broń `RIFLE` (karabin), której `shotSound` wskazuje
+  dźwięk wystrzału; pozostałe rodzaje nie mają jeszcze własnej broni i do czasu
+  jej dodania korzystają z domyślnego dźwięku wystrzału.
+- Dźwięk ruchu jest właściwością definicji jednostki (`UnitStats.moveSound`):
+  piechota ma `'step'`, a czołg, artyleria i zwiad pozostają ciche.
 
 ## ZAL-005: Ruch
 
@@ -116,8 +121,9 @@
 - Ukryta jednostka nadal zajmuje heks i blokuje ruch, ale nie da się jej
   wybrać ani zobaczyć w podglądzie heksu.
 - Teren nie zasłania widoku. Kafle poza sumą zasięgów wzroku wszystkich
-  własnych jednostek są zakryte: wcześniej widziane dostają jaśniejszą mgłę
-  i pozostają odkryte do końca scenariusza, a nigdy niewidziane są czarne.
+  własnych jednostek są zakryte: wcześniej widziane dostają półprzezroczystą
+  mgłę, przez którą nadal widać rodzaj terenu, i pozostają odkryte do końca
+  scenariusza, a nigdy niewidziane są czarne.
 - Pamięć odkrytych pól jest per strona i sesyjna — nie trafia do zapisu mapy.
 - Edytor zawsze pokazuje wszystkie jednostki; mgła działa dopiero
   w scenariuszu.

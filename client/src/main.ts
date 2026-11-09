@@ -7,7 +7,7 @@ import { ScenarioMenuScene } from './scenes/ScenarioMenuScene';
 import { ScenarioScene } from './scenes/ScenarioScene';
 import './style.css';
 
-new Phaser.Game({
+const game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'app',
   backgroundColor: '#0b0b0b',
@@ -29,3 +29,5 @@ new Phaser.Game({
     MapEditorScene,
   ],
 });
+
+(globalThis as { __mvawGame?: Phaser.Game }).__mvawGame = game;

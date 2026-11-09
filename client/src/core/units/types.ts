@@ -1,5 +1,7 @@
 import type { HexCoord } from '../map';
+import type { SoundId } from '../sound';
 import type { FactionId } from './faction';
+import type { Weapon } from './weapons';
 
 export type UnitKind = 'infantry' | 'tank' | 'artillery' | 'scout';
 
@@ -23,4 +25,6 @@ export interface UnitStats {
   readonly visionRange: number;
   readonly attackRange: number;
   readonly ammo?: number;
+  readonly weapon?: Weapon;
+  readonly moveSound?: SoundId;
 }

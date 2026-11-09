@@ -156,7 +156,7 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
   - **Logika:** `core/map/movement.ts` udostępnia `getMovePath()` (najtańsza trasa), `moveTargets()` (wszystkie heksy osiągalne w budżecie) i `moveUnit()`, który odejmuje koszt trasy i ustawia `hasActed` tylko przy zerowym ruchu.
   - **Teren i kolizje:** trasa omija wodę i teren nieprzechodni, nie wchodzi na zajęte heksy i nie przekracza `movesLeft`; droga jest tańsza, las, bagno i góry droższe.
   - **Interfejs:** dozwolone heksy są zielone, trasa żółta, a pasek pokazuje instrukcję „1. klik — trasa · 2. klik — potwierdzenie ruchu”; zmiana wyboru i koniec tury czyszczą trasę.
-  - **Animacja:** token przesuwa się po kolejnych heksach trasy, a `UnitLayer.setUnits(units, false)` nie nadpisuje jej skokiem do celu.
+  - **Animacja:** token przesuwa się po kolejnych heksach trasy; `UnitLayer` prowadzi interpolację we własnej mapie ruchów (`update(delta)`), więc odświeżenie tokenów w trakcie animacji nie cofa go do starej pozycji. `setUnits(units, false)` ustawia token od razu w celu (ADR-036).
   - **Testy:** `tests/core/map/movement.test.ts` pokrywa koszt terenu, zasięg, zajęte heksy, wodę, koniec ruchu i wybór tańszej trasy zamiast krótszej.
 
 ## GRA-031: Kafelki terenu SVG z wariantami
@@ -387,10 +387,10 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
 
 ## GRA-050: Mgła wojny z pamięcią odkrytych pól
 - **Kontekst:** Mgła z GRA-048 pokrywała kafle w zasięgu wybranej jednostki, a nie obszar poza zasięgiem całej armii. Po odznaczeniu jednostki albo po ataku mgła znikała, więc teren poza wzrokiem był odsłonięty. Gracz potrzebuje stałej osłony i rozróżnienia między terenem już widzianym i nigdy niewidzianym.
-- **Opis:** `client/src/core/vision.ts` dostaje `visibleTileKeys(state, viewer)`, które sumuje `visionTiles()` wszystkich jednostek strony i dołącza ich własne heksy. `ScenarioScene` prowadzi `Map<FactionId, Set<string>>` odkrytych pól: klucze z bieżącego widzenia trafiają do zbioru strony i zostają do końca scenariusza. `view/visionFog.ts` rysuje jedną teksturę na `mapPixelBounds`: bieżąco widoczne heksy są przezroczyste, odkryte wcześniej dostają kafelek `assets/map/ai/fog_of_war_tile.svg` przycięty do heksu i obracany o wielokrotność 60°, a nigdy niewidziane — nieprzezroczyste ciemne tło. Kafelek mgły ma tę samą geometrię co kafle terenu, więc pokrywa je bez szczelin. Nakładka odświeża się po ruchu, ataku i zmianie tury. Pamięć jest per strona, więc w hot-seacie strony nie dzielą odkryć; nie trafia do `GameState` ani SQLite. Gdy własna artyleria widzi całą mapę, mgła znika.
+- **Opis:** `client/src/core/vision.ts` dostaje `visibleTileKeys(state, viewer)`, które sumuje `visionTiles()` wszystkich jednostek strony i dołącza ich własne heksy. `ScenarioScene` prowadzi `Map<FactionId, Set<string>>` odkrytych pól: klucze z bieżącego widzenia trafiają do zbioru strony i zostają do końca scenariusza. `view/visionFog.ts` rysuje jedną teksturę na `mapPixelBounds`: bieżąco widoczne heksy są przezroczyste, odkryte wcześniej dostają kafelek `assets/map/ai/fog_of_war_tile.svg` przycięty do heksu, obracany o wielokrotność 60° i rysowany z obniżoną nieprzezroczystością, a nigdy niewidziane — nieprzezroczyste ciemne tło. Kafelek mgły ma tę samą geometrię co kafle terenu, więc pokrywa je bez szczelin. Nakładka odświeża się po ruchu, ataku i zmianie tury. Pamięć jest per strona, więc w hot-seacie strony nie dzielą odkryć; nie trafia do `GameState` ani SQLite. Gdy własna artyleria widzi całą mapę, mgła znika.
 - **Kryteria:**
   - **Obszar:** mgła pokrywa wszystkie kafle poza sumą zasięgów wzroku własnych jednostek, niezależnie od wyboru.
-  - **Stany:** bieżąco widziane — odsłonięte; odkryte wcześniej — jaśniejsza mgła; nigdy niewidziane — czarny kafel.
+  - **Stany:** bieżąco widziane — odsłonięte; odkryte wcześniej — jaśniejsza, półprzezroczysta mgła, przez którą nadal widać rodzaj terenu; nigdy niewidziane — czarny kafel.
   - **Pamięć:** odkryte pola zostają widoczne po odejściu jednostki, po ataku i po zmianie tury; pamięć jest osobna dla niebieskich i czerwonych.
   - **Bez mgły:** mapa z `fogOfWar = false` nie dostaje nakładki.
   - **Pełny wzrok:** artyleria odsłania całą mapę i ukrywa mgłę.
@@ -398,3 +398,37 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
   - **Wydajność:** jedna tekstura i jedno `Image` na scenę; przemalowanie zależy wyłącznie od zmiany widoczności, a nie od liczby klatek.
   - **Testy:** `tests/core/vision.test.ts` pokrywa sumę zasięgów wielu jednostek, dołączenie ich pozycji i pełny zasięg artylerii.
   - **Dokumentacja:** ZAL-007, ADR-034, INTERF-005 i `Mapy.md` opisują pamięć odkrytych pól.
+
+## GRA-051: Animacja strzału i dźwięki walki
+- **Kontekst:** Atak z GRA-040 zmieniał stan natychmiast, bez żadnej reakcji wizualnej ani dźwiękowej. Gracz nie miał potwierdzenia, że kliknięcie trafiło, a zniknięcie jednostki przy `hp <= 0` wyglądało jak zniknięcie tokenu bez przyczyny. Sam dźwięk trafienia, odtwarzany dopiero po dolecie pocisku, nie potwierdzał momentu wystrzału.
+- **Opis:** `client/src/view/shotEffect.ts` odtwarza krótki efekt: błysk u wylotu lufy, smugę pocisku z atakującego do celu oraz błysk i iskry w miejscu trafienia. `client/src/view/combatAudio.ts` preloaduje i odtwarza dwa wygenerowane dźwięki: wystrzał wskazany przez broń atakującego (`Weapon.shotSound`, dla piechoty `assets/ai/audio/shot.wav`) w chwili rozpoczęcia animacji i trafienie `assets/ai/audio/hit.wav` w chwili dolecia pocisku. `ScenarioScene` wywołuje efekt po zatwierdzeniu ataku i dopiero w momencie trafienia przypisuje stan zwrócony przez `attackUnit()`; do końca animacji blokuje kliknięcia, koniec tury i rekrutację, żeby nie nakładać akcji. Sam atak pozostaje czystą operacją w `core/combat.ts` (ADR-032), a efekt jest wyłącznie warstwą widoku (ADR-035). Pliki wygenerowane przez AI leżą w `src/assets/ai/`, a materiały przygotowane ręcznie w `src/assets/craft/`.
+- **Kryteria:**
+  - **Efekt:** po ataku widać błysk u wylotu lufy, przelot pocisku i błysk trafienia trwający łącznie poniżej sekundy.
+  - **Dźwięk:** wystrzał odtwarza dźwięk broni atakującego (dla piechoty `RIFLE` → `shot.wav`), a trafienie `hit.wav`; nieudany atak nie uruchamia animacji ani dźwięku.
+  - **Stan:** obrażenia, zużycie amunicji i `hasActed` stosuje `attackUnit()` w chwili trafienia; animacja nie zmienia zasad walki.
+  - **Wejście:** w trakcie efektu kliknięcia mapy, `T` i przycisk końca tury nie wykonują akcji.
+  - **Assety:** plik dźwięku pochodzi z `client/src/assets/ai/audio/`, a katalog `client/src/assets/craft/` jest zarezerwowany na materiały użytkownika.
+  - **Testy:** `make verify` przechodzi; testy `core/combat.ts` pozostają bez zmian, bo efekt jest w `view/`.
+  - **Dokumentacja:** INTERF-005, ADR-035 i `Konwencje.md` opisują efekt oraz podział assetów.
+
+## GRA-052: Dźwięk ruchu piechoty
+- **Kontekst:** Po GRA-051 walka ma dźwięk, ale ruch jednostek pozostaje niemy. Gracz nie słyszy, że piechota faktycznie przeszła trasę, choć token animuje się przez 250 ms.
+- **Opis:** `client/src/view/combatAudio.ts` ma trzeci dźwięk `assets/ai/audio/step.wav`, a jednostka ma właściwość `moveSound`; tylko piechota (`infantry`) ma przypisany krok. `playMoveSound(sound)` odtwarza dźwięk w chwili potwierdzenia ruchu w `ScenarioScene.tryMoveAlongPath()`, równolegle z animacją tokenu. Inne rodzaje jednostek nie mają wpisu, więc pozostają ciche. Dźwięk jest wyłącznie warstwą widoku (ADR-035) i nie zmienia `core/map/movement.ts`.
+- **Kryteria:**
+  - **Dźwięk:** potwierdzony ruch piechoty odtwarza `step.wav`; ruch czołgu, artylerii i zwiadu jest niemy.
+  - **Zakres:** dźwięk uruchamia się tylko po faktycznym ruchu (`moveUnit()` zwrócił nowy stan), nie przy kliknięciu heksu, nieudanej trasie ani wyborze jednostki.
+  - **Warstwa:** logika ruchu w `core/` pozostaje bez zmian i bez zależności od audio; dźwięk ruchu jest właściwością jednostki (`moveSound`), a `view/combatAudio.ts` tylko zamienia identyfikator na asset.
+  - **Assety:** `step.wav` jest wygenerowany i leży w `client/src/assets/ai/audio/`.
+  - **Testy:** `make verify` przechodzi; testy `core/map/movement.test.ts` pozostają bez zmian.
+  - **Dokumentacja:** INTERF-005 opisuje dźwięk ruchu piechoty.
+
+## GRA-053: Klasa broni i dźwięki jako dane jednostki
+- **Kontekst:** GRA-051 i GRA-052 trzymały identyfikatory dźwięków w `view/combatAudio.ts`: stały wystrzał i mapę `MOVE_SOUNDS` po `UnitKind`. Broń i jednostka nie wiedziały, jaki dźwięk produkują, a dodanie kolejnej broni wymagało zmiany warstwy widoku.
+- **Opis:** `client/src/core/sound.ts` definiuje `SoundId`, a `client/src/core/units/weapons.ts` — interfejs `Weapon` i `RIFLE` z `label: 'Karabin'` i `shotSound: 'rifle-shot'`. `UnitStats` ma opcjonalne `weapon` i `moveSound`; piechota dostaje domyślnie `RIFLE` oraz `'step'`, a scena czyta je z `UNIT_DEFS`. `view/combatAudio.ts` mapuje wyłącznie `SoundId` na pliki i odtwarza dźwięk przekazany przez jednostkę, bez mapy rodzajów jednostek. Głośność kroku jest podniesiona, żeby dźwięk ruchu piechoty był słyszalny.
+- **Kryteria:**
+  - **Broń:** `Weapon` jest jedynym miejscem wskazującym dźwięk wystrzału; piechota ma domyślnie `RIFLE`, a `shot.wav` odtwarza `RIFLE.shotSound`.
+  - **Jednostka:** `moveSound` jest właściwością jednostki; piechota ma `'step'`, pozostałe rodzaje nie mają dźwięku ruchu.
+  - **Widok:** `combatAudio.ts` nie mapuje już `UnitKind` na dźwięk; tylko zamienia `SoundId` na asset i odtwarza go.
+  - **Słyszalność:** potwierdzony ruch piechoty odtwarza krok z głośnością co najmniej 0,8.
+  - **Testy:** `tests/core/units/weapons.test.ts` sprawdza domyślną broń i dźwięk ruchu piechoty; `make verify` przechodzi.
+  - **Dokumentacja:** ZAL-004, INTERF-005, ADR-035 i ADR-037 opisują dane dźwiękowe.

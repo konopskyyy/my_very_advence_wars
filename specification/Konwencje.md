@@ -91,3 +91,12 @@ zablokowany w `opencode.jsonc`, żeby jeden zrzut nie zjadał budżetu wyniku.
 - **Jedno źródło statusu.** `Zadania.md` trzyma ID, nazwę, status i powiązania.
   `Zadania-opisy.md` trzyma wyłącznie kontekst, opis i kryteria — bez
   powtarzania statusu.
+
+## Assety
+
+- Pliki wygenerowane przez AI (grafiki, dźwięki) leżą w
+  `client/src/assets/ai/`, na przykład `client/src/assets/ai/audio/hit.wav`.
+- Materiały przygotowane ręcznie trafiają do `client/src/assets/craft/`;
+  katalog jest zarezerwowany na własne pliki i nie miesza się z `ai/`.
+- Kod importuje pliki przez `?url` (Vite) i preloaduje je w scenie, która ich
+  używa.
