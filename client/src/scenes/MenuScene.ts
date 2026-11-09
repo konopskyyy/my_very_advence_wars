@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { installButtonClickSound } from '../view/buttonAudio';
 import { preloadTerrainTiles } from '../view/terrainTiles';
 
 export class MenuScene extends Phaser.Scene {
@@ -15,6 +16,8 @@ export class MenuScene extends Phaser.Scene {
   }
 
   create(): void {
+    installButtonClickSound(this);
+
     const { width, height } = this.scale;
 
     this.title = this.add

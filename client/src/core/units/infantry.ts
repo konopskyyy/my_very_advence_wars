@@ -17,6 +17,7 @@ export const INFANTRY_STATS: UnitStats = {
   attackRange: 1,
   weapon: RIFLE,
   moveSound: 'step',
+  deathSound: 'death',
 };
 
 export function createInfantry(id: string, faction: FactionId, pos: HexCoord): InfantryUnit {

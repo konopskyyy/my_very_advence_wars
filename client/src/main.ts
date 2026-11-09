@@ -5,6 +5,7 @@ import { MapMenuScene } from './scenes/MapMenuScene';
 import { MenuScene } from './scenes/MenuScene';
 import { ScenarioMenuScene } from './scenes/ScenarioMenuScene';
 import { ScenarioScene } from './scenes/ScenarioScene';
+import { preloadCombatAudio } from './view/combatAudio';
 import './style.css';
 
 const game = new Phaser.Game({
@@ -29,5 +30,7 @@ const game = new Phaser.Game({
     MapEditorScene,
   ],
 });
+
+preloadCombatAudio();
 
 (globalThis as { __mvawGame?: Phaser.Game }).__mvawGame = game;

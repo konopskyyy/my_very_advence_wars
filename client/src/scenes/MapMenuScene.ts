@@ -5,6 +5,7 @@ import {
   loadSavedMap,
   type SavedMap,
 } from '../storage/maps';
+import { installButtonClickSound } from '../view/buttonAudio';
 import { formatTimestamp } from '../view/format';
 import { createMapCard } from '../view/mapCard';
 import { ScrollList } from '../view/scrollList';
@@ -29,6 +30,8 @@ export class MapMenuScene extends Phaser.Scene {
   }
 
   create(): void {
+    installButtonClickSound(this);
+
     const { width, height } = this.scale;
 
     this.listWidth = width - LIST_X * 2;

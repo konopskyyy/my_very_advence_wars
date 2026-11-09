@@ -27,4 +27,5 @@ export interface UnitStats {
   readonly ammo?: number;
   readonly weapon?: Weapon;
   readonly moveSound?: SoundId;
+  readonly deathSound?: SoundId;
 }

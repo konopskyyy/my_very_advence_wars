@@ -1,3 +1,5 @@
+import clickUrl from '../assets/ai/audio/click.wav?url';
+import deathUrl from '../assets/ai/audio/death.wav?url';
 import hitUrl from '../assets/ai/audio/hit.wav?url';
 import shotUrl from '../assets/ai/audio/shot.wav?url';
 import stepUrl from '../assets/ai/audio/step.wav?url';
@@ -19,6 +21,8 @@ const SOURCES: Record<SoundId, SoundSource> = {
   'rifle-shot': { url: shotUrl, volume: 0.6 },
   hit: { url: hitUrl, volume: 0.7 },
   step: { url: stepUrl, volume: 0.9 },
+  click: { url: clickUrl, volume: 0.35 },
+  death: { url: deathUrl, volume: 0.6 },
 };
 const pools = new Map<SoundId, SoundPool>();
 let unlockInstalled = false;
@@ -80,6 +84,16 @@ export function playMoveSound(sound?: SoundId): void {
   if (sound) {
     play(sound);
   }
+}
+
+export function playDeathSound(sound?: SoundId): void {
+  if (sound) {
+    play(sound);
+  }
+}
+
+export function playClickSound(): void {
+  play('click');
 }
 
 function play(name: SoundId): void {
