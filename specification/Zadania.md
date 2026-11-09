@@ -71,3 +71,4 @@ zadań do wykonania.
 | [[Zadania-opisy#GRA-051: Animacja strzału i dźwięki walki\|GRA-051]] | Animacja strzału i dźwięki walki | ✅ | GRA-040, ADR-001, ADR-032, ADR-035, INTERF-005 |
 | [[Zadania-opisy#GRA-052: Dźwięk ruchu piechoty\|GRA-052]] | Dźwięk ruchu piechoty | ✅ | GRA-051, ADR-001, ADR-035, INTERF-005 |
 | [[Zadania-opisy#GRA-053: Klasa broni i dźwięki jako dane jednostki\|GRA-053]] | Klasa broni i dźwięki jako dane jednostki | ✅ | GRA-051, GRA-052, ADR-001, ADR-035, ADR-037, INTERF-005, ZAL-004 |
+| [[Zadania-opisy#GRA-054: Dźwięk kliknięcia przycisków i śmierci piechoty\|GRA-054]] | Dźwięk kliknięcia przycisków i śmierci piechoty | ✅ | GRA-051, GRA-053, ADR-001, ADR-035, ADR-037, INTERF-005, ZAL-004 |

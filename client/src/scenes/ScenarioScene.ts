@@ -27,7 +27,13 @@ import { HexMapView, HEX_SIZE, outlineHex } from '../view/hexGrid';
 import { MapViewport } from '../view/mapViewport';
 import { RecruitDialog } from '../view/recruitDialog';
 import { BAR_HEIGHT, ScenarioCommandBar } from '../view/scenarioCommandBar';
-import { playHitSound, playMoveSound, playShotSound, preloadCombatAudio } from '../view/combatAudio';
+import { installButtonClickSound } from '../view/buttonAudio';
+import {
+  playDeathSound,
+  playHitSound,
+  playMoveSound,
+  playShotSound,
+} from '../view/combatAudio';
 import { preloadFogTile } from '../view/fogTile';
 import { playShotEffect } from '../view/shotEffect';
 import { preloadTerrainTiles } from '../view/terrainTiles';
@@ -77,7 +83,6 @@ export class ScenarioScene extends Phaser.Scene {
   preload(): void {
     preloadTerrainTiles(this);
     preloadFogTile(this);
-    preloadCombatAudio();
   }
 
   init(data: ScenarioData): void {
@@ -93,6 +98,8 @@ export class ScenarioScene extends Phaser.Scene {
   }
 
   create(): void {
+    installButtonClickSound(this);
+
     this.uiCamera = undefined;
     this.movePath = null;
 
@@ -292,19 +299,26 @@ export class ScenarioScene extends Phaser.Scene {
       this,
       this.unitLayer.center(attacker.pos),
       this.unitLayer.center(target.pos),
-      () => this.applyAttack(attacker.id, next),
+      () => this.applyAttack(attacker.id, target.id, next),
       (object) => this.uiCamera?.ignore(object),
     );
 
     return true;
   }
 
-  private applyAttack(attackerId: string, next: GameState): void {
+  private applyAttack(attackerId: string, targetId: string, next: GameState): void {
+    const target = this.state.units.find((unit) => unit.id === targetId);
+    const killed = target !== undefined && !next.units.some((unit) => unit.id === targetId);
+
     this.state = next;
     this.selected = this.state.units.find((unit) => unit.id === attackerId) ?? null;
     this.movePath = null;
     this.firing = false;
     playHitSound();
+
+    if (target && killed) {
+      playDeathSound(UNIT_DEFS[target.kind].deathSound);
+    }
     this.refreshUnits();
     this.drawSelection();
     this.drawRangeHints();

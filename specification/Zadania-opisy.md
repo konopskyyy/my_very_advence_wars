@@ -432,3 +432,15 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
   - **Słyszalność:** potwierdzony ruch piechoty odtwarza krok z głośnością co najmniej 0,8.
   - **Testy:** `tests/core/units/weapons.test.ts` sprawdza domyślną broń i dźwięk ruchu piechoty; `make verify` przechodzi.
   - **Dokumentacja:** ZAL-004, INTERF-005, ADR-035 i ADR-037 opisują dane dźwiękowe.
+
+## GRA-054: Dźwięk kliknięcia przycisków i śmierci piechoty
+- **Kontekst:** GRA-053 uczyniła dźwięki właściwością jednostki i broni, ale interfejs nadal klika bezgłośnie, a zabita piechota znika bez własnego dźwięku śmierci. Oba dźwięki powinny być delikatne i nie przykrywać walki.
+- **Opis:** `SoundId` dostaje `'click'` i `'death'`, a `view/combatAudio.ts` mapuje je na `assets/ai/audio/click.wav` i `assets/ai/audio/death.wav`. `UnitStats` ma opcjonalne `deathSound`; piechota wskazuje `'death'`, pozostałe rodzaje pozostają bez dźwięku śmierci. `view/buttonAudio.ts` instaluje w każdej scenie nasłuch `gameobjectdown` i odtwarza kliknięcie tylko dla obiektów interaktywnych z kursorem `pointer`, więc przyciski i skróty menu klikają, a tło i heksy mapy nie. `ScenarioScene.applyAttack()` porównuje stan przed i po ataku i po dźwięku trafienia odtwarza dźwięk śmierci, gdy cel zniknął z mapy. `preloadCombatAudio()` uruchamia się raz w `main.ts`, żeby dźwięki były gotowe również w menu.
+- **Kryteria:**
+  - **Kliknięcie:** naciśnięcie przycisku lub skrótu menu odtwarza `click.wav` z głośnością niższą niż strzał i trafienie; kliknięcie w tło, heks ani mapę nie odtwarza dźwięku.
+  - **Śmierć:** atak, po którym cel znika z mapy, odtwarza dźwięk `deathSound` celu po dźwięku trafienia; atak niezabijający kończy się tylko dźwiękiem trafienia.
+  - **Dane jednostki:** `deathSound` jest właściwością `UnitStats`; piechota ma `'death'`, czołg, artyleria i zwiad nie mają dźwięku śmierci.
+  - **Warstwa:** `core/` nadal nie zależy od Phasera ani plików audio; `view/combatAudio.ts` tylko zamienia `SoundId` na asset i odtwarza go.
+  - **Assety:** `click.wav` i `death.wav` są wygenerowane i leżą w `client/src/assets/ai/audio/`.
+  - **Testy:** `tests/core/units/weapons.test.ts` sprawdza `deathSound` piechoty i brak dźwięku u pojazdów; `make verify` przechodzi.
+  - **Dokumentacja:** ZAL-004, INTERF-005 i ADR-037 opisują dźwięk kliknięcia i śmierci.

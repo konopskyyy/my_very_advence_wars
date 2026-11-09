@@ -7,6 +7,7 @@ import {
   loadSavedMap,
   type SavedMapSummary,
 } from '../storage/maps';
+import { installButtonClickSound } from '../view/buttonAudio';
 import { formatTimestamp } from '../view/format';
 import { ScenarioDetailPanel, type ScenarioEntry } from '../view/scenarioDetailPanel';
 import { ScrollList } from '../view/scrollList';
@@ -36,6 +37,8 @@ export class ScenarioMenuScene extends Phaser.Scene {
   }
 
   create(): void {
+    installButtonClickSound(this);
+
     const { width, height } = this.scale;
 
     this.entries = [];

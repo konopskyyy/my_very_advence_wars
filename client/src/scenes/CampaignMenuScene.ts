@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { CAMPAIGNS, findCampaign, type CampaignId } from '../core/campaign';
+import { installButtonClickSound } from '../view/buttonAudio';
 import { CampaignRibbon } from '../view/campaignRibbon';
 import { CampaignTiles } from '../view/campaignTiles';
 
@@ -20,6 +21,8 @@ export class CampaignMenuScene extends Phaser.Scene {
   }
 
   create(): void {
+    installButtonClickSound(this);
+
     const { width, height } = this.scale;
     const contentY = RIBBON_Y + RIBBON_HEIGHT + CONTENT_GAP;
     const contentHeight = height - contentY - CONTENT_BOTTOM_MARGIN;

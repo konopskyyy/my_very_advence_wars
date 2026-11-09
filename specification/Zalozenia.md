@@ -75,6 +75,8 @@
   jej dodania korzystają z domyślnego dźwięku wystrzału.
 - Dźwięk ruchu jest właściwością definicji jednostki (`UnitStats.moveSound`):
   piechota ma `'step'`, a czołg, artyleria i zwiad pozostają ciche.
+- Dźwięk śmierci jest właściwością definicji jednostki (`UnitStats.deathSound`):
+  piechota ma `'death'`, a czołg, artyleria i zwiad nie mają dźwięku śmierci.
 
 ## ZAL-005: Ruch
 

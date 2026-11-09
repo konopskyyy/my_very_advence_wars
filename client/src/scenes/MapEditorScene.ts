@@ -23,6 +23,7 @@ import type { TerrainId } from '../core/map/terrain';
 import type { FactionId, UnitKind } from '../core/units';
 import { devToolsEnabled } from '../devTools';
 import { createSavedMapId, saveMap } from '../storage/maps';
+import { installButtonClickSound } from '../view/buttonAudio';
 import { EditorControls } from '../view/editorControls';
 import { EditorMenu, type EditorMenuState, type EditorTool } from '../view/editorMenu';
 import { EditorPanel } from '../view/editorPanel';
@@ -82,6 +83,8 @@ export class MapEditorScene extends Phaser.Scene {
   }
 
   create(): void {
+    installButtonClickSound(this);
+
     this.panel = new EditorPanel(this, this.mapName, this.devTools, {
       onNameChange: (name) => {
         this.mapName = name;
