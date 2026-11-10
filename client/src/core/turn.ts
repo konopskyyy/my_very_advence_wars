@@ -30,21 +30,12 @@ export function beginTurn(state: GameState, faction: FactionId): GameState {
 
     const stats = UNIT_DEFS[unit.kind];
     const movesLeft = stats.moveRange;
-    const maxAmmo = 'ammo' in unit ? stats.ammo ?? unit.ammo : undefined;
 
-    if (
-      unit.movesLeft === movesLeft &&
-      !unit.hasActed &&
-      (!('ammo' in unit) || unit.ammo === maxAmmo)
-    ) {
+    if (unit.movesLeft === movesLeft && !unit.hasActed) {
       return unit;
     }
 
     changed = true;
-
-    if ('ammo' in unit && maxAmmo !== undefined) {
-      return { ...unit, movesLeft, hasActed: false, ammo: maxAmmo };
-    }
 
     return { ...unit, movesLeft, hasActed: false };
   });

@@ -1,23 +1,24 @@
 import Phaser from 'phaser';
 import {
   canMoveNow,
-  findUnitAt,
   mapTileCount,
   terrainAt,
   toDoubled,
   type HexCoord,
 } from '../core/map';
 import type { ScenarioDefinition } from '../core/scenario';
+import type { PlanAction } from '../core/plan';
 import { countUnits, type GameState } from '../core/state';
 import { TERRAIN_DEFS } from '../core/map/terrain';
 import type { TurnState } from '../core/turn';
-import { FACTION_DEFS, UNIT_DEFS, type FactionId, type Unit } from '../core/units';
+import { FACTION_DEFS, shotsLeft, UNIT_DEFS, type FactionId, type Unit } from '../core/units';
 import { visibleUnitAt } from '../core/vision';
 import { FACTION_THEMES, type FactionTheme } from './factionTheme';
 import { formatPoints } from './format';
 import { unitTexture } from './unitLayer';
 
 export const BAR_HEIGHT = 116;
+export const TURN_COLUMN_X = 1010;
 
 export interface ScenarioBarState {
   readonly scenario: ScenarioDefinition;
@@ -29,7 +30,7 @@ export interface ScenarioBarState {
 export interface ScenarioUnitState {
   readonly selected: Unit | null;
   readonly state: GameState;
-  readonly movePath: HexCoord[] | null;
+  readonly planActions?: readonly PlanAction[];
 }
 
 export interface ScenarioCommandBarHandlers {
@@ -278,11 +279,11 @@ export class ScenarioCommandBar {
       ),
     );
 
-    const turnX = 1010;
+    const turnX = TURN_COLUMN_X;
     const turnWidth = this.scene.scale.width - turnX - 16;
 
     this.endTurnButton = this.makeBarButton(
-      'ZAKOŃCZ TURĘ',
+      'WYKONAJ TURĘ',
       turnX,
       barY + 14,
       turnWidth,
@@ -303,7 +304,7 @@ export class ScenarioCommandBar {
 
     this.register(
       this.scene.add
-        .text(turnX, barY + 84, 'LPM — wybór/ruch/atak · T — tura\nkółko — zoom · ESC — scenariusze', {
+        .text(turnX, barY + 84, 'LPM — jednostka/trasa/atak · T — wykonaj turę\nDel — usuń akcję · kółko — zoom · ESC — scenariusze', {
           fontFamily: 'monospace',
           fontSize: '10px',
           color: '#9fb0a5',
@@ -361,7 +362,7 @@ export class ScenarioCommandBar {
     );
   }
 
-  refreshUnit({ selected, state, movePath }: ScenarioUnitState): void {
+  refreshUnit({ selected, state, planActions = [] }: ScenarioUnitState): void {
     if (!selected) {
       this.preview.setVisible(false);
       this.previewHint.setVisible(true);
@@ -376,14 +377,14 @@ export class ScenarioCommandBar {
       return;
     }
 
-    const current = findUnitAt(state, selected.pos) ?? selected;
+    const current = selected;
     const stats = UNIT_DEFS[current.kind];
     const terrain = terrainAt(state.map, current.pos);
     const doubled = toDoubled(current.pos);
 
     const ammo =
-      'ammo' in current && stats.ammo !== undefined
-        ? ` · POCISKI ${current.ammo}/${stats.ammo}`
+      stats.ammo !== undefined
+        ? ` · POCISKI ${shotsLeft(current)}/${stats.ammo}`
         : '';
 
     this.preview
@@ -407,17 +408,23 @@ export class ScenarioCommandBar {
     this.unitMeta.setText(
       `Teren: ${terrain ? TERRAIN_DEFS[terrain].label : 'pusto'} · Heks: ${doubled.col},${doubled.row}`,
     );
+    const plannedMoves = planActions.filter((action) => action.kind === 'move').length;
+    const plannedAttacks = planActions.filter((action) => action.kind === 'attack').length;
+    const planLabel =
+      planActions.length > 0
+        ? `Plan: ${plannedMoves}× ruch, ${plannedAttacks}× atak · Del — usuń ostatnią`
+        : null;
+
     this.unitStatus
       .setText(
-        current.hasActed
-          ? 'Działała — ruch w następnej turze'
-          : !canMove
-            ? 'Zablokowana — brak dostępnego ruchu'
-            : movePath && movePath.length > 0
-              ? '1. klik — trasa · 2. klik — potwierdzenie ruchu'
-              : `Gotowa — pozostało ${formatPoints(current.movesLeft)} pkt. ruchu`,
+        planLabel ??
+          (current.hasActed
+            ? 'Działała — ruch w następnej turze'
+            : !canMove
+              ? 'Zablokowana — brak dostępnego ruchu'
+              : `Gotowa — klik heks (trasa) albo wroga (atak) · ${formatPoints(current.movesLeft)} pkt.`),
       )
-      .setColor(canMove ? '#6fd08c' : '#e0a15a');
+      .setColor(planLabel ? '#f2d35c' : canMove ? '#6fd08c' : '#e0a15a');
   }
 
   private register<T extends Phaser.GameObjects.GameObject>(object: T): T {

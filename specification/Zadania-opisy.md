@@ -454,3 +454,64 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
   - **Assety:** `click.wav` i `death.wav` są wygenerowane i leżą w `client/src/assets/ai/audio/`.
   - **Testy:** `tests/core/units/weapons.test.ts` sprawdza `deathSound` piechoty i brak dźwięku u pojazdów; `make verify` przechodzi.
   - **Dokumentacja:** ZAL-004, INTERF-005 i ADR-037 opisują dźwięk kliknięcia i śmierci.
+
+## GRA-055: Ruch kafelek po kafelku i pociski wynikające z ruchu
+- **Kontekst:** `moveUnit()` zużywał cały koszt trasy w jednym kroku, a `UnitLayer` interpolował token od startu do celu przez 250 ms. Pasek dowodzenia pokazywał więc końcowy stan ruchu, zanim token dotarł do pierwszego heksa trasy, a amunicja była osobnym licznikiem niezależnym od ruchu. Gracz widział pozostały ruch i pociski, których jednostka w danym momencie jeszcze nie miała.
+- **Opis:** Ruch wykonuje się krok po kroku: `core/map/movement.ts` dostaje `moveUnitStep()` dla jednego sąsiedniego heksa, a `ScenarioScene` po każdym zakończonym kroku odświeża token, obrysy, mgłę i dolny pasek. Kolejny krok startuje po animacji poprzedniego, a wejście mapy, `T`, rekrutacja i atak są zablokowane do końca trasy. Pociski nie są już polem jednostki: `UnitStats.ammo` oznacza maksymalny zapas, a bieżąca liczba strzałów wynika z `movesLeft` i kosztu strzału `moveRange / ammo`. Czołg i artyleria mają po sześć strzałów na pełny ruch; każdy wydany punkt ruchu proporcjonalnie zmniejsza zapas, a `hasActed` zeruje go do końca tury. `beginTurn()` przywraca ruch, więc pociski wracają razem z nim. Stary zapis z polem `ammo` nadal się wczytuje — pole jest ignorowane.
+- **Kryteria:**
+  - **Krok po kroku:** token zatrzymuje się na każdym heksie trasy, a pasek pokazuje stan po dotarciu do tego heksa, nie od razu stan końcowy.
+  - **Pociski:** `POCISKI X/6` maleje proporcjonalnie do wydanego ruchu; przy pełnym ruchu wynosi 6, a po wyczerpaniu ruchu 0.
+  - **Atak:** artyleria nadal odejmuje koszt strzału od `movesLeft`; czołg po ataku dostaje `hasActed` i pokazuje 0 pocisków.
+  - **Wejście:** w trakcie przechodzenia trasy kliknięcia mapy, `T`, rekrutacja i atak nie wykonują akcji.
+  - **Zapis:** jednostka nie przechowuje już `ammo`; starszy JSON z tym polem jest akceptowany, a brak pola nie jest błędem.
+  - **Testy:** `tests/core/map/movement.test.ts` pokrywa ruch o jeden krok i spadek pocisków po każdym kroku, `tests/core/units/ammo.test.ts` — przeliczanie strzałów, `tests/core/combat.test.ts` — atak z wynikających pocisków, `tests/core/turn.test.ts` — przywracanie zapasu, a `tests/storage/mapSerialization.test.ts` — zgodność ze starym zapisem.
+  - **Dokumentacja:** ZAL-004, ZAL-005, ZAL-006, INTERF-005, ADR-027, ADR-033 i `Mapy.md` opisują nowy model ruchu i pocisków.
+
+## GRA-056: Czytelna animacja strzału
+- **Kontekst:** GRA-051 dodała animację, ale pocisk był małym punktem przelatującym w 160 ms, więc w praktyce widać było tylko statyczną smugę i zniknięcie HP celu. Efekt nie potwierdzał wystrzału w sposób czytelny dla gracza.
+- **Opis:** `client/src/view/shotEffect.ts` wydłuża przelot pocisku, powiększa jego glow i smugę, dodaje wyraźniejszy błysk wylotu oraz rozchodzący się pierścień i więcej iskier w miejscu trafienia. Efekt nadal jest wyłącznie warstwą widoku i nie zmienia `core/combat.ts`; stan celu zmienia się dopiero po dolecie pocisku.
+- **Kryteria:**
+  - **Widoczność:** przelot pocisku trwa co najmniej 250 ms i jest widoczny na tle mapy oraz tokenów.
+  - **Trafienie:** w miejscu celu widać pierścień, błysk i iskry przez co najmniej 300 ms.
+  - **Bez wpływu na stan:** animacja nie zmienia obrażeń, zużycia pocisków ani `hasActed`.
+  - **Wejście:** do końca efektu kliknięcia mapy, `T` i rekrutacja pozostają zablokowane.
+  - **Testy:** `make verify` przechodzi; testy `core/combat.ts` pozostają bez zmian.
+  - **Dokumentacja:** INTERF-005 i ADR-035 opisują czytelniejszy efekt strzału.
+
+## GRA-057: Planer tury z osią czasu i równoległe odtwarzanie
+- **Kontekst:** Ruch i atak działały natychmiast, pojedynczo i blokowały wejście do końca animacji. Pasek pokazywał stan po akcji, a nie po planie, więc jednostka mogła „mieć” ruch, którego już nie miała. Brakowało wspólnego modelu wielu akcji strony, planera z podglądem i równoległego czasu wykonania.
+- **Opis:** Nowy moduł `client/src/core/plan/` (bez Phasera) przechowuje `TurnPlan` z `UnitPlan`, a każdy `UnitPlan` ma uporządkowaną listę akcji `move`/`attack`. `plan.ts` waliduje każdą akcję na symulowanym stanie jednostki (budżet ruchu, `hasActed`, zasięg), a `simulate.ts` zwraca stan do podglądu bez zmiany gry. `timeline.ts` buduje klipy o stałych oknach (`MOVE_STEP_MS`, `FIRE_MS`) i wyrównuje koniec łańcucha do długości tury, a `sampleTimeline()` daje pozycje i aktywne klipy dla czasu. `volley.ts` liczy obrażenia z jednego snapshotu, `commit.ts` zatwierdza plan po odtworzeniu. `view/planTimeline.ts` rysuje rozwijany panel nad dolnym HUD-em z rulerem, torem każdej jednostki, klipami ruchu i ataków oraz playheadem; klik jednostki i heksa ustala trasę, klik wroga dodaje atak, `Del`/X usuwa akcję, bez ręcznego przesuwania i trimowania klipów. Mapa rysuje trasy i końcowe heksy wszystkich zaplanowanych jednostek w osobnych kolorach, z półprzezroczystym tokenem podglądu. Po `WYKONAJ TURĘ` tokeny jadą równolegle po osi czasu przez `UnitLayer.setFramePositions()`, strzały i trafienia odpalają się w oknach `FIRE_MS`, a po `D` `commitPlan()` zatwierdza stan, odświeża mgłę i przechodzi do `nextTurn()`/`beginTurn()`. Wejście jest zablokowane tylko na czas odtwarzania; znikają `advanceMoveStep()`, `pendingPath`, `moving` i `firing`.
+- **Kryteria:**
+  - **Model:** plan przyjmuje dowolną liczbę ruchów i ataków na jednostkę; o dopuszczalności decydują reguły `core/`, nie UI.
+  - **Walidacja:** trasa sąsiaduje heksami, mieści się w `movesLeft`, respektuje teren i zajęte heksy; dwie jednostki nie kończą na tym samym heksie, a przelot jest dozwolony.
+  - **Oś czasu:** wszystkie klipy kończą się w `D`, krótsze plany startują później; `sampleTimeline()` jest deterministyczne i nie mutuje stanu.
+  - **Wolumen:** obrażenia liczone z jednego snapshotu, suma per cel, overkill dozwolony, usunięcie po wolumenie; kolejność ataków nie zmienia wyniku.
+  - **Planer:** każda własna jednostka może dostać trasę i ataki zgodnie z walidacją; zaznaczenie jednostki i przeciągnięcie playheada pokazuje pozycję oraz symulowane `movesLeft`/pociski, a panel można zminimalizować bez utraty podglądu. Nie da się przesuwać ani trimować klipów; czas wynika wyłącznie z modelu.
+  - **Odtwarzanie:** wszystkie zaplanowane jednostki ruszają w tej samej turze, ataki rozstrzyga wolumen na końcu, a po odtworzeniu stan odpowiada `commitPlan()`, mgła i HUD są odświeżone.
+  - **Testy:** `tests/core/plan/` pokrywa walidację, wyrównanie, próbkowanie, wolumen i commit; `make verify` przechodzi.
+  - **Dokumentacja:** ZAL-005, ZAL-006, ADR-039, ADR-040 i INTERF-005 opisują plan, oś czasu, wolumen, planer i odtwarzanie.
+
+## GRA-060: Zapis planów tur i replay w SQLite
+- **Kontekst:** Plan i przebieg tury są ulotne, a gracz ma móc odtworzyć całą rozgrywkę z zapisu. Baza klienta miała dotąd tylko tabelę `maps` i nie ma wersjonowanego runnera migracji.
+- **Opis:** Dochodzą tabele `replays` i `turn_plans` (plan JSON z polem wersji, `initial_state`, `state_after`), tworzone przez `CREATE TABLE IF NOT EXISTS` przy otwarciu bazy. `storage/planSerialization.ts` serializuje i waliduje plan, `storage/replays.ts` tworzy rekord replay przy starcie scenariusza i dopisuje plan po każdej wykonanej turze, z utrwaleniem bazy. Odtworzenie korzysta z `initial_state` i kolejnych planów przez ten sam `sampleTimeline()`/`commitPlan()`.
+- **Kryteria:**
+  - **Zapis:** start scenariusza tworzy replay, każda wykonana tura dopisuje plan i jest utrwalona w `localStorage`.
+  - **Format:** plan ma wersję i walidację przy odczycie; uszkodzony wpis nie wywraca sceny.
+  - **Spójność:** suma zapisanych planów odtwarza stan zgodny z `state_after` ostatniej tury.
+  - **Sprzątanie:** usunięcie scenariusza usuwa powiązane replaye.
+  - **Testy:** `tests/storage/replays.test.ts` i `planSerialization.test.ts` pokrywają zapis, odczyt, wersję i uszkodzone dane.
+  - **Dokumentacja:** ADR-041 i INTERF-006 opisują tabele, format i ograniczenia `localStorage`.
+
+## GRA-061: Dopracowanie planera i odtwarzania rozgrywki
+- **Kontekst:** Dane replaya i odtwarzanie pojedynczej tury są gotowe, ale brakuje trybu odtworzenia całej rozgrywki, sprzątania pustych zapisów i limitu historii, usuwania scenariuszy z UI oraz jednej reguły wielu ataków na turę. Bez tego planer i replay są niepełne.
+- **Opis:** Scena dostaje tryb replay: ładuje zapisane tury i odtwarza je po kolei tym samym playbackiem, bez planowania i bez zatwierdzania nowych tur. Dochodzą skróty (`P`, `Spacja`, `Del`), progresywne odsłanianie mgły w trakcie ruchu (opcjonalnie), throttling dźwięków przy wielu jednostkach oraz limit czasu tury dla bardzo długich tras. `storage/replays.ts` dostaje `removeEmptyReplays()` i `pruneReplays(limit)`, a scena wywołuje sprzątanie przy wyjściu (`ESC`/shutdown) oraz przy starcie nowej bitwy; limit obejmuje najnowsze replaye według `updated_at`, a przycinanie kasuje też powiązane `turn_plans`. Menu scenariuszy i menu map dostają akcję usunięcia zapisanego wpisu z potwierdzeniem, która kasuje wiersz z `maps` oraz replaye przez `removeScenarioReplays(scenarioId)`; wpisy wbudowane i scenariusz startowy są chronione. ZAL-005 i ZAL-006 dostają jedną regułę zakresu serii ataków (wszystkie jednostki albo wyłącznie artyleria), spójną z `canAttackThisTurn()`/`applyAttackCost()` i podpowiedziami planera. Misja samouczka „Ruch jednostek” (GRA-043) i `notatnik.txt` są aktualizowane pod planer.
+- **Kryteria:**
+  - **Replay:** zapisana rozgrywka odtwarza się od `initial_state` przez wszystkie tury i kończy na stanie ostatniej tury.
+  - **Sterowanie:** planer i replay obsługują skróty oraz zwijanie panelu; `ESC` nie gubi zapisu.
+  - **Czytelność:** wiele równoległych strzałów nie zagłusza dźwięku, a bardzo długa trasa nie wydłuża tury ponad limit.
+  - **Sprzątanie:** wyjście z bitwy bez wykonanej tury usuwa jej replay; po przekroczeniu limitu zostają najnowsze wpisy, a błąd sprzątania nie blokuje wyjścia ze scenariusza.
+  - **Usuwanie:** potwierdzone usunięcie scenariusza znika z listy i z bazy razem z replayami, bez osieroconych `turn_plans`; mapy wbudowane i seed są chronione.
+  - **Reguła ataków:** ZAL-005/ZAL-006 i ADR-040 opisują jeden zakres serii, a planer, symulacja i wolumen używają tej samej reguły.
+  - **Tutorial:** misja „Ruch jednostek” i INTERF-007 opisują planowanie zamiast pojedynczych ruchów.
+  - **Testy:** `make verify` przechodzi, w tym testy replaya, limitu czasu, sprzątania i usuwania.
+  - **Dokumentacja:** INTERF-005, INTERF-006, INTERF-007, `Mapy.md` i `notatnik.txt` są zaktualizowane.

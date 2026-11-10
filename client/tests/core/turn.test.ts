@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createMap } from '../../src/core/map';
 import { createInitialState, placeUnit, type GameState } from '../../src/core/state';
 import { beginTurn, createTurnState, isActiveFaction, nextTurn } from '../../src/core/turn';
-import { ARTILLERY_AMMO } from '../../src/core/units';
+import { ARTILLERY_AMMO, ARTILLERY_STATS, shotsLeft } from '../../src/core/units';
 
 function spent(state: GameState): GameState {
   return {
@@ -45,28 +45,30 @@ describe('beginTurn', () => {
     expect(beginTurn(state, 'blue')).toBe(state);
   });
 
-  it('uzupełnia amunicję tylko jednostkom aktywnej strony', () => {
+  it('przywraca ruch i wynikające z niego pociski tylko jednostkom aktywnej strony', () => {
     let state = createInitialState(createMap(10, 10));
     state = placeUnit(state, 'artillery', { col: 0, row: 0 }, 'blue');
     state = placeUnit(state, 'tank', { col: 5, row: 5 }, 'red');
     const spentAmmo = {
       ...state,
-      units: state.units.map((unit) => ({ ...unit, movesLeft: 0, hasActed: true, ammo: 0 })),
+      units: state.units.map((unit) => ({ ...unit, movesLeft: 0, hasActed: true })),
     };
     const reset = beginTurn(spentAmmo, 'blue');
+    const blue = reset.units[0]!;
+    const red = reset.units[1]!;
 
-    expect(reset.units[0]).toMatchObject({
+    expect(blue).toMatchObject({
       faction: 'blue',
-      movesLeft: 2,
+      movesLeft: ARTILLERY_STATS.moveRange,
       hasActed: false,
-      ammo: ARTILLERY_AMMO,
     });
-    expect(reset.units[1]).toMatchObject({
+    expect(shotsLeft(blue)).toBe(ARTILLERY_AMMO);
+    expect(red).toMatchObject({
       faction: 'red',
       movesLeft: 0,
       hasActed: true,
-      ammo: 0,
     });
+    expect(shotsLeft(red)).toBe(0);
   });
 });
 
