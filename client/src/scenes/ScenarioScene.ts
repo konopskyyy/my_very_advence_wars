@@ -7,6 +7,7 @@ import {
   mapTileCount,
   moveTargets,
   moveUnitStep,
+  settleUnitMovement,
 } from '../core/map';
 import {
   BUILT_IN_SCENARIOS,
@@ -383,7 +384,6 @@ export class ScenarioScene extends Phaser.Scene {
     this.moving = true;
     this.movePath = null;
     this.drawPath();
-    playMoveSound(UNIT_DEFS[unit.kind].moveSound);
     this.advanceMoveStep();
 
     return true;
@@ -405,9 +405,15 @@ export class ScenarioScene extends Phaser.Scene {
       return;
     }
 
+    const mover = next.units.find((candidate) => candidate.id === unitId);
+
     this.state = next;
     this.selected = findUnitAt(this.state, coord) ?? null;
     this.refreshUnits();
+
+    if (mover) {
+      playMoveSound(UNIT_DEFS[mover.kind].moveSound);
+    }
 
     this.time.delayedCall(UNIT_MOVE_MS, () => {
       this.drawSelection();
@@ -419,6 +425,10 @@ export class ScenarioScene extends Phaser.Scene {
   }
 
   private finishMove(): void {
+    if (this.movingUnitId) {
+      this.state = settleUnitMovement(this.state, this.movingUnitId);
+    }
+
     this.moving = false;
     this.movingUnitId = null;
     this.pendingPath = [];

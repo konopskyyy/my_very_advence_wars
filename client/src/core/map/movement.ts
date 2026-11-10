@@ -206,6 +206,23 @@ export function moveUnitStep(state: GameState, unitId: string, target: HexCoord)
   return { ...state, units };
 }
 
+export function settleUnitMovement(state: GameState, unitId: string): GameState {
+  const unit = state.units.find((candidate) => candidate.id === unitId);
+
+  if (!unit || unit.hasActed || canMoveNow(state, unit)) {
+    return state;
+  }
+
+  return {
+    ...state,
+    units: state.units.map((candidate) =>
+      candidate.id === unitId
+        ? { ...candidate, movesLeft: 0, hasActed: true }
+        : candidate,
+    ),
+  };
+}
+
 export function moveUnit(state: GameState, unitId: string, target: HexCoord): GameState {
   const unit = state.units.find((candidate) => candidate.id === unitId);
 
