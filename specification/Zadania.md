@@ -62,6 +62,7 @@ zadań do wykonania.
 | [[Zadania-opisy#INFRA-003: Testy backendu i mutacje w CI\|INFRA-003]] | Testy backendu i mutacje w CI | ✅ | INFRA-002, SRV-001, SRV-002, `specification/Infrastruktura.md` |
 | [[Zadania-opisy#INFRA-004: Paczka Electrona dla Windows z WSL\|INFRA-004]] | Paczka Electrona dla Windows z WSL | ✅ | INFRA-001, `specification/Infrastruktura.md`, `specification/Mapy.md` |
 | [[Zadania-opisy#INFRA-005: Hooki git z Husky i pre-commit\|INFRA-005]] | Hooki git z Husky i pre-commit | ✅ | INFRA-001, INFRA-002, `specification/Infrastruktura.md`, ADR-010 |
+| [[Zadania-opisy#INFRA-006: Audyt narzędzi oceny jakości kodu\|INFRA-006]] | Audyt narzędzi oceny jakości kodu | ✅ | INFRA-002, `specification/Jakosc-kodu.md`, `specification/Infrastruktura.md` |
 | [[Zadania-opisy#GRA-042: Menu kampanii z wstążkami i kafelkami samouczka\|GRA-042]] | Menu kampanii z wstążkami i kafelkami samouczka | ✅ | INTERF-001, INTERF-007, ZAL-011 |
 | [[Zadania-opisy#GRA-043: Pierwsza misja samouczka — Pierwsze kroki\|GRA-043]] | Pierwsza misja samouczka — Pierwsze kroki | 🚧 | GRA-042, INTERF-002, INTERF-007, ZAL-006, ZAL-011 |
 | [[Zadania-opisy#GRA-044: Zasięg strzału zgodny z akcją jednostki\|GRA-044]] | Zasięg strzału zgodny z akcją jednostki | ✅ | GRA-039, GRA-040, GRA-041, ADR-031, ADR-032, ADR-033, INTERF-005 |

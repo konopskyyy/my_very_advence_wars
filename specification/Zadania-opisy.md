@@ -245,6 +245,16 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
   - **Pominięcie:** `HUSKY=0 git commit …` i `git commit --no-verify` działają bez hooka.
   - **Dokumentacja:** `specification/Infrastruktura.md` opisuje instalację, zakres i pomijanie hooków.
 
+## INFRA-006: Audyt narzędzi oceny jakości kodu
+- **Kontekst:** Repo miało typy, testy, mutacje, jscpd, `ts-prune` i dependency-cruiser, ale bez pokrycia testami, bez miar rozmiaru i złożoności oraz bez czasów budowania. Nie było wiadomo, które narzędzia działają z TypeScript 7, a Psalm i phpcs w `server/` nie były nigdzie uruchamiane.
+- **Opis:** Dokument `specification/Jakosc-kodu.md` (`JAK-001`…`JAK-008`) zbiera stan obecny, porównanie narzędzi, progi i tabele porównawcze. `scripts/metrics.sh` i cel `make metrics` mierzą na żądanie czasy typów, testów i builda, rozmiar bundla, linie i eksporty plików, duplikaty, pokrycie (gdy provider jest zainstalowany) oraz MSI z raportu Strykera; wynik trafia do `client/reports/metrics.md` i jako gotowy wiersz markdown.
+- **Kryteria:**
+  - **Pomiar:** `make metrics` kończy się wierszem z liczbami i raportem w `client/reports/metrics.md`; `make metrics-mutation` uruchamia wcześniej pełnego Strykera.
+  - **Zakres:** tabela JAK-005 ma kolumny czasów, bundla, pokrycia, MSI klienta i serwera, największego pliku, eksportów, duplikatów i naruszeń zależności; pod każdą tabelą jest Sprawozdanie.
+  - **Ręczność:** pomiar nie jest dodany do CI — pipeline nadal uruchamia typy, testy i mutacje.
+  - **Ustalenia:** dokument wskazuje `@vitest/coverage-v8`, Biome i cel Psalm/phpcs jako must-have oraz odrzuca ESLint z typescript-eslint i SonarQube; dependency-cruiser jest oznaczony jako niedziałający z TS 7 (0 modułów).
+  - **Dokumentacja:** `specification/Spis treści.md` linkuje [[Jakosc-kodu]], a `specification/Infrastruktura.md` opisuje cel `make metrics`.
+
 ## GRA-034: Wzmocnienie testów pod mutacje
 - **Kontekst:** Pierwszy przebieg Strykera (INFRA-002) dał 61% i odsłonił pliki z niskim pokryciem zachowań: `scenario.ts` (32%), `map/catalog.ts` (22%) i `state.ts` (61%). Testy sprawdzały głównie, że jednostki powstają, a nie gdzie dokładnie trafiają ani których heksów unikają.
 - **Opis:** Nowe testy katalogu map (metadane, wymiary, konkretne kafle malowane prostokątami) oraz rozbudowa testów scenariusza (puste mapy, dokładne kolumny i rzędy rozmieszczenia, pomijanie wody, brakujących kafli i heksów zajętych) i ruchu (`canMoveUnit`, `getMovePath`, `getMoveCost`, zachowanie przy zużytym ruchu).
