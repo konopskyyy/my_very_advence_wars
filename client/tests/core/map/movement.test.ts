@@ -8,9 +8,11 @@ import {
   getMovePath,
   moveTargets,
   moveUnit,
+  moveUnitStep,
 } from '../../../src/core/map/movement';
 import { createInitialState, placeUnit } from '../../../src/core/state';
 import { IMPASSABLE } from '../../../src/core/map/terrain';
+import { shotsLeft, TANK_AMMO } from '../../../src/core/units';
 
 describe('findUnitAt', () => {
   it('znajduje jednostkę na heksie', () => {
@@ -394,6 +396,62 @@ describe('getMovePath — równe koszty', () => {
       { col: 1, row: 0 },
       { col: 1, row: 1 },
     ]);
+  });
+});
+
+describe('moveUnitStep', () => {
+  it('przesuwa jednostkę tylko o jeden sąsiedni kafelek', () => {
+    const state = placeUnit(
+      createInitialState(createMap(10, 10)),
+      'infantry',
+      { col: 2, row: 3 },
+      'blue',
+    );
+    const unit = state.units[0]!;
+    const moved = moveUnitStep(state, unit.id, { col: 3, row: 3 });
+
+    expect(findUnitAt(moved, { col: 3, row: 3 })).toMatchObject({
+      movesLeft: 3,
+      hasActed: false,
+    });
+    expect(moveUnitStep(moved, unit.id, { col: 5, row: 3 })).toBe(moved);
+  });
+
+  it('zmniejsza pociski czołgu po każdym kroku', () => {
+    const state = placeUnit(
+      createInitialState(createMap(10, 10)),
+      'tank',
+      { col: 2, row: 3 },
+      'blue',
+    );
+    const unit = state.units[0]!;
+
+    expect(shotsLeft(unit)).toBe(TANK_AMMO);
+
+    const first = moveUnitStep(state, unit.id, { col: 3, row: 3 });
+    const afterFirst = findUnitAt(first, { col: 3, row: 3 })!;
+
+    expect(afterFirst.movesLeft).toBe(2);
+    expect(shotsLeft(afterFirst)).toBe(4);
+
+    const second = moveUnitStep(first, unit.id, { col: 4, row: 3 });
+    const afterSecond = findUnitAt(second, { col: 4, row: 3 })!;
+
+    expect(afterSecond.movesLeft).toBe(1);
+    expect(shotsLeft(afterSecond)).toBe(2);
+  });
+
+  it('kończy działanie po wyczerpaniu ruchu ostatnim krokiem', () => {
+    const map = setTerrain(createMap(10, 10), { col: 3, row: 3 }, 'forest');
+    const state = placeUnit(createInitialState(map), 'artillery', { col: 2, row: 3 }, 'blue');
+    const unit = state.units[0]!;
+    const moved = moveUnitStep(state, unit.id, { col: 3, row: 3 });
+
+    expect(findUnitAt(moved, { col: 3, row: 3 })).toMatchObject({
+      movesLeft: 0,
+      hasActed: true,
+    });
+    expect(shotsLeft(findUnitAt(moved, { col: 3, row: 3 })!)).toBe(0);
   });
 });
 

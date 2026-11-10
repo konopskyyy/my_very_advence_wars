@@ -132,11 +132,13 @@ również tam.
 ### Jednostki
 
 Jednostka ma `id`, `kind`, `faction`, `pos`, `hp`, `movesLeft` i `hasActed`.
-Czołg i artyleria mają dodatkowo `ammo` (po 6 pocisków); piechota i zwiad nie
-mają pola amunicji. Atak zużywa pocisk, a `beginTurn()` uzupełnia amunicję
-jednostkom aktywnej strony. Zasięg wzroku i strzału nie jest zapisywany w
-jednostce — wynika z `UnitStats` w `UNIT_DEFS` i służy do liczenia mgły wojny
-oraz obrysów zasięgów w scenariuszu.
+Czołg i artyleria mają zapas sześciu strzałów wyliczany z ruchu: pełny
+`movesLeft` daje 6 pocisków, a każdy wydany punkt ruchu proporcjonalnie
+zmniejsza zapas. Jednostka nie przechowuje pola `ammo`; starszy zapis z tym
+polem jest akceptowany i ignorowany. `beginTurn()` przywraca ruch jednostkom
+aktywnej strony, więc pociski wracają razem z nim. Zasięg wzroku i strzału nie
+jest zapisywany w jednostce — wynika z `UnitStats` w `UNIT_DEFS` i służy do
+liczenia mgły wojny oraz obrysów zasięgów w scenariuszu.
 
 Statystyki jednostek (HP, ruch, atak, obrona, zasięgi, amunicja) są w
 [[Zalozenia#ZAL-004: Jednostki|ZAL-004]]. Zasady walki opisuje
@@ -219,8 +221,7 @@ state      = {"map":{"cells":{"0,0":"plain","1,0":"forest"},"fogOfWar":false},"u
       "pos": { "col": 1, "row": 0 },
       "hp": 20,
       "movesLeft": 3,
-      "hasActed": false,
-      "ammo": 6
+      "hasActed": false
     }
   ],
   "nextUnitSeq": 2
@@ -235,7 +236,6 @@ Przy odczycie `deserializeGameState()` odrzuca:
 - nieznany `TerrainId`,
 - jednostkę bez `id`, z nieznanym `kind`/`faction`, bez poprawnej pozycji,
 - jednostkę bez poprawnych `hp`, `movesLeft`, `hasActed`,
-- czołg lub artylerię bez poprawnej `ammo`,
 - `map.fogOfWar` innego typu niż `boolean`.
 
 Brak `map.fogOfWar` w starszym zapisie jest dozwolony i oznacza `false`.
@@ -325,12 +325,75 @@ czas życia strony. Pierwsze otwarcie:
 4. tworzy `new SQL.Database(bytes)`,
 5. tworzy schemat (`ensureMapsSchema()`) i dosiewa brakujące mapy
    (`seedBuiltInMaps()`), a jeśli coś wstawiono, od razu zapisuje bazę do
-   `localStorage`.
+   `localStorage`. Operacje na replayach dodatkowo wywołują
+   `ensureReplaysSchema()`.
 
 Jeżeli zapisany bajtowo plik jest uszkodzony, `createDatabase()` usuwa klucz z
 `localStorage` i tworzy pustą bazę. Oznacza to **utratę poprzednich map** — nie
 ma automatycznego backupu. Seed odtworzy tylko mapy startowe; zapisane mapy
 przepadają.
+
+---
+
+## Replaye i plany tur
+
+Tabele `replays` i `turn_plans` tworzy `REPLAYS_SCHEMA` z
+`client/src/storage/replays.ts`, wywoływany przez `ensureReplaysSchema()` przy
+każdym otwarciu bazy:
+
+```sql
+CREATE TABLE IF NOT EXISTS replays (
+  id             TEXT PRIMARY KEY,
+  scenario_id    TEXT NOT NULL,
+  scenario_name  TEXT NOT NULL DEFAULT '',
+  player_faction TEXT NOT NULL,
+  initial_state  TEXT NOT NULL,
+  created_at     TEXT NOT NULL,
+  updated_at     TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS turn_plans (
+  replay_id   TEXT NOT NULL,
+  turn        INTEGER NOT NULL,
+  faction     TEXT NOT NULL,
+  plan        TEXT NOT NULL,
+  state_after TEXT NOT NULL,
+  created_at  TEXT NOT NULL,
+  PRIMARY KEY (replay_id, turn)
+);
+```
+
+| Kolumna | Znaczenie |
+| ------- | --------- |
+| `replays.id` | `replay-<base36>` z `createReplayId()`; nowy rekord na każdy start scenariusza. |
+| `replays.scenario_id` | Identyfikator scenariusza lub zapisanej mapy, z której startuje bitwa. |
+| `replays.player_faction` | Strona wybrana przez gracza (`blue`/`red`). |
+| `replays.initial_state` | `GameState` po `beginTurn()` pierwszej strony, JSON z `serializeGameState()`. |
+| `turn_plans.plan` | Plan tury JSON z `version`, `faction`, `turn` i `units` (akcje `move`/`attack`). |
+| `turn_plans.state_after` | Stan po `commitPlan()` tury, przed `beginTurn()` następnej strony. |
+
+Start scenariusza wywołuje `startReplay()`; każda wykonana tura dopisuje plan
+przez `recordTurnPlan()` i od razu utrwala bazę w `localStorage`. Para
+`(replay_id, turn)` jest kluczem, więc powtórny zapis tej samej tury nadpisuje
+wpis. `updated_at` replaya zmienia się przy każdym dopisanym planie.
+
+Format planu pilnuje `client/src/storage/planSerialization.ts`:
+`PLAN_FORMAT_VERSION = 1`, a `deserializeTurnPlan()` odrzuca nieznaną wersję,
+złą stronę, numer tury, akcję bez trasy lub celu i współrzędne spoza liczb.
+`readReplay()` czyta plany rosnąco po `turn`; pierwszy uszkodzony wiersz
+przerywa odczyt i ustawia `truncated`, dzięki czemu reszta sceny działa.
+Uszkodzony `initial_state` rzuca błąd, a `loadReplay()` zamienia go na
+`undefined`.
+
+Odtworzenie stanu robi `replayStates()`: dla każdego planu wywołuje
+`beginTurn(state, faction)`, potem `commitPlan(state, plan)` i zwraca kolejne
+stany. Ostatni stan jest równy `state_after` ostatniej tury.
+
+`deleteReplaysForScenario()`/`removeScenarioReplays()` usuwają najpierw
+`turn_plans`, potem `replays` dla danego `scenario_id`. Dziś nie ma interfejsu
+usuwania scenariuszy, więc funkcja czeka na wywołanie z przyszłego menu.
+Replay trzyma tylko akcje, a stan jednostek jest checkpointem — mimo to
+`localStorage` rośnie z każdą turą i nie ma automatycznego przycinania historii.
 
 ---
 
@@ -489,6 +552,8 @@ Node.
 | `client/src/integrations/sqlite/database.ts` | `sql.js`, WASM, odczyt/zapis `localStorage`, base64. |
 | `client/src/storage/maps.ts` | `MAPS_SCHEMA`, `ensureMapsSchema`, `seedBuiltInMaps`, `upsertMap`, `listMaps`, `readMap`, `saveMap`, `listSavedMaps`, `loadSavedMap`, `createSavedMapId`. |
 | `client/src/storage/mapSerialization.ts` | serializacja i walidacja `GameState`. |
+| `client/src/storage/planSerialization.ts` | `PLAN_FORMAT_VERSION`, serializacja i walidacja planu tury. |
+| `client/src/storage/replays.ts` | `REPLAYS_SCHEMA`, `ensureReplaysSchema`, `createReplay`, `appendTurnPlan`, `listReplays`, `readReplay`, `replayStates`, `deleteReplaysForScenario`, `startReplay`, `recordTurnPlan`, `loadReplay`. |
 | `client/src/core/map/model.ts` | model `GameMap`, klucze komórek, liczniki, granice. |
 | `client/src/core/map/movement.ts` | symulacja ruchu jednostek: `findUnitAt`, koszt terenu, trasa, zasięg i wykonanie ruchu. |
 | `client/src/core/state.ts` | `GameState`, jednostki, `nextUnitSeq`. |
@@ -496,6 +561,8 @@ Node.
 | `client/src/core/units/` | model `Unit`, `UNIT_DEFS` i `createUnit`; strony w `faction.ts`, osobny plik na każdy rodzaj jednostki. |
 | `client/tests/storage/maps.test.ts` | schemat, zapis, upsert, odczyt, ID i jednorazowy seed map startowych. |
 | `client/tests/storage/mapSerialization.test.ts` | round-trip i odrzucanie uszkodzonych danych. |
+| `client/tests/storage/planSerialization.test.ts` | round-trip planu, wersja formatu i odrzucanie uszkodzonych akcji. |
+| `client/tests/storage/replays.test.ts` | zapis replaya, odtwarzanie stanu, uszkodzone wpisy i sprzątanie po scenariuszu. |
 
 Uruchamianie:
 

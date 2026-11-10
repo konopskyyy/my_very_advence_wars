@@ -73,3 +73,8 @@ zadań do wykonania.
 | [[Zadania-opisy#GRA-052: Dźwięk ruchu piechoty\|GRA-052]] | Dźwięk ruchu piechoty | ✅ | GRA-051, ADR-001, ADR-035, INTERF-005 |
 | [[Zadania-opisy#GRA-053: Klasa broni i dźwięki jako dane jednostki\|GRA-053]] | Klasa broni i dźwięki jako dane jednostki | ✅ | GRA-051, GRA-052, ADR-001, ADR-035, ADR-037, INTERF-005, ZAL-004 |
 | [[Zadania-opisy#GRA-054: Dźwięk kliknięcia przycisków i śmierci piechoty\|GRA-054]] | Dźwięk kliknięcia przycisków i śmierci piechoty | ✅ | GRA-051, GRA-053, ADR-001, ADR-035, ADR-037, INTERF-005, ZAL-004 |
+| [[Zadania-opisy#GRA-055: Ruch kafelek po kafelku i pociski wynikające z ruchu\|GRA-055]] | Ruch kafelek po kafelku i pociski wynikające z ruchu | ✅ | GRA-041, GRA-049, ADR-001, ADR-027, ADR-033, ADR-036, INTERF-005, ZAL-004, ZAL-005, ZAL-006, `specification/Mapy.md` |
+| [[Zadania-opisy#GRA-056: Czytelna animacja strzału\|GRA-056]] | Czytelna animacja strzału | ✅ | GRA-051, ADR-001, ADR-035, INTERF-005 |
+| [[Zadania-opisy#GRA-057: Planer tury z osią czasu i równoległe odtwarzanie\|GRA-057]] | Planer tury z osią czasu i równoległe odtwarzanie | ✅ | GRA-055, ADR-001, ADR-027, ADR-033, ADR-035, ADR-036, ADR-038, ADR-039, ADR-040, ZAL-005, ZAL-006, INTERF-005 |
+| [[Zadania-opisy#GRA-060: Zapis planów tur i replay w SQLite\|GRA-060]] | Zapis planów tur i replay w SQLite | ✅ | GRA-057, ADR-019, ADR-041, INTERF-006 |
+| [[Zadania-opisy#GRA-061: Dopracowanie planera i odtwarzania rozgrywki\|GRA-061]] | Dopracowanie planera i odtwarzania rozgrywki | ⬜ | GRA-060, GRA-043, ADR-040, ADR-041, ZAL-005, ZAL-006, INTERF-005, INTERF-006, INTERF-007 |

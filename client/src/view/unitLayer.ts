@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { hexToPixel, type HexCoord } from '../core/map';
+import type { UnitFrame } from '../core/plan';
 import {
   FACTION_DEFS,
   type FactionId,
@@ -10,7 +11,7 @@ import { colorToCss, HEX_SIZE } from './hexGrid';
 
 export const UNIT_TOKEN_SIZE = 26;
 
-const MOVE_DURATION = 250;
+export const UNIT_MOVE_MS = 250;
 
 interface TokenMotion {
   readonly token: Phaser.GameObjects.Image;
@@ -272,10 +273,47 @@ export class UnitLayer {
     this.sync(animate);
   }
 
+  setFramePositions(frames: readonly UnitFrame[]): void {
+    for (const frame of frames) {
+      const token = this.tokens.get(frame.unitId);
+
+      if (!token) {
+        continue;
+      }
+
+      const from = this.center(frame.from);
+      const to = this.center(frame.to);
+
+      token.setPosition(
+        from.x + (to.x - from.x) * frame.progress,
+        from.y + (to.y - from.y) * frame.progress,
+      );
+      this.motions.delete(frame.unitId);
+      this.positions.set(frame.unitId, frame.progress >= 1 ? frame.to : frame.from);
+    }
+  }
+
+  resetPositions(): void {
+    this.motions.clear();
+
+    for (const unit of this.units) {
+      const token = this.tokens.get(unit.id);
+
+      if (!token) {
+        continue;
+      }
+
+      const center = this.center(unit.pos);
+
+      token.setPosition(center.x, center.y);
+      this.positions.set(unit.id, unit.pos);
+    }
+  }
+
   update(delta: number): void {
     for (const [id, motion] of this.motions) {
-      motion.elapsed = Math.min(MOVE_DURATION, motion.elapsed + delta);
-      const progress = motion.elapsed / MOVE_DURATION;
+      motion.elapsed = Math.min(UNIT_MOVE_MS, motion.elapsed + delta);
+      const progress = motion.elapsed / UNIT_MOVE_MS;
       const eased = 1 - (1 - progress) ** 3;
 
       motion.token.setPosition(
@@ -283,7 +321,7 @@ export class UnitLayer {
         motion.fromY + (motion.toY - motion.fromY) * eased,
       );
 
-      if (motion.elapsed >= MOVE_DURATION) {
+      if (motion.elapsed >= UNIT_MOVE_MS) {
         motion.token.setPosition(motion.toX, motion.toY);
         this.motions.delete(id);
       }
