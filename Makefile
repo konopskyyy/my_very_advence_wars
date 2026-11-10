@@ -15,7 +15,7 @@ ADMINER_PORT ?= 18081
         shell console composer cache-clear migrate fixtures jwt-keys test-server \
         db-shell build rebuild client-install \
         install hooks electron electron-build electron-win electron-win-installer clean clean-all test mutation lint env run quality quality-client \
-        check client-build verify
+        check client-build verify metrics metrics-mutation
 
 ## ——— Pomoc ————————————————————————————————————————————————
 
@@ -149,6 +149,12 @@ quality-client: ## Ocena jakości kodu klienta (typy, zależności, martwy kod, 
 	cd client && npm run quality
 
 quality: quality-client ## Ocena jakości (alias)
+
+metrics: ## Pomiar jakości na żądanie (czasy, rozmiar, pokrycie, mutacje z raportu)
+	@scripts/metrics.sh
+
+metrics-mutation: ## Pomiar jakości z pełnym przebiegiem Strykera (około 4 minut)
+	@scripts/metrics.sh --mutation
 
 clean: ## Zatrzymaj kontenery i usuń woluminy (⚠️ kasuje dane bazy)
 	$(COMPOSE) down -v

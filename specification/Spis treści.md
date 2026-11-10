@@ -16,6 +16,7 @@ kotwicami Obsidiana, więc `[[ADR#ADR-022: ...]]` otwiera samą decyzję.
 | [[Archiwum-zadan]] | duplikaty i zastąpione wersje zadań — nie do pracy | — |
 | [[Infrastruktura]] | Docker, porty, CI | `INFRA-001` |
 | [[Konwencje]] | testy, logi, dokumentacja, styl | — |
+| [[Jakosc-kodu]] | narzędzia oceny jakości, progi, pomiary | `JAK-001`… |
 
 Przykład: `scripts/spec.sh ADR-022` pokazuje tylko jedną decyzję, a
 `scripts/spec.sh --list` — spis wszystkich sekcji. Gdy znasz temat, ale nie ID:

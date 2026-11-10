@@ -441,6 +441,9 @@ Compose bezpośrednio też działa — poniżej oba warianty.
 | Weryfikacja klienta (typy, testy, build, restart) | `make verify` | `make check && make client-build`                    |
 | Testy mutacyjne klienta (Stryker)        | `make mutation`       | `cd client && npm run mutation`                           |
 | Typy klienta (krótki log)                | `make lint`           | `scripts/compact-run.sh --label lint -- bash -c 'cd client && npx tsc --noEmit'` |
+| Ocena jakości klienta (typy, zależności, martwy kod, duplikaty) | `make quality-client` | `cd client && npm run quality` |
+| Pomiar jakości na żądanie (czasy, rozmiar, pokrycie, mutacje) | `make metrics` | `scripts/metrics.sh` |
+| Pomiar z pełnym Strykerem (około 4 min)   | `make metrics-mutation` | `scripts/metrics.sh --mutation` |
 | Ostatni pełny log komendy klienta        | —                     | `scripts/compact-run.sh --last`                           |
 | Typy klienta w CI                        | —                     | GitHub Actions: `.github/workflows/ci.yml` (push, PR)     |
 | Testy jednostkowe w CI                   | —                     | GitHub Actions: `.github/workflows/ci.yml` (`npm test`)   |
@@ -456,6 +459,11 @@ Cele `test`, `check`, `lint`, `client-build` i `test-server` uruchamiają
 `scripts/compact-run.sh`: pełny log trafia do `${TMPDIR:-/tmp}/opencode/mvaw`
 i jest usuwany po dobie, a na ekran idzie tylko końcówka. Ostatni log otwiera
 `scripts/compact-run.sh --last`.
+
+Ocena jakości (`make quality-client`) i pomiar (`make metrics`,
+`make metrics-mutation`) są uruchamiane ręcznie. `make metrics` zapisuje raport
+do `client/reports/metrics.md` (katalog ignorowany przez git) i nie jest
+częścią CI; progi i tabele porównawcze opisuje [[Jakosc-kodu]].
 
 > [!tip] `make console` przyjmuje argumenty
 > `make console about`, `make console debug:router` itd. — argumenty po nazwie
