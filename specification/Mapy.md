@@ -132,11 +132,13 @@ również tam.
 ### Jednostki
 
 Jednostka ma `id`, `kind`, `faction`, `pos`, `hp`, `movesLeft` i `hasActed`.
-Czołg i artyleria mają dodatkowo `ammo` (po 6 pocisków); piechota i zwiad nie
-mają pola amunicji. Atak zużywa pocisk, a `beginTurn()` uzupełnia amunicję
-jednostkom aktywnej strony. Zasięg wzroku i strzału nie jest zapisywany w
-jednostce — wynika z `UnitStats` w `UNIT_DEFS` i służy do liczenia mgły wojny
-oraz obrysów zasięgów w scenariuszu.
+Czołg i artyleria mają zapas sześciu strzałów wyliczany z ruchu: pełny
+`movesLeft` daje 6 pocisków, a każdy wydany punkt ruchu proporcjonalnie
+zmniejsza zapas. Jednostka nie przechowuje pola `ammo`; starszy zapis z tym
+polem jest akceptowany i ignorowany. `beginTurn()` przywraca ruch jednostkom
+aktywnej strony, więc pociski wracają razem z nim. Zasięg wzroku i strzału nie
+jest zapisywany w jednostce — wynika z `UnitStats` w `UNIT_DEFS` i służy do
+liczenia mgły wojny oraz obrysów zasięgów w scenariuszu.
 
 Statystyki jednostek (HP, ruch, atak, obrona, zasięgi, amunicja) są w
 [[Zalozenia#ZAL-004: Jednostki|ZAL-004]]. Zasady walki opisuje
@@ -219,8 +221,7 @@ state      = {"map":{"cells":{"0,0":"plain","1,0":"forest"},"fogOfWar":false},"u
       "pos": { "col": 1, "row": 0 },
       "hp": 20,
       "movesLeft": 3,
-      "hasActed": false,
-      "ammo": 6
+      "hasActed": false
     }
   ],
   "nextUnitSeq": 2
@@ -235,7 +236,6 @@ Przy odczycie `deserializeGameState()` odrzuca:
 - nieznany `TerrainId`,
 - jednostkę bez `id`, z nieznanym `kind`/`faction`, bez poprawnej pozycji,
 - jednostkę bez poprawnych `hp`, `movesLeft`, `hasActed`,
-- czołg lub artylerię bez poprawnej `ammo`,
 - `map.fogOfWar` innego typu niż `boolean`.
 
 Brak `map.fogOfWar` w starszym zapisie jest dozwolony i oznacza `false`.

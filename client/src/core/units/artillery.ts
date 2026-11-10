@@ -4,11 +4,10 @@ import { FULL_MAP_RANGE, type UnitBase, type UnitStats } from './types';
 
 export interface ArtilleryUnit extends UnitBase {
   readonly kind: 'artillery';
-  readonly ammo: number;
 }
 
 export const ARTILLERY_MOVE_RANGE = 2;
-export const ARTILLERY_AMMO = ARTILLERY_MOVE_RANGE;
+export const ARTILLERY_AMMO = 6;
 
 export const ARTILLERY_STATS: UnitStats = {
   label: 'Artyleria',
@@ -32,6 +31,5 @@ export function createArtillery(id: string, faction: FactionId, pos: HexCoord): 
     hp: ARTILLERY_STATS.maxHp,
     movesLeft: ARTILLERY_STATS.moveRange,
     hasActed: false,
-    ammo: ARTILLERY_AMMO,
   };
 }

@@ -1,6 +1,11 @@
 import { hexDistance } from './map/layout';
 import type { GameState } from './state';
-import { ARTILLERY_SHOT_MOVE_COST, UNIT_DEFS, type Unit } from './units';
+import {
+  ARTILLERY_SHOT_MOVE_COST,
+  shotsLeft,
+  UNIT_DEFS,
+  type Unit,
+} from './units';
 
 const MOVE_EPSILON = 1e-9;
 
@@ -9,7 +14,7 @@ export function canAttackThisTurn(unit: Unit): boolean {
     return false;
   }
 
-  return !('ammo' in unit) || unit.ammo > 0;
+  return shotsLeft(unit) > 0;
 }
 
 export function canAttack(attacker: Unit, target: Unit): boolean {
@@ -45,12 +50,7 @@ export function attackUnit(state: GameState, attackerId: string, targetId: strin
             ...unit,
             movesLeft: exhausted ? 0 : movesLeft,
             hasActed: exhausted,
-            ammo: Math.max(0, attacker.ammo - 1),
           };
-        }
-
-        if (attacker.kind === 'tank') {
-          return { ...unit, hasActed: true, ammo: Math.max(0, attacker.ammo - 1) };
         }
 
         return { ...unit, hasActed: true };

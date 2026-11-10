@@ -454,3 +454,26 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
   - **Assety:** `click.wav` i `death.wav` są wygenerowane i leżą w `client/src/assets/ai/audio/`.
   - **Testy:** `tests/core/units/weapons.test.ts` sprawdza `deathSound` piechoty i brak dźwięku u pojazdów; `make verify` przechodzi.
   - **Dokumentacja:** ZAL-004, INTERF-005 i ADR-037 opisują dźwięk kliknięcia i śmierci.
+
+## GRA-055: Ruch kafelek po kafelku i pociski wynikające z ruchu
+- **Kontekst:** `moveUnit()` zużywał cały koszt trasy w jednym kroku, a `UnitLayer` interpolował token od startu do celu przez 250 ms. Pasek dowodzenia pokazywał więc końcowy stan ruchu, zanim token dotarł do pierwszego heksa trasy, a amunicja była osobnym licznikiem niezależnym od ruchu. Gracz widział pozostały ruch i pociski, których jednostka w danym momencie jeszcze nie miała.
+- **Opis:** Ruch wykonuje się krok po kroku: `core/map/movement.ts` dostaje `moveUnitStep()` dla jednego sąsiedniego heksa, a `ScenarioScene` po każdym zakończonym kroku odświeża token, obrysy, mgłę i dolny pasek. Kolejny krok startuje po animacji poprzedniego, a wejście mapy, `T`, rekrutacja i atak są zablokowane do końca trasy. Pociski nie są już polem jednostki: `UnitStats.ammo` oznacza maksymalny zapas, a bieżąca liczba strzałów wynika z `movesLeft` i kosztu strzału `moveRange / ammo`. Czołg i artyleria mają po sześć strzałów na pełny ruch; każdy wydany punkt ruchu proporcjonalnie zmniejsza zapas, a `hasActed` zeruje go do końca tury. `beginTurn()` przywraca ruch, więc pociski wracają razem z nim. Stary zapis z polem `ammo` nadal się wczytuje — pole jest ignorowane.
+- **Kryteria:**
+  - **Krok po kroku:** token zatrzymuje się na każdym heksie trasy, a pasek pokazuje stan po dotarciu do tego heksa, nie od razu stan końcowy.
+  - **Pociski:** `POCISKI X/6` maleje proporcjonalnie do wydanego ruchu; przy pełnym ruchu wynosi 6, a po wyczerpaniu ruchu 0.
+  - **Atak:** artyleria nadal odejmuje koszt strzału od `movesLeft`; czołg po ataku dostaje `hasActed` i pokazuje 0 pocisków.
+  - **Wejście:** w trakcie przechodzenia trasy kliknięcia mapy, `T`, rekrutacja i atak nie wykonują akcji.
+  - **Zapis:** jednostka nie przechowuje już `ammo`; starszy JSON z tym polem jest akceptowany, a brak pola nie jest błędem.
+  - **Testy:** `tests/core/map/movement.test.ts` pokrywa ruch o jeden krok i spadek pocisków po każdym kroku, `tests/core/units/ammo.test.ts` — przeliczanie strzałów, `tests/core/combat.test.ts` — atak z wynikających pocisków, `tests/core/turn.test.ts` — przywracanie zapasu, a `tests/storage/mapSerialization.test.ts` — zgodność ze starym zapisem.
+  - **Dokumentacja:** ZAL-004, ZAL-005, ZAL-006, INTERF-005, ADR-027, ADR-033 i `Mapy.md` opisują nowy model ruchu i pocisków.
+
+## GRA-056: Czytelna animacja strzału
+- **Kontekst:** GRA-051 dodała animację, ale pocisk był małym punktem przelatującym w 160 ms, więc w praktyce widać było tylko statyczną smugę i zniknięcie HP celu. Efekt nie potwierdzał wystrzału w sposób czytelny dla gracza.
+- **Opis:** `client/src/view/shotEffect.ts` wydłuża przelot pocisku, powiększa jego glow i smugę, dodaje wyraźniejszy błysk wylotu oraz rozchodzący się pierścień i więcej iskier w miejscu trafienia. Efekt nadal jest wyłącznie warstwą widoku i nie zmienia `core/combat.ts`; stan celu zmienia się dopiero po dolecie pocisku.
+- **Kryteria:**
+  - **Widoczność:** przelot pocisku trwa co najmniej 250 ms i jest widoczny na tle mapy oraz tokenów.
+  - **Trafienie:** w miejscu celu widać pierścień, błysk i iskry przez co najmniej 300 ms.
+  - **Bez wpływu na stan:** animacja nie zmienia obrażeń, zużycia pocisków ani `hasActed`.
+  - **Wejście:** do końca efektu kliknięcia mapy, `T` i rekrutacja pozostają zablokowane.
+  - **Testy:** `make verify` przechodzi; testy `core/combat.ts` pozostają bez zmian.
+  - **Dokumentacja:** INTERF-005 i ADR-035 opisują czytelniejszy efekt strzału.

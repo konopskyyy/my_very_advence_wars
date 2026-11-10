@@ -65,8 +65,11 @@
   a `attackRange` — maksymalna odległość ataku.
 - `defense` jest zapisane, ale nie zmniejsza obrażeń; walka korzysta wyłącznie
   z `attack` atakującego.
-- Czołg i artyleria mają amunicję; piechota i zwiad nie mają pola amunicji
-  i nie zużywają pocisków.
+- Czołg i artyleria mają zapas strzałów (`ammo`); piechota i zwiad nie mają
+  pola amunicji i nie zużywają pocisków. Bieżąca liczba pocisków wynika
+  z pozostałego ruchu: pełny `moveRange` daje `ammo` strzałów, a każdy wydany
+  punkt ruchu proporcjonalnie zmniejsza zapas. Jednostka nie przechowuje
+  osobnego licznika amunicji.
 - Jednostka zajmuje jeden heks; na jednym heksie stoi najwyżej jedna jednostka.
 - Strony jednostek to `blue`, `red` i `neutral`; edytor i rozgrywka używają
   niebieskiej i czerwonej.
@@ -88,30 +91,33 @@
   zajmuje heks i blokuje ruch.
 - Droga kosztuje 0,5 punktu ruchu, więc ułamkowy `movesLeft` jest normalnym
   stanem.
-- Po ruchu odejmowany jest koszt całej trasy, a `hasActed` pojawia się dopiero
-  przy zerowym ruchu. Jednostka może więc wykonać kilka ruchów w turze, aż
-  wyczerpie budżet.
+- Po ruchu odejmowany jest koszt każdego pokonanego heksa, a `hasActed`
+  pojawia się dopiero przy zerowym ruchu. Jednostka może więc wykonać kilka
+  ruchów w turze, aż wyczerpie budżet.
+- Ruch wykonuje się kafelek po kafelku: token zatrzymuje się na kolejnych
+  heksach trasy, a dolny pasek pokazuje stan po dotarciu do danego heksa.
 - Brak stref kontroli i dodatkowych zasad wejścia na heks.
 
 ## ZAL-006: Walka
 
-- Atakuje jednostka aktywnej strony, która nie ma `hasActed`, ma amunicję
-  (jeśli jej używa) i ma cel w zasięgu `attackRange`.
+- Atakuje jednostka aktywnej strony, która nie ma `hasActed`, ma strzał
+  (jeśli używa pocisków) i ma cel w zasięgu `attackRange`.
 - W scenariuszu kliknąć można tylko widocznego wroga; ukryta jednostka nie
   ujawnia się przez próbę ataku.
 - Obrażenia są równe `attack` atakującego i odejmowane od `hp` celu; obrona
   celu i terenu nie zmniejszają obrażeń.
 - Cel z `hp <= 0` znika ze stanu gry, a jego token jest usuwany.
-- Atak zużywa jeden pocisk, jeśli jednostka ma amunicję; przy zerze pocisków
-  nie może atakować. Piechota i zwiad nie mają amunicji i nie zużywają jej.
+- Liczba dostępnych pocisków wynika z `movesLeft`: pełny ruch daje `ammo`
+  strzałów, a każdy wydany punkt ruchu proporcjonalnie zmniejsza zapas.
+  Piechota i zwiad nie mają pocisków i nie zużywają ich.
 - Piechota, czołg i zwiad po ataku dostają `hasActed`, co blokuje ruch
   i kolejny atak do następnej tury.
 - Artyleria widzi i atakuje każdy heks mapy. Każdy strzał odejmuje od
-  `movesLeft` `moveRange / ammo` (2/6 punktu ruchu), więc może strzelać
-  seriami, dopóki ma ruch i pociski; `hasActed` dostaje po wyczerpaniu ruchu.
-- Początek tury uzupełnia amunicję jednostkom aktywnej strony do wartości
-  z `UnitStats.ammo`.
-- Brak kontrataku, animacji trafienia i redukcji obrażeń przez obronę.
+  `movesLeft` `moveRange / ammo` punktu ruchu, więc może strzelać seriami,
+  dopóki ma ruch; `hasActed` dostaje po wyczerpaniu ruchu.
+- Początek tury przywraca ruch jednostkom aktywnej strony, a wraz z nim
+  proporcjonalny zapas pocisków.
+- Brak kontrataku i redukcji obrażeń przez obronę.
 
 ## ZAL-007: Mgła wojny
 

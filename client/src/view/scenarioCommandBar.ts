@@ -11,7 +11,7 @@ import type { ScenarioDefinition } from '../core/scenario';
 import { countUnits, type GameState } from '../core/state';
 import { TERRAIN_DEFS } from '../core/map/terrain';
 import type { TurnState } from '../core/turn';
-import { FACTION_DEFS, UNIT_DEFS, type FactionId, type Unit } from '../core/units';
+import { FACTION_DEFS, shotsLeft, UNIT_DEFS, type FactionId, type Unit } from '../core/units';
 import { visibleUnitAt } from '../core/vision';
 import { FACTION_THEMES, type FactionTheme } from './factionTheme';
 import { formatPoints } from './format';
@@ -382,8 +382,8 @@ export class ScenarioCommandBar {
     const doubled = toDoubled(current.pos);
 
     const ammo =
-      'ammo' in current && stats.ammo !== undefined
-        ? ` · POCISKI ${current.ammo}/${stats.ammo}`
+      stats.ammo !== undefined
+        ? ` · POCISKI ${shotsLeft(current)}/${stats.ammo}`
         : '';
 
     this.preview

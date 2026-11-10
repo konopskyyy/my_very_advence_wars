@@ -6,7 +6,7 @@ import {
   getMovePath,
   mapTileCount,
   moveTargets,
-  moveUnit,
+  moveUnitStep,
 } from '../core/map';
 import {
   BUILT_IN_SCENARIOS,
@@ -37,7 +37,7 @@ import {
 import { preloadFogTile } from '../view/fogTile';
 import { playShotEffect } from '../view/shotEffect';
 import { preloadTerrainTiles } from '../view/terrainTiles';
-import { UnitLayer } from '../view/unitLayer';
+import { UnitLayer, UNIT_MOVE_MS } from '../view/unitLayer';
 import { VisionFog } from '../view/visionFog';
 
 const EDGE_PAN_MARGIN = 24;
@@ -60,7 +60,10 @@ export class ScenarioScene extends Phaser.Scene {
   private hover: HexCoord | null = null;
   private selected: Unit | null = null;
   private movePath: HexCoord[] | null = null;
+  private pendingPath: HexCoord[] = [];
+  private movingUnitId: string | null = null;
   private firing = false;
+  private moving = false;
   private readonly exploredByFaction = new Map<FactionId, Set<string>>();
 
   private viewport!: MapViewport;
@@ -93,7 +96,10 @@ export class ScenarioScene extends Phaser.Scene {
     this.hover = null;
     this.selected = null;
     this.movePath = null;
+    this.pendingPath = [];
+    this.movingUnitId = null;
     this.firing = false;
+    this.moving = false;
     this.exploredByFaction.clear();
   }
 
@@ -127,7 +133,7 @@ export class ScenarioScene extends Phaser.Scene {
     this.commandBar = new ScenarioCommandBar(this, {
       onEndTurn: () => this.endTurn(),
       onRecruit: () => {
-        if (!this.firing) {
+        if (!this.firing && !this.moving) {
           this.recruitDialog.show(this.turn.faction);
         }
       },
@@ -242,7 +248,7 @@ export class ScenarioScene extends Phaser.Scene {
   }
 
   private onPointerDown(pointer: Phaser.Input.Pointer): void {
-    if (this.firing) {
+    if (this.firing || this.moving) {
       return;
     }
 
@@ -276,7 +282,7 @@ export class ScenarioScene extends Phaser.Scene {
   }
 
   private tryAttackAt(coord: HexCoord): boolean {
-    if (this.firing || !this.selected || this.selected.faction !== this.turn.faction) {
+    if (this.firing || this.moving || !this.selected || this.selected.faction !== this.turn.faction) {
       return false;
     }
 
@@ -356,7 +362,7 @@ export class ScenarioScene extends Phaser.Scene {
   }
 
   private tryMoveAlongPath(coord: HexCoord): boolean {
-    if (!this.selected || this.selected.faction !== this.turn.faction) {
+    if (this.firing || this.moving || !this.selected || this.selected.faction !== this.turn.faction) {
       return false;
     }
 
@@ -371,15 +377,51 @@ export class ScenarioScene extends Phaser.Scene {
     }
 
     const unit = findUnitAt(this.state, this.selected.pos) ?? this.selected;
-    const next = moveUnit(this.state, unit.id, coord);
 
-    if (next === this.state) {
-      return false;
+    this.pendingPath = [...this.movePath];
+    this.movingUnitId = unit.id;
+    this.moving = true;
+    this.movePath = null;
+    this.drawPath();
+    playMoveSound(UNIT_DEFS[unit.kind].moveSound);
+    this.advanceMoveStep();
+
+    return true;
+  }
+
+  private advanceMoveStep(): void {
+    const coord = this.pendingPath.shift();
+    const unitId = this.movingUnitId;
+
+    if (!coord || !unitId) {
+      this.finishMove();
+      return;
     }
 
-    playMoveSound(UNIT_DEFS[unit.kind].moveSound);
+    const next = moveUnitStep(this.state, unitId, coord);
+
+    if (next === this.state) {
+      this.finishMove();
+      return;
+    }
+
     this.state = next;
     this.selected = findUnitAt(this.state, coord) ?? null;
+    this.refreshUnits();
+
+    this.time.delayedCall(UNIT_MOVE_MS, () => {
+      this.drawSelection();
+      this.drawRangeHints();
+      this.refreshHud();
+      this.refreshUnitPreview();
+      this.advanceMoveStep();
+    });
+  }
+
+  private finishMove(): void {
+    this.moving = false;
+    this.movingUnitId = null;
+    this.pendingPath = [];
     this.movePath = null;
     this.refreshUnits();
     this.drawSelection();
@@ -387,8 +429,6 @@ export class ScenarioScene extends Phaser.Scene {
     this.drawPath();
     this.refreshHud();
     this.refreshUnitPreview();
-
-    return true;
   }
 
   private onPointerMove(pointer: Phaser.Input.Pointer): void {
@@ -443,7 +483,7 @@ export class ScenarioScene extends Phaser.Scene {
       return;
     }
 
-    if (this.firing) {
+    if (this.firing || this.moving) {
       return;
     }
 
@@ -458,7 +498,7 @@ export class ScenarioScene extends Phaser.Scene {
   }
 
   private endTurn(): void {
-    if (this.firing) {
+    if (this.firing || this.moving) {
       return;
     }
 

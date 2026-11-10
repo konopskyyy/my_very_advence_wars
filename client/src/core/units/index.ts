@@ -1,6 +1,7 @@
 export * from './faction';
 export * from './types';
 export * from './model';
+export * from './ammo';
 export * from './infantry';
 export * from './tank';
 export * from './artillery';

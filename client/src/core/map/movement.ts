@@ -183,30 +183,14 @@ export function canMoveNow(state: GameState, unit: Unit): boolean {
   return moveTargets(state, unit).length > 0;
 }
 
-export function moveUnit(state: GameState, unitId: string, target: HexCoord): GameState {
+export function moveUnitStep(state: GameState, unitId: string, target: HexCoord): GameState {
   const unit = state.units.find((candidate) => candidate.id === unitId);
 
-  if (!unit || unit.hasActed || unit.movesLeft <= 0) {
+  if (!unit || !canMoveUnit(state, unit, target)) {
     return state;
   }
 
-  const path = getMovePath(state, unit, target);
-
-  if (!path) {
-    return state;
-  }
-
-  let totalCost = 0;
-
-  for (const coord of path) {
-    totalCost += getMoveCost(state, coord);
-  }
-
-  if (totalCost > unit.movesLeft) {
-    return state;
-  }
-
-  const movesLeft = unit.movesLeft - totalCost;
+  const movesLeft = unit.movesLeft - getMoveCost(state, target);
   const exhausted = movesLeft <= MOVE_EPSILON;
   const units = state.units.map((candidate) =>
     candidate.id === unitId
@@ -220,4 +204,20 @@ export function moveUnit(state: GameState, unitId: string, target: HexCoord): Ga
   );
 
   return { ...state, units };
+}
+
+export function moveUnit(state: GameState, unitId: string, target: HexCoord): GameState {
+  const unit = state.units.find((candidate) => candidate.id === unitId);
+
+  if (!unit || unit.hasActed || unit.movesLeft <= 0) {
+    return state;
+  }
+
+  const path = getMovePath(state, unit, target);
+
+  if (!path) {
+    return state;
+  }
+
+  return path.reduce((next, coord) => moveUnitStep(next, unitId, coord), state);
 }

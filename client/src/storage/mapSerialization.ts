@@ -1,7 +1,7 @@
 import type { GameState } from '../core/state';
 import type { TerrainId } from '../core/map/terrain';
 import { TERRAIN_IDS } from '../core/map/terrain';
-import type { FactionId, Unit } from '../core/units';
+import type { FactionId, Unit, UnitKind } from '../core/units';
 import { FACTION_IDS, UNIT_KINDS } from '../core/units';
 
 const TERRAIN_SET = new Set<string>(TERRAIN_IDS);
@@ -66,7 +66,7 @@ function parseUnit(value: unknown): Unit {
     throw new Error('Nieprawidłowa jednostka');
   }
 
-  const { id, kind, faction, pos, hp, movesLeft, hasActed, ammo } = value;
+  const { id, kind, faction, pos, hp, movesLeft, hasActed } = value;
 
   if (typeof id !== 'string') {
     throw new Error('Nieprawidłowa jednostka: brak identyfikatora');
@@ -108,15 +108,7 @@ function parseUnit(value: unknown): Unit {
     hasActed,
   };
 
-  if (kind === 'tank' || kind === 'artillery') {
-    if (typeof ammo !== 'number' || !Number.isFinite(ammo)) {
-      throw new Error('Nieprawidłowa jednostka: amunicja');
-    }
-
-    return { ...base, kind, ammo };
-  }
-
-  return { ...base, kind: kind as 'infantry' | 'scout' };
+  return { ...base, kind: kind as UnitKind };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

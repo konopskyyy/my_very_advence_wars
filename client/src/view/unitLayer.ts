@@ -10,7 +10,7 @@ import { colorToCss, HEX_SIZE } from './hexGrid';
 
 export const UNIT_TOKEN_SIZE = 26;
 
-const MOVE_DURATION = 250;
+export const UNIT_MOVE_MS = 250;
 
 interface TokenMotion {
   readonly token: Phaser.GameObjects.Image;
@@ -274,8 +274,8 @@ export class UnitLayer {
 
   update(delta: number): void {
     for (const [id, motion] of this.motions) {
-      motion.elapsed = Math.min(MOVE_DURATION, motion.elapsed + delta);
-      const progress = motion.elapsed / MOVE_DURATION;
+      motion.elapsed = Math.min(UNIT_MOVE_MS, motion.elapsed + delta);
+      const progress = motion.elapsed / UNIT_MOVE_MS;
       const eased = 1 - (1 - progress) ** 3;
 
       motion.token.setPosition(
@@ -283,7 +283,7 @@ export class UnitLayer {
         motion.fromY + (motion.toY - motion.fromY) * eased,
       );
 
-      if (motion.elapsed >= MOVE_DURATION) {
+      if (motion.elapsed >= UNIT_MOVE_MS) {
         motion.token.setPosition(motion.toX, motion.toY);
         this.motions.delete(id);
       }
