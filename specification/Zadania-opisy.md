@@ -561,3 +561,25 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
   - **Guzik:** `USUŃ AKCJĘ` usuwa ostatnią akcję wybranej jednostki i jest nieaktywny bez zaplanowanych akcji.
   - **Testy:** `make verify` przechodzi.
   - **Dokumentacja:** INTERF-005 opisuje potwierdzanie ataku i usuwanie akcji.
+
+## GRA-066: Demo strony logowania i rejestracji
+- **Kontekst:** Gra startowała od razu w menu Phasera, a backend ma już endpointy rejestracji i logowania (API-001). Przed podłączeniem klienta do API potrzebny był widoczny ekran wejściowy, żeby ocenić układ formularzy i przejście do rozgrywki.
+- **Opis:** Statyczna strona demo przed grą: nagłówek z nazwą, zakładki „Logowanie” i „Rejestracja”, pola e-mail i hasło (w rejestracji dodatkowo powtórzenie hasła), przycisk wysyłki oraz przycisk „Przejdź do gry”. Formularze nie wysyłają żądań — po wysłaniu pokazują komunikat, że to wersja demo. „Przejdź do gry” ukrywa ekran i uruchamia Phaser dopiero w tym momencie, więc menu główne (INTERF-001) jest dostępne po świadomym wejściu. Ekran jest w HTML/CSS poza Phaserem, a logika przełączania zakładek i startu gry siedzi w `client/src/view/authScreen.ts`.
+- **Kryteria:**
+  - **Ekran:** po otwarciu strony widać formularz logowania/rejestracji, a nie od razu menu gry.
+  - **Zakładki:** przełączanie zmienia etykietę przycisku wysyłki i pokazuje pole powtórzenia hasła tylko w rejestracji.
+  - **Demo:** wysłanie formularza nie wykonuje żadnego żądania i pokazuje komunikat o wersji demo.
+  - **Wejście do gry:** „Przejdź do gry” chowa ekran, pokazuje kanwę i tworzy `Phaser.Game` tylko raz; dalsze menu działa jak dotychczas.
+  - **Testy:** `make verify` przechodzi.
+  - **Dokumentacja:** INTERF-008 opisuje ekran i pliki.
+
+## GRA-067: Strona główna klienta
+- **Kontekst:** Ekran wejściowy (GRA-066) był ograniczony do panelu logowania/rejestracji. Potrzebna była pełniejsza strona główna prezentująca grę przed wejściem do rozgrywki.
+- **Opis:** Rozbudowa strony startowej klienta (`client/index.html`, `client/src/style.css`, `client/src/view/authScreen.ts`) o sekcję hero, prezentację trybów gry i sekcję konta demo. Zachowane zostają elementy i zachowanie auth z INTERF-008 (zakładki, formularz demo, start gry dopiero po świadomym wejściu).
+- **Kryteria:**
+  - **Hero:** strona główna pokazuje nazwę gry, krótki opis i główne wezwanie do wejścia do gry.
+  - **Treść:** widoczne są sekcje prezentujące grę (np. kampania/samouczek, scenariusze, edytor) oraz sekcja logowania/rejestracji demo.
+  - **Zachowanie:** formularz nadal nie wysyła żądań i pokazuje komunikat demo; wejście do gry ukrywa stronę główną i uruchamia `Phaser.Game` tylko raz.
+  - **Responsywność:** układ jest czytelny na wąskich ekranach.
+  - **Testy:** `make verify` przechodzi.
+  - **Dokumentacja:** INTERF-008 opisuje zaktualizowaną stronę główną i pliki.
