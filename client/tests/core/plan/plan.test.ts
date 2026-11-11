@@ -4,6 +4,7 @@ import {
   addAttack,
   createTurnPlan,
   planningState,
+  removeActionFrom,
   removeLastAction,
   setMove,
   unitActions,
@@ -161,5 +162,33 @@ describe('plan', () => {
 
     expect(unitActions(removed, unit.id)).toHaveLength(1);
     expect(unitActions(removeLastAction(removed, unit.id), unit.id)).toHaveLength(0);
+  });
+
+  it('usuwa wybraną akcję i wszystkie późniejsze akcje jednostki', () => {
+    let state = blueInfantryAt(createInitialState(createMap(10, 10)), 2, 3);
+    state = placeUnit(state, 'infantry', { col: 3, row: 3 }, 'red');
+    const unit = state.units[0]!;
+    const moved = setMove(createTurnPlan(createTurnState()), state, unit.id, { col: 4, row: 3 });
+
+    expect(moved.ok).toBe(true);
+
+    if (!moved.ok) {
+      return;
+    }
+
+    const attacked = addAttack(moved.plan, state, unit.id, state.units[1]!.id);
+
+    expect(attacked.ok).toBe(true);
+
+    if (!attacked.ok) {
+      return;
+    }
+
+    expect(unitActions(removeActionFrom(attacked.plan, unit.id, 0), unit.id)).toHaveLength(0);
+
+    const removedAttack = removeActionFrom(attacked.plan, unit.id, 1);
+
+    expect(unitActions(removedAttack, unit.id)).toHaveLength(1);
+    expect(unitActions(removedAttack, unit.id)[0]?.kind).toBe('move');
   });
 });

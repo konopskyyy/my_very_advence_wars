@@ -79,3 +79,6 @@ zadań do wykonania.
 | [[Zadania-opisy#GRA-060: Zapis planów tur i replay w SQLite\|GRA-060]] | Zapis planów tur i replay w SQLite | ✅ | GRA-057, ADR-019, ADR-041, INTERF-006 |
 | [[Zadania-opisy#GRA-061: Dopracowanie planera i odtwarzania rozgrywki\|GRA-061]] | Dopracowanie planera i odtwarzania rozgrywki | ⬜ | GRA-060, GRA-043, ADR-040, ADR-041, ZAL-005, ZAL-006, INTERF-005, INTERF-006, INTERF-007 |
 | [[Zadania-opisy#GRA-062: SI wroga — reguła zachowania z priorytetem\|GRA-062]] | SI wroga — reguła zachowania z priorytetem | ✅ | GRA-057, ADR-001, ADR-039, ADR-042, ZAL-004, ZAL-006, ZAL-012, INTERF-005 |
+| [[Zadania-opisy#GRA-063: Linie strzału w planerze tury\|GRA-063]] | Linie strzału w planerze tury | ✅ | GRA-057, ADR-001, ADR-039, INTERF-005 |
+| [[Zadania-opisy#GRA-064: Zasięg na hover i dwuklik potwierdzający ruch\|GRA-064]] | Zasięg na hover i dwuklik potwierdzający ruch | ✅ | GRA-057, GRA-063, ADR-001, ADR-039, INTERF-005 |
+| [[Zadania-opisy#GRA-065: Potwierdzanie ataku i usuwanie akcji z planera\|GRA-065]] | Potwierdzanie ataku i usuwanie akcji z planera | ✅ | GRA-057, GRA-063, GRA-064, ADR-001, ADR-039, INTERF-005 |

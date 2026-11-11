@@ -24,6 +24,8 @@ const TRACK_BACKGROUND = 0x0b0f14;
 const MAX_TRACK_HEIGHT = 24;
 const TOGGLE_WIDTH = 96;
 const BUTTON_GAP = 8;
+const REMOVE_X = 240;
+const REMOVE_WIDTH = 80;
 
 export interface PlanTimelineView {
   readonly turn: TurnState;
@@ -39,6 +41,8 @@ export interface PlanTimelineHandlers {
   readonly onPlay: () => void;
   readonly onScrub: (timeMs: number) => void;
   readonly onSelectUnit: (unitId: string) => void;
+  readonly onRemoveAction?: (unitId: string, actionIndex: number) => void;
+  readonly onRemoveLast?: () => void;
 }
 
 function rulerStep(durationMs: number): number {
@@ -69,6 +73,8 @@ export class PlanTimeline {
   private readonly toggleLabel: Phaser.GameObjects.Text;
   private readonly playButton: Phaser.GameObjects.Rectangle;
   private readonly playLabel: Phaser.GameObjects.Text;
+  private readonly removeButton: Phaser.GameObjects.Rectangle;
+  private readonly removeLabel: Phaser.GameObjects.Text;
   private readonly timelineGraphics: Phaser.GameObjects.Graphics;
   private readonly playheadGraphics: Phaser.GameObjects.Graphics;
   private readonly scrubZone: Phaser.GameObjects.Rectangle;
@@ -190,6 +196,27 @@ export class PlanTimeline {
         .setDepth(21),
     );
 
+    this.removeButton = this.register(
+      this.scene.add
+        .rectangle(REMOVE_X, 0, REMOVE_WIDTH, 22, this.theme.accentDark, 1)
+        .setOrigin(0, 0)
+        .setScrollFactor(0)
+        .setDepth(20)
+        .setStrokeStyle(1, this.theme.accentBright, 0.8)
+        .setInteractive({ useHandCursor: true }),
+    );
+    this.removeLabel = this.register(
+      this.scene.add
+        .text(0, 0, 'USUŃ AKCJĘ', {
+          fontFamily: 'monospace',
+          fontSize: '11px',
+          color: '#ffffff',
+        })
+        .setOrigin(0.5)
+        .setScrollFactor(0)
+        .setDepth(21),
+    );
+
     this.timelineGraphics = this.register(
       this.scene.add.graphics().setScrollFactor(0).setDepth(20),
     );
@@ -240,7 +267,27 @@ export class PlanTimeline {
       }
     });
 
+    this.removeButton.on('pointerover', () => {
+      if (this.removeButton.input?.enabled) {
+        this.removeButton.setFillStyle(this.theme.accent, 1);
+      }
+    });
+    this.removeButton.on('pointerout', () =>
+      this.removeButton.setFillStyle(this.theme.accentDark, 1),
+    );
+    this.removeButton.on('pointerdown', () => this.handlers.onRemoveLast?.());
+
     this.scrubZone.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      if (pointer.rightButtonDown()) {
+        const action = this.actionAt(pointer.x, pointer.y);
+
+        if (action) {
+          this.handlers.onRemoveAction?.(action.unitId, action.actionIndex);
+        }
+
+        return;
+      }
+
       const unitId = this.unitAt(pointer.y);
 
       if (unitId) {
@@ -324,6 +371,11 @@ export class PlanTimeline {
     this.turnLabel.setText(
       `Tura ${view.turn.turn} — ${FACTION_DEFS[view.turn.faction].label}`,
     );
+
+    const selectedPlan = view.plan.units.find(
+      (unitPlan) => unitPlan.unitId === view.selectedUnitId,
+    );
+    this.setRemoveEnabled((selectedPlan?.actions.length ?? 0) > 0);
     this.drawTimeline();
   }
 
@@ -350,6 +402,69 @@ export class PlanTimeline {
     const index = Math.floor((y - trackTop) / trackHeight);
 
     return view.plan.units[index]?.unitId ?? null;
+  }
+
+  private actionAt(
+    x: number,
+    y: number,
+  ): { unitId: string; actionIndex: number } | null {
+    const view = this.view;
+
+    if (!view || view.plan.units.length === 0 || view.timeline.durationMs <= 0) {
+      return null;
+    }
+
+    const duration = view.timeline.durationMs;
+    const trackTop = this.areaY + RULER_HEIGHT;
+    const trackArea = Math.max(8, this.areaHeight - RULER_HEIGHT);
+    const trackHeight = Math.min(MAX_TRACK_HEIGHT, trackArea / view.plan.units.length);
+
+    if (y < trackTop) {
+      return null;
+    }
+
+    const index = Math.floor((y - trackTop) / trackHeight);
+    const unitPlan = view.plan.units[index];
+
+    if (!unitPlan) {
+      return null;
+    }
+
+    const trackY = trackTop + index * trackHeight;
+    const clipTop = trackY + 2;
+    const clipBottom = clipTop + Math.max(4, trackHeight - 8);
+
+    if (y < clipTop || y > clipBottom) {
+      return null;
+    }
+
+    for (const clip of view.timeline.clips) {
+      if (clip.unitId !== unitPlan.unitId) {
+        continue;
+      }
+
+      const clipX = this.areaX + (clip.startMs / duration) * this.areaWidth;
+      const clipWidth = Math.max(3, ((clip.endMs - clip.startMs) / duration) * this.areaWidth);
+
+      if (x >= clipX && x <= clipX + clipWidth) {
+        return { unitId: clip.unitId, actionIndex: clip.actionIndex };
+      }
+    }
+
+    return null;
+  }
+
+  private setRemoveEnabled(enabled: boolean): void {
+    this.removeButton.setAlpha(enabled ? 1 : 0.45);
+    this.removeLabel.setAlpha(enabled ? 1 : 0.45);
+
+    if (!enabled) {
+      this.removeButton.setFillStyle(this.theme.accentDark, 1);
+    }
+
+    if (this.removeButton.input) {
+      this.removeButton.input.enabled = enabled;
+    }
   }
 
   private column(): {
@@ -386,6 +501,8 @@ export class PlanTimeline {
     this.toggleLabel.setPosition(column.x + column.toggleWidth / 2, panelY + 17);
     this.playButton.setPosition(column.playX, panelY + 6);
     this.playLabel.setPosition(column.playX + column.playWidth / 2, panelY + 17);
+    this.removeButton.setPosition(REMOVE_X, panelY + 6);
+    this.removeLabel.setPosition(REMOVE_X + REMOVE_WIDTH / 2, panelY + 17);
 
     this.areaX = LABEL_WIDTH;
     this.areaY = panelY + HEADER_HEIGHT + 6;
@@ -435,6 +552,9 @@ export class PlanTimeline {
     this.playButton
       .setFillStyle(theme.accentDark, 1)
       .setStrokeStyle(1, theme.accentBright, 0.8);
+    this.removeButton
+      .setFillStyle(theme.accentDark, 1)
+      .setStrokeStyle(1, theme.accentBright, 0.8);
   }
 
   private drawTimeline(): void {
@@ -465,7 +585,7 @@ export class PlanTimeline {
 
     if (!hasPlan) {
       this.hint.setText(
-        'Kliknij własną jednostkę, potem heks (trasa) albo widocznego wroga (atak).\nDel usuwa ostatnią akcję, playhead podgląda pozycje i zużycie ruchu.',
+        'Najedź na jednostkę, żeby zobaczyć zasięg. Kliknij heks lub wroga, potem kliknij ponownie, żeby potwierdzić ruch albo atak.\nPPM na klipie usuwa akcję i późniejsze akcje jednostki, USUŃ albo Del usuwa ostatnią akcję wybranej jednostki.',
       );
       return;
     }
