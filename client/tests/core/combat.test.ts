@@ -48,7 +48,7 @@ describe('canAttack', () => {
   it('odrzuca cel poza zasięgiem', () => {
     const state = stateWith(
       { kind: 'infantry', pos: { col: 4, row: 4 } },
-      { kind: 'infantry', pos: { col: 6, row: 4 } },
+      { kind: 'infantry', pos: { col: 7, row: 4 } },
     );
 
     expect(canAttack(state.units[0]!, state.units[1]!)).toBe(false);
@@ -266,7 +266,7 @@ describe('attackUnit', () => {
   it('zwraca ten sam stan, gdy cel jest poza zasięgiem', () => {
     const state = stateWith(
       { kind: 'infantry', pos: { col: 4, row: 4 } },
-      { kind: 'infantry', pos: { col: 6, row: 4 } },
+      { kind: 'infantry', pos: { col: 7, row: 4 } },
     );
     const [attacker, target] = state.units;
 

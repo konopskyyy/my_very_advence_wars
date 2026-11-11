@@ -14,7 +14,7 @@ export const INFANTRY_STATS: UnitStats = {
   attack: 5,
   defense: 4,
   visionRange: 2,
-  attackRange: 1,
+  attackRange: 2,
   weapon: RIFLE,
   moveSound: 'step',
   deathSound: 'death',

@@ -515,3 +515,14 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
   - **Tutorial:** misja „Ruch jednostek” i INTERF-007 opisują planowanie zamiast pojedynczych ruchów.
   - **Testy:** `make verify` przechodzi, w tym testy replaya, limitu czasu, sprzątania i usuwania.
   - **Dokumentacja:** INTERF-005, INTERF-006, INTERF-007, `Mapy.md` i `notatnik.txt` są zaktualizowane.
+
+## GRA-062: SI wroga — reguła zachowania z priorytetem
+- **Kontekst:** Obie strony były sterowane ręcznie (hot-seat), więc przeciwnik nie wykonywał własnych tur. Potrzebna jest prosta SI, którą można rozwijać przez dokładanie reguł i testować bez Phasera.
+- **Opis:** Nowy moduł `client/src/si/` z abstrakcyjną `SiRule` (`priority`, `canBeUsed()`, `perform()`) i listą reguł sortowaną malejąco po priorytecie. `EngageOrAdvanceRule` najpierw szuka najbliższego widocznego wroga: jeśli jest w zasięgu `attackRange`, dodaje atak, a jeśli nie — wybiera osiągalny heks w zasięgu i atakuje po ruchu. Bez widocznego wroga wybiera osiągalny heks najdalej od pozycji startowej. `buildSiPlan()` składa zwykły `TurnPlan`; scena pamięta pozycje startowe jednostek i automatycznie odtwarza turę strony przeciwnej do `playerFaction`. Piechota dostaje `attackRange` 2, żeby atak z dystansu dał się pokryć testem bez zmiany innych statystyk.
+- **Kryteria:**
+  - **Reguły:** `SiRule` ma `priority`, `canBeUsed()` i `perform()`; lista `SI_RULES` jest sortowana malejąco i dodanie reguły nie wymaga zmian w pętli.
+  - **Zachowanie:** widoczny wróg w zasięgu kończy się atakiem, widoczny poza zasięgiem — ruchem w zasięg i atakiem, brak wroga — ruchem zwiększającym odległość od pozycji startowej.
+  - **Integracja:** po turze gracza tura strony przeciwnej jest planowana i odtwarzana automatycznie; gracz nie może planować ani klikać akcji przeciwnika.
+  - **Dane:** pozycje startowe są pamiętane w sesji scenariusza i nie zmieniają formatu zapisu mapy ani replaya.
+  - **Testy:** `tests/si/` pokrywa obie gałęzie reguły, `canBeUsed()` i budowę planu; `make verify` przechodzi.
+  - **Dokumentacja:** ADR-042, ZAL-004, ZAL-010, ZAL-012 i INTERF-005 opisują SI i nowy zasięg piechoty.
