@@ -56,7 +56,7 @@
 
 | `UnitKind`  | Etykieta  | Max HP | Ruch | Atak | Obrona | Zasięg wzroku | Zasięg strzału | Amunicja |
 | ----------- | --------- | -----: | ---: | ---: | -----: | ------------: | -------------: | -------: |
-| `infantry`  | Piechota  |     10 |    4 |    5 |      4 |             2 |              1 |        — |
+| `infantry`  | Piechota  |     10 |    4 |    5 |      4 |             2 |              2 |        — |
 | `tank`      | Czołg     |     20 |    3 |    9 |      7 |             3 |              1 |        6 |
 | `artillery` | Artyleria |     14 |    2 |   12 |      3 |    cała mapa |     cała mapa |        6 |
 | `scout`     | Zwiad     |      8 |    6 |    3 |      2 |             5 |              1 |        — |
@@ -167,7 +167,7 @@
 ## ZAL-009: Poza zakresem
 
 - warunek zwycięstwa i porażki,
-- SI przeciwnika,
+- zaawansowane SI (współpraca jednostek, ocena terenu, reakcja na plan gracza),
 - rozgrywka sieciowa i synchronizacja tur,
 - kontratak, animacje trafień i redukcja obrażeń przez `defense` lub teren,
 - zaopatrzenie, naprawa, ekonomia i rekrutacja,
@@ -185,6 +185,7 @@
 | walka       | `client/src/core/combat.ts` |
 | mgła wojny  | `client/src/core/vision.ts` |
 | scenariusze | `client/src/core/scenario.ts` |
+| SI wroga    | `client/src/si/`          |
 
 ## ZAL-011: Kampanie i samouczek
 
@@ -199,3 +200,21 @@
 - Pozostałe kafelki są zapowiedziami — kliknięcie pokazuje komunikat
   „wkrótce”; nie mają jeszcze scenariusza ani uruchomienia.
 - „Kampania 1” i „Kampania 2” nie mają kafelków do czasu dodania misji.
+
+## ZAL-012: SI wroga
+
+- Stronę przeciwną do wybranej przez gracza (`playerFaction`) prowadzi SI;
+  gracz steruje wyłącznie swoją stroną.
+- SI buduje zwykły `TurnPlan` przez `client/src/si/`, więc walidacja ruchu,
+  ataku i wolumen obrażeń są takie same jak dla gracza.
+- Reguły mają priorytet; wybierana jest pierwsza reguła, której
+  `canBeUsed()` zwraca `true`.
+- Pierwsza reguła: jeśli strona widzi wroga, jednostka podchodzi na odległość
+  `attackRange` i atakuje; jeśli wroga nie widać, idzie w stronę przeciwną
+  do miejsca, w którym się pojawiła (zwiększa odległość od pozycji startowej).
+- Pozycje startowe są pamiętane w sesji scenariusza (mapa `unitId → heks`);
+  nie trafiają do zapisanej mapy.
+- Tura SI jest odtwarzana automatycznie tym samym playbackiem co tura
+  gracza; gracz nie planuje akcji przeciwnika.
+- Gracz widzi mapę zawsze ze swojej strony; mgła i odkryte pola nie
+  przełączają się na widok SI.

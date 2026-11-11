@@ -49,6 +49,7 @@ import { preloadTerrainTiles } from '../view/terrainTiles';
 import { UnitLayer, unitTexture } from '../view/unitLayer';
 import { VisionFog } from '../view/visionFog';
 import { createReplayId, recordTurnPlan, startReplay } from '../storage/replays';
+import { buildSiPlan, type SiSpawns } from '../si';
 
 const EDGE_PAN_MARGIN = 24;
 const MOVE_HINT_COLOR = 0x6fd08c;
@@ -81,6 +82,8 @@ export class ScenarioScene extends Phaser.Scene {
   } | null = null;
   private replayReady: Promise<string | null> = Promise.resolve(null);
   private readonly exploredByFaction = new Map<FactionId, Set<string>>();
+  private readonly shotFx = new Set<Phaser.GameObjects.GameObject>();
+  private spawns: SiSpawns = new Map();
 
   private viewport!: MapViewport;
   private mapView!: HexMapView;
@@ -111,6 +114,9 @@ export class ScenarioScene extends Phaser.Scene {
     this.playerFaction = data?.playerFaction ?? 'blue';
     this.turn = createTurnState(this.playerFaction);
     this.state = beginTurn(ensureScenarioArmies(this.scenario.state), this.turn.faction);
+    this.spawns = new Map(
+      this.state.units.map((unit) => [unit.id, { col: unit.pos.col, row: unit.pos.row }]),
+    );
     this.hover = null;
     this.selected = null;
     this.plan = createTurnPlan(this.turn);
@@ -119,6 +125,7 @@ export class ScenarioScene extends Phaser.Scene {
     this.playing = false;
     this.playback = null;
     this.exploredByFaction.clear();
+    this.shotFx.clear();
   }
 
   create(): void {
@@ -241,7 +248,7 @@ export class ScenarioScene extends Phaser.Scene {
   }
 
   private refreshUnits(): void {
-    this.unitLayer.setUnits(visibleUnits(this.state, this.turn.faction));
+    this.unitLayer.setUnits(visibleUnits(this.state, this.playerFaction));
     this.uiCamera?.ignore(this.unitLayer.objects());
     this.refreshFog();
   }
@@ -252,15 +259,15 @@ export class ScenarioScene extends Phaser.Scene {
       return;
     }
 
-    const visible = visibleTileKeys(this.state, this.turn.faction);
+    const visible = visibleTileKeys(this.state, this.playerFaction);
     const explored =
-      this.exploredByFaction.get(this.turn.faction) ?? new Set<string>();
+      this.exploredByFaction.get(this.playerFaction) ?? new Set<string>();
 
     for (const key of visible) {
       explored.add(key);
     }
 
-    this.exploredByFaction.set(this.turn.faction, explored);
+    this.exploredByFaction.set(this.playerFaction, explored);
 
     if (visible.size >= mapTileCount(this.state.map)) {
       this.visionFog.hide();
@@ -464,7 +471,11 @@ export class ScenarioScene extends Phaser.Scene {
       this.unitLayer.center(clip.attackerPos),
       this.unitLayer.center(clip.targetPos),
       () => playHitSound(),
-      (object) => this.uiCamera?.ignore(object),
+      (object) => {
+        this.uiCamera?.ignore(object);
+        this.shotFx.add(object);
+        object.once('destroy', () => this.shotFx.delete(object));
+      },
     );
   }
 
@@ -496,6 +507,7 @@ export class ScenarioScene extends Phaser.Scene {
     this.rangeHints.clear();
     this.pathHints.clear();
     this.hideGhosts();
+    this.clearShotFx();
     this.planner.setPlaying(false);
     this.planner.setPlayhead(0);
 
@@ -503,6 +515,25 @@ export class ScenarioScene extends Phaser.Scene {
     this.refreshHud();
     this.refreshUnitPreview();
     this.refreshPlan();
+
+    if (this.turn.faction !== this.playerFaction) {
+      this.beginSiTurn();
+    }
+  }
+
+  private clearShotFx(): void {
+    for (const object of this.shotFx) {
+      object.destroy();
+    }
+
+    this.shotFx.clear();
+  }
+
+  private beginSiTurn(): void {
+    this.plan = buildSiPlan(this.state, this.turn, this.spawns);
+    this.timeline = buildTimeline(this.plan, this.state);
+    this.refreshPlan();
+    this.playTurn();
   }
 
   private beginReplay(): Promise<string | null> {

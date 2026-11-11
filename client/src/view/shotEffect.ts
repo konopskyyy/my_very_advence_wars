@@ -27,8 +27,12 @@ export function playShotEffect(
   onCreate?: CreateHook,
 ): void {
   playMuzzleFlash(scene, from, onCreate);
-  playTrail(scene, from, to, onCreate);
-  playTracer(scene, from, to, onCreate, onImpact);
+  const trail = playTrail(scene, from, to, onCreate);
+  playTracer(scene, from, to, onCreate, () => {
+    trail.destroy();
+    playImpact(scene, to, onCreate);
+    onImpact();
+  });
 }
 
 function playMuzzleFlash(scene: Phaser.Scene, at: ShotPoint, onCreate?: CreateHook): void {
@@ -55,7 +59,7 @@ function playTrail(
   from: ShotPoint,
   to: ShotPoint,
   onCreate?: CreateHook,
-): void {
+): Phaser.GameObjects.Graphics {
   const trail = scene.add.graphics().setDepth(FX_DEPTH);
   onCreate?.(trail);
   trail.lineStyle(7, TRACER_GLOW_COLOR, 0.28);
@@ -63,13 +67,7 @@ function playTrail(
   trail.lineStyle(2.5, TRACER_COLOR, 0.85);
   trail.lineBetween(from.x, from.y, to.x, to.y);
 
-  scene.tweens.add({
-    targets: trail,
-    alpha: 0,
-    duration: TRACER_MS * 1.8,
-    ease: 'Quad.easeIn',
-    onComplete: () => trail.destroy(),
-  });
+  return trail;
 }
 
 function playTracer(
@@ -95,7 +93,6 @@ function playTracer(
     ease: 'Quad.easeIn',
     onComplete: () => {
       tracer.destroy();
-      playImpact(scene, to, onCreate);
       onImpact();
     },
   });
