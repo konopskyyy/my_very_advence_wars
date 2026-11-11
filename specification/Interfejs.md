@@ -7,7 +7,7 @@
 
 ## INTERF-001: Menu główne
 - **Status:** Zaimplementowane
-- **Opis:** Ekran startowy z opcjami „Kampanie”, „Scenariusze”, „Edytor map” i „Wyjście”. „Kampanie” jako pierwsza pozycja otwiera ekran wstążek samouczka i kampanii (INTERF-007), „Scenariusze” otwiera listę scenariuszy testowych, „Edytor map” otwiera menu map, z którego wybiera się mapę do edycji albo zaczyna nową. „Wyjście” zamyka okno gry; gdy przeglądarka nie pozwala zamknąć karty, gra wyjaśnia, że trzeba zamknąć okno ręcznie.
+- **Opis:** Ekran startowy z opcjami „Kampanie”, „Scenariusze”, „Edytor map” i „Wyjście”. Otwiera się po wybraniu „Przejdź do gry” na ekranie demo (INTERF-008). „Kampanie” jako pierwsza pozycja otwiera ekran wstążek samouczka i kampanii (INTERF-007), „Scenariusze” otwiera listę scenariuszy testowych, „Edytor map” otwiera menu map, z którego wybiera się mapę do edycji albo zaczyna nową. „Wyjście” zamyka okno gry; gdy przeglądarka nie pozwala zamknąć karty, gra wyjaśnia, że trzeba zamknąć okno ręcznie.
 - **Pliki:** `client/src/scenes/MenuScene.ts`, `client/src/main.ts`
 
 ## INTERF-002: Pole bitwy
@@ -78,3 +78,8 @@
 - **Kampanie 1/2:** panel pokazuje informację o braku misji, a wstążki działają tak samo jak w samouczku.
 - **Sterowanie:** LPM wybiera wstążkę albo kafelek, `ESC` i przycisk „MENU GŁÓWNE” wracają do menu głównego. W misji samouczka pasek dolny prowadzi z powrotem do „MENU KAMPANII”.
 - **Pliki:** `client/src/scenes/CampaignMenuScene.ts`, `client/src/view/campaignRibbon.ts`, `client/src/view/campaignTiles.ts`, `client/src/core/campaign/`
+
+## INTERF-008: Strona główna i ekran logowania/rejestracji (demo)
+- **Status:** Zaimplementowane (demo)
+- **Opis:** Statyczna strona główna HTML/CSS wyświetlana przed grą (`#auth-screen`). Zawiera sekcję hero z nazwą gry, krótkim opisem i głównym przyciskiem wejścia do gry, sekcję prezentującą tryby (kampania/samouczek, scenariusze, edytor map) oraz sekcję konta demo z zakładkami „Logowanie” i „Rejestracja”, formularzem e-mail/hasło (w rejestracji dodatkowo „Powtórz hasło”) i komunikatem o wersji demo. Przycisk wysyłki zmienia etykietę razem z zakładką, ale formularze nie łączą się z API (API-001); po wysłaniu pojawia się komunikat demo. Wejście do gry (przycisk `#auth-play`) ukrywa stronę główną, pokazuje kanwę i dopiero wtedy tworzy `Phaser.Game`, więc menu główne (INTERF-001) działa bez zmian. Strona jest responsywna i przewijalna.
+- **Pliki:** `client/index.html`, `client/src/style.css`, `client/src/view/authScreen.ts`, `client/src/main.ts`

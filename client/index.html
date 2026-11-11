@@ -4,9 +4,156 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>My Very Advance Wars</title>
+    <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
-    <div id="app"></div>
+    <main id="auth-screen" class="home">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero__bg" aria-hidden="true"></div>
+        <div class="hero__content">
+          <span class="auth__badge">Demo</span>
+          <h1 id="hero-title" class="hero__title">My Very Advance Wars</h1>
+          <p class="hero__lead">
+            Turowa strategia na heksagonalnej mapie. Planuj ruchy, dowódź oddziałami i
+            rozgrywaj bitwy krok po kroku.
+          </p>
+          <div class="hero__actions">
+            <button type="button" id="auth-play" class="auth__button auth__button--primary hero__cta">
+              Graj teraz
+            </button>
+            <a href="#konto" class="auth__button auth__button--ghost hero__secondary">Zaloguj się</a>
+          </div>
+          <p class="hero__meta">Kampania · Scenariusze · Edytor map</p>
+        </div>
+        <a href="#features" class="hero__scroll" aria-label="Przewiń w dół">
+          <span class="hero__scroll-icon" aria-hidden="true">⌄</span>
+        </a>
+      </section>
+
+      <section id="features" class="features" aria-labelledby="features-title">
+        <div class="section-inner">
+          <h2 id="features-title" class="section-title">Co znajdziesz w grze</h2>
+          <div class="features__grid">
+            <article class="feature-card">
+              <div class="feature-card__icon" aria-hidden="true">⬡</div>
+              <h3 class="feature-card__title">Kampania i samouczek</h3>
+              <p class="feature-card__text">
+                Poznaj zasady krok po kroku i poprowadź oddziały przez kolejne misje.
+              </p>
+            </article>
+            <article class="feature-card">
+              <div class="feature-card__icon" aria-hidden="true">⚔</div>
+              <h3 class="feature-card__title">Scenariusze</h3>
+              <p class="feature-card__text">
+                Wskocz do gotowych bitew na heksagonalnych mapach i sprawdź taktykę w boju.
+              </p>
+            </article>
+            <article class="feature-card">
+              <div class="feature-card__icon" aria-hidden="true">✎</div>
+              <h3 class="feature-card__title">Edytor map</h3>
+              <p class="feature-card__text">
+                Projektuj własne układy terenu, rozmieszczaj jednostki i twórz scenariusze.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="konto" class="account" aria-labelledby="auth-title">
+        <div class="section-inner account__inner">
+          <div class="account__intro">
+            <h2 id="auth-title" class="section-title">Konto gracza</h2>
+            <p class="account__lead">
+              Zaloguj się lub załóż konto. Funkcje sieciowe są w przygotowaniu — na razie
+              możesz zagrać bez logowania.
+            </p>
+            <button type="button" class="auth__button auth__button--ghost account__guest" data-play-game>
+              Graj bez logowania
+            </button>
+          </div>
+
+          <div class="auth__panel">
+            <div class="auth__tabs" role="tablist" aria-label="Logowanie i rejestracja">
+              <button
+                type="button"
+                class="auth__tab is-active"
+                role="tab"
+                id="auth-tab-login"
+                aria-selected="true"
+                aria-controls="auth-form"
+                data-tab="login"
+              >
+                Logowanie
+              </button>
+              <button
+                type="button"
+                class="auth__tab"
+                role="tab"
+                id="auth-tab-register"
+                aria-selected="false"
+                aria-controls="auth-form"
+                data-tab="register"
+              >
+                Rejestracja
+              </button>
+            </div>
+
+            <form id="auth-form" class="auth__form" novalidate>
+              <label class="auth__field">
+                <span class="auth__label">E-mail</span>
+                <input
+                  class="auth__input"
+                  name="email"
+                  type="email"
+                  autocomplete="email"
+                  placeholder="gracz@example.com"
+                />
+              </label>
+
+              <label class="auth__field">
+                <span class="auth__label">Hasło</span>
+                <input
+                  class="auth__input"
+                  name="password"
+                  type="password"
+                  autocomplete="current-password"
+                  placeholder="minimum 8 znaków"
+                />
+              </label>
+
+              <label class="auth__field" id="auth-confirm-field" hidden>
+                <span class="auth__label">Powtórz hasło</span>
+                <input
+                  id="auth-confirm-input"
+                  class="auth__input"
+                  name="confirm"
+                  type="password"
+                  autocomplete="new-password"
+                  placeholder="powtórz hasło"
+                />
+              </label>
+
+              <p id="auth-message" class="auth__message" role="status" aria-live="polite"></p>
+
+              <button type="submit" id="auth-submit" class="auth__button auth__button--primary">
+                Zaloguj się
+              </button>
+            </form>
+
+            <p class="auth__note">Wersja demo — formularze nie łączą się jeszcze z serwerem.</p>
+          </div>
+        </div>
+      </section>
+
+      <footer class="site-footer">
+        <div class="section-inner site-footer__inner">
+          <span>My Very Advance Wars</span>
+          <span class="site-footer__muted">Wersja demo · turowa strategia heksagonalna</span>
+        </div>
+      </footer>
+    </main>
+
+    <div id="app" hidden></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

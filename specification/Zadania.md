@@ -82,3 +82,5 @@ zadań do wykonania.
 | [[Zadania-opisy#GRA-063: Linie strzału w planerze tury\|GRA-063]] | Linie strzału w planerze tury | ✅ | GRA-057, ADR-001, ADR-039, INTERF-005 |
 | [[Zadania-opisy#GRA-064: Zasięg na hover i dwuklik potwierdzający ruch\|GRA-064]] | Zasięg na hover i dwuklik potwierdzający ruch | ✅ | GRA-057, GRA-063, ADR-001, ADR-039, INTERF-005 |
 | [[Zadania-opisy#GRA-065: Potwierdzanie ataku i usuwanie akcji z planera\|GRA-065]] | Potwierdzanie ataku i usuwanie akcji z planera | ✅ | GRA-057, GRA-063, GRA-064, ADR-001, ADR-039, INTERF-005 |
+| [[Zadania-opisy#GRA-066: Demo strony logowania i rejestracji\|GRA-066]] | Demo strony logowania i rejestracji | ✅ | INTERF-008, SRV-002, API-001 |
+| [[Zadania-opisy#GRA-067: Strona główna klienta\|GRA-067]] | Strona główna klienta | 🚧 | GRA-066, INTERF-008, INTERF-001 |
