@@ -526,3 +526,38 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
   - **Dane:** pozycje startowe są pamiętane w sesji scenariusza i nie zmieniają formatu zapisu mapy ani replaya.
   - **Testy:** `tests/si/` pokrywa obie gałęzie reguły, `canBeUsed()` i budowę planu; `make verify` przechodzi.
   - **Dokumentacja:** ADR-042, ZAL-004, ZAL-010, ZAL-012 i INTERF-005 opisują SI i nowy zasięg piechoty.
+
+## GRA-063: Linie strzału w planerze tury
+- **Kontekst:** Planer pokazuje trasy i obrys celu, ale nie łączy strzelca z celem. Gracz nie widzi na mapie, która jednostka i z którego heksa odda strzał po wcześniejszym ruchu.
+- **Opis:** `drawPath()` w `ScenarioScene` rysuje przerywaną linię od pozycji atakującego w chwili strzału (`TimelineAttackClip.attackerPos`) do heksa celu (`targetPos`). Linie pochodzą z `buildTimeline()`, więc uwzględniają ruch przed strzałem i wiele ataków w jednej turze. Linia wybranej jednostki jest grubsza i mocniejsza, pozostałe są stonowane. Linie znikają po wykonaniu tury i nie zmieniają stanu gry.
+- **Kryteria:**
+  - **Widoczność:** każdy zaplanowany atak ma linię od strzelca do celu już przed wykonaniem tury.
+  - **Pozycja:** linia startuje z heksa, z którego jednostka strzeli po wcześniejszym ruchu.
+  - **Spójność:** linie wynikają z osi czasu, więc pokrywają się z animacją odtwarzania.
+  - **Czytelność:** wybrana jednostka ma wyróżnioną linię, a wiele ataków nie zasłania mapy.
+  - **Testy:** `make verify` przechodzi.
+  - **Dokumentacja:** INTERF-005 opisuje linie strzału w planerze.
+
+## GRA-064: Zasięg na hover i dwuklik potwierdzający ruch
+- **Kontekst:** Zasięg ruchu i strzału był widoczny dopiero po kliknięciu jednostki, a klik heksa od razu zatwierdzał ruch. Gracz nie mógł ocenić zasięgu bez wyboru jednostki, a pojedynczy klik łatwo przenosił ją na zły heks.
+- **Opis:** `drawRangeHints()` bierze jednostkę spod kursora — własną albo widocznego wroga — a gdy kursora nie ma nad jednostką, wraca do aktualnie wybranej. Dla własnej jednostki pokazuje zasięg ruchu i strzału z uwzględnieniem planu; dla wroga tylko zasięg strzału, a dla artylerii wszystkie widoczne jednostki przeciwnika. Pierwszy klik na wolnym heksie tylko odkłada podgląd trasy (`pendingMove`) i rysuje ją z duchem; drugi klik na tym samym heksie zatwierdza ruch przez `setMove()`. Klik na inną jednostkę, atak, `Del` albo wykonanie tury czyści niepotwierdzony podgląd. Podpowiedź planera informuje o dwukliku.
+- **Kryteria:**
+  - **Hover:** najechanie na jednostkę pokazuje jej zasięg bez klikania; po zjechaniu z jednostki wraca zasięg wybranej jednostki.
+  - **Wróg:** hover na widocznym wrogu pokazuje jego zasięg strzału, w tym pełnomapowy zasięg artylerii.
+  - **Potwierdzenie:** pierwszy klik na heksie tylko podgląda trasę, drugi klik na tym samym heksie zatwierdza ruch; klik na inny heks zmienia podgląd.
+  - **Anulowanie:** wybór innej jednostki, atak, `Del` i `WYKONAJ TURĘ` czyszczą niepotwierdzony podgląd.
+  - **Testy:** `make verify` przechodzi.
+  - **Dokumentacja:** INTERF-005 opisuje hover i dwuklik.
+
+## GRA-065: Potwierdzanie ataku i usuwanie akcji z planera
+- **Kontekst:** Ruch wymagał już drugiego kliknięcia, ale atak nadal dodawał się od razu po kliknięciu wroga, więc łatwo było zaplanować strzał przez pomyłkę. Planer nie dawał też sposobu na skasowanie pojedynczej akcji — jedyne wyjście to `Del`, które usuwało ostatnią akcję wybranej jednostki.
+- **Opis:** `handleMapClick()` prowadzi atak tak samo jak ruch: pierwszy klik na widocznego wroga tylko odkłada `pendingAttack` i rysuje pomarańczową przerywaną linię od strzelca do celu, a drugi klik na tym samym wrogu zatwierdza atak przez `addAttack()`. Gdy jednostka ma niepotwierdzony ruch, klik wroga najpierw zatwierdza ten ruch, więc atak jest liczony z docelowego heksa, a nie z pozycji startowej. Klik na inny cel, heks, jednostkę, scrub albo wykonanie tury czyści podgląd. `removeActionFrom()` w `core/plan/plan.ts` obcina listę akcji jednostki od wskazanego indeksu, więc usunięcie ruchu kasuje też późniejszy atak tej jednostki. Prawy klik na klipie osi czasu wywołuje `onRemoveAction`, a przycisk `USUŃ AKCJĘ` w planerze — `onRemoveLast` dla ostatniej akcji wybranej jednostki. Przycisk jest nieaktywny, gdy jednostka nie ma zaplanowanych akcji.
+- **Kryteria:**
+  - **Potwierdzenie ataku:** pierwszy klik na wrogu pokazuje podgląd strzału, drugi klik na tym samym wrogu dodaje atak do planu.
+  - **Ruch przed atakiem:** klik wroga przy niepotwierdzonym ruchu zatwierdza ten ruch, a atak jest liczony z nowej pozycji.
+  - **Zmiana celu:** klik na innego wroga albo inny heks zmienia podgląd i nie dodaje ataku.
+  - **Anulowanie:** wybór jednostki, scrub, `Del` i `WYKONAJ TURĘ` czyszczą niepotwierdzony atak.
+  - **PPM na klipie:** prawy klik na klipie usuwa tę akcję i wszystkie późniejsze akcje tej jednostki.
+  - **Guzik:** `USUŃ AKCJĘ` usuwa ostatnią akcję wybranej jednostki i jest nieaktywny bez zaplanowanych akcji.
+  - **Testy:** `make verify` przechodzi.
+  - **Dokumentacja:** INTERF-005 opisuje potwierdzanie ataku i usuwanie akcji.

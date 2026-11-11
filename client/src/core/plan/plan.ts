@@ -176,6 +176,20 @@ export function removeLastAction(plan: TurnPlan, unitId: string): TurnPlan {
   return withActions(plan, unitId, actions.slice(0, -1));
 }
 
+export function removeActionFrom(
+  plan: TurnPlan,
+  unitId: string,
+  actionIndex: number,
+): TurnPlan {
+  const actions = unitActions(plan, unitId);
+
+  if (actionIndex < 0 || actionIndex >= actions.length) {
+    return plan;
+  }
+
+  return withActions(plan, unitId, actions.slice(0, actionIndex));
+}
+
 export function clearUnit(plan: TurnPlan, unitId: string): TurnPlan {
   return withActions(plan, unitId, []);
 }

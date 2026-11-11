@@ -15,6 +15,7 @@ import {
   commitPlan,
   createTurnPlan,
   planState,
+  removeActionFrom,
   removeLastAction,
   sampleTimeline,
   setMove,
@@ -54,7 +55,10 @@ import { buildSiPlan, type SiSpawns } from '../si';
 const EDGE_PAN_MARGIN = 24;
 const MOVE_HINT_COLOR = 0x6fd08c;
 const ATTACK_HINT_COLOR = 0xe0563f;
+const PENDING_ATTACK_COLOR = 0xffb347;
 const ATTACK_HINT_SIZE = HEX_SIZE - 8;
+const SHOT_LINE_DASH = 8;
+const SHOT_LINE_GAP = 5;
 const PLAN_COLORS = [0xf2d35c, 0x6fd08c, 0x5aa9e6, 0xe0a15a, 0xc77dff, 0x7bdff2];
 
 interface ScenarioData {
@@ -70,8 +74,18 @@ export class ScenarioScene extends Phaser.Scene {
   private readonly keys = new Map<string, Phaser.Input.Keyboard.Key>();
 
   private hover: HexCoord | null = null;
+  private hoverUnitId: string | null = null;
   private selected: Unit | null = null;
   private plan: TurnPlan = createTurnPlan(this.turn);
+  private pendingMove: {
+    readonly unitId: string;
+    readonly coord: HexCoord;
+    readonly plan: TurnPlan;
+  } | null = null;
+  private pendingAttack: {
+    readonly unitId: string;
+    readonly targetId: string;
+  } | null = null;
   private timeline: TurnTimeline = { durationMs: 0, clips: [] };
   private previewMs: number | null = null;
   private playing = false;
@@ -94,6 +108,7 @@ export class ScenarioScene extends Phaser.Scene {
   private planner!: PlanTimeline;
   private recruitDialog!: RecruitDialog;
   private readonly planGhosts: Phaser.GameObjects.Image[] = [];
+  private pendingGhost?: Phaser.GameObjects.Image;
   private cursor!: Phaser.GameObjects.Graphics;
   private selection!: Phaser.GameObjects.Graphics;
   private rangeHints!: Phaser.GameObjects.Graphics;
@@ -169,6 +184,9 @@ export class ScenarioScene extends Phaser.Scene {
       onPlay: () => this.playTurn(),
       onScrub: (timeMs) => this.setPreview(timeMs),
       onSelectUnit: (unitId) => this.selectById(unitId),
+      onRemoveAction: (unitId, actionIndex) =>
+        this.removePlannedAction(unitId, actionIndex),
+      onRemoveLast: () => this.removeSelectedLastAction(),
     });
     this.recruitDialog = new RecruitDialog(this);
 
@@ -314,31 +332,88 @@ export class ScenarioScene extends Phaser.Scene {
 
     if (unit && unit.faction === this.turn.faction) {
       if (target && target.faction !== unit.faction) {
+        if (this.pendingMove?.unitId === unit.id) {
+          this.applyPlan(this.pendingMove.plan);
+        }
+
         const result = addAttack(this.plan, this.state, unit.id, target.id);
 
-        if (result.ok) {
+        if (!result.ok) {
+          this.pendingAttack = null;
+          this.drawPath();
+          this.planner.notice(describePlanError(result.reason));
+          return;
+        }
+
+        if (
+          this.pendingAttack?.unitId === unit.id &&
+          this.pendingAttack.targetId === target.id
+        ) {
           this.applyPlan(result.plan);
           return;
         }
 
-        this.planner.notice(describePlanError(result.reason));
+        this.pendingAttack = { unitId: unit.id, targetId: target.id };
+        this.drawPath();
+        this.planner.notice('Kliknij wroga ponownie, aby potwierdzić atak');
         return;
       }
 
       if (!target) {
         const result = setMove(this.plan, this.state, unit.id, coord);
 
-        if (result.ok) {
-          this.applyPlan(result.plan);
-        } else {
+        if (!result.ok) {
+          this.pendingMove = null;
+          this.pendingAttack = null;
+          this.drawPath();
           this.planner.notice(describePlanError(result.reason));
+          return;
         }
 
+        if (
+          this.pendingMove?.unitId === unit.id &&
+          this.pendingMove.coord.col === coord.col &&
+          this.pendingMove.coord.row === coord.row
+        ) {
+          this.applyPlan(result.plan);
+          return;
+        }
+
+        this.pendingAttack = null;
+        this.pendingMove = { unitId: unit.id, coord, plan: result.plan };
+        this.drawPath();
+        this.planner.notice('Kliknij ten heks ponownie, aby potwierdzić ruch');
         return;
       }
     }
 
     this.selectAt(coord);
+  }
+
+  private removeSelectedLastAction(): void {
+    const unit = this.selectedUnit();
+
+    if (!unit) {
+      this.planner.notice('Wybierz jednostkę, której akcję chcesz usunąć');
+      return;
+    }
+
+    if (unitActions(this.plan, unit.id).length === 0) {
+      this.planner.notice('Wybrana jednostka nie ma zaplanowanych akcji');
+      return;
+    }
+
+    this.applyPlan(removeLastAction(this.plan, unit.id));
+  }
+
+  private removePlannedAction(unitId: string, actionIndex: number): void {
+    const actions = unitActions(this.plan, unitId);
+
+    if (actionIndex < 0 || actionIndex >= actions.length) {
+      return;
+    }
+
+    this.applyPlan(removeActionFrom(this.plan, unitId, actionIndex));
   }
 
   private selectedUnit(): Unit | null {
@@ -349,8 +424,18 @@ export class ScenarioScene extends Phaser.Scene {
     return this.state.units.find((unit) => unit.id === this.selected?.id) ?? null;
   }
 
+  private hoveredUnit(): Unit | null {
+    if (!this.hover) {
+      return null;
+    }
+
+    return visibleUnitAt(this.state, this.hover, this.playerFaction) ?? null;
+  }
+
   private applyPlan(plan: TurnPlan): void {
     this.plan = plan;
+    this.pendingMove = null;
+    this.pendingAttack = null;
     this.timeline = buildTimeline(this.plan, this.state);
     this.clearPreview();
     this.refreshPlan();
@@ -364,6 +449,12 @@ export class ScenarioScene extends Phaser.Scene {
   private setPreview(timeMs: number): void {
     if (this.playing) {
       return;
+    }
+
+    if (this.pendingMove || this.pendingAttack) {
+      this.pendingMove = null;
+      this.pendingAttack = null;
+      this.drawPath();
     }
 
     this.previewMs = Math.max(0, Math.min(this.timeline.durationMs, timeMs));
@@ -408,6 +499,8 @@ export class ScenarioScene extends Phaser.Scene {
     }
 
     this.timeline = buildTimeline(this.plan, this.state);
+    this.pendingMove = null;
+    this.pendingAttack = null;
     this.clearPreview();
     this.selected = null;
     this.selection.clear();
@@ -492,7 +585,12 @@ export class ScenarioScene extends Phaser.Scene {
     this.playing = false;
     this.playback = null;
     this.previewMs = null;
+    this.pendingMove = null;
+    this.pendingAttack = null;
     this.selected = null;
+    this.hover = null;
+    this.hoverUnitId = null;
+    this.cursor.clear();
 
     for (const unit of fallen) {
       playDeathSound(UNIT_DEFS[unit.kind].deathSound);
@@ -581,6 +679,11 @@ export class ScenarioScene extends Phaser.Scene {
         this.hover = null;
         this.cursor.clear();
         this.refreshHud();
+
+        if (this.hoverUnitId !== null) {
+          this.hoverUnitId = null;
+          this.drawRangeHints();
+        }
       }
 
       return;
@@ -595,6 +698,13 @@ export class ScenarioScene extends Phaser.Scene {
     this.hover = coord;
     this.drawCursor();
     this.refreshHud();
+
+    const hoveredId = this.hoveredUnit()?.id ?? null;
+
+    if (hoveredId !== this.hoverUnitId) {
+      this.hoverUnitId = hoveredId;
+      this.drawRangeHints();
+    }
   }
 
   private onPointerUp(): void {
@@ -653,6 +763,8 @@ export class ScenarioScene extends Phaser.Scene {
 
   private selectAt(coord: HexCoord): void {
     this.selected = visibleUnitAt(this.state, coord, this.turn.faction) ?? null;
+    this.pendingMove = null;
+    this.pendingAttack = null;
     this.clearPreview();
     this.refreshSelection();
   }
@@ -686,18 +798,21 @@ export class ScenarioScene extends Phaser.Scene {
   private drawRangeHints(): void {
     this.rangeHints.clear();
 
-    const unit = this.selectedUnit();
+    const hovered = this.hoveredUnit();
+    this.hoverUnitId = hovered?.id ?? null;
+    const unit = hovered ?? this.selectedUnit();
 
     if (!unit) {
       return;
     }
 
-    const planned = planState(this.state, this.plan, unit.id) ?? unit;
+    const own = unit.faction === this.turn.faction;
+    const planned = own ? (planState(this.state, this.plan, unit.id) ?? unit) : unit;
     const rangeState = this.stateWithUnit(planned);
-    const canStrike =
-      unit.faction === this.turn.faction && canAttackThisTurn(planned);
-    const canMove =
-      unit.faction === this.turn.faction && !planned.hasActed && planned.movesLeft > 0;
+    const canStrike = own
+      ? canAttackThisTurn(planned)
+      : UNIT_DEFS[planned.kind].attackRange > 0;
+    const canMove = own && !planned.hasActed && planned.movesLeft > 0;
 
     if (canMove) {
       for (const target of moveTargets(rangeState, planned)) {
@@ -736,7 +851,7 @@ export class ScenarioScene extends Phaser.Scene {
     this.pathHints.clear();
     this.hideGhosts();
 
-    if (this.plan.units.length === 0) {
+    if (this.plan.units.length === 0 && !this.pendingMove && !this.pendingAttack) {
       return;
     }
 
@@ -798,6 +913,144 @@ export class ScenarioScene extends Phaser.Scene {
           .setVisible(true);
       }
     });
+
+    this.drawShotLines(selectedId);
+    this.drawPendingMove();
+    this.drawPendingAttack();
+  }
+
+  private drawPendingMove(): void {
+    const pending = this.pendingMove;
+
+    if (!pending) {
+      return;
+    }
+
+    const unit = this.state.units.find((candidate) => candidate.id === pending.unitId);
+
+    if (!unit) {
+      return;
+    }
+
+    const actions = unitActions(pending.plan, pending.unitId);
+    const action = actions[actions.length - 1];
+
+    if (!action || action.kind !== 'move') {
+      return;
+    }
+
+    const planIndex = this.plan.units.findIndex(
+      (candidate) => candidate.unitId === pending.unitId,
+    );
+    const color =
+      PLAN_COLORS[(planIndex === -1 ? this.plan.units.length : planIndex) % PLAN_COLORS.length]!;
+
+    for (const coord of action.path) {
+      outlineHex(this.pathHints, this.mapView.center(coord), color, 2);
+    }
+
+    const end = action.path[action.path.length - 1];
+
+    if (!end) {
+      return;
+    }
+
+    outlineHex(this.pathHints, this.mapView.center(end), color, 4);
+    this.showPendingGhost(unit, end);
+  }
+
+  private drawPendingAttack(): void {
+    const pending = this.pendingAttack;
+
+    if (!pending) {
+      return;
+    }
+
+    const unit = this.state.units.find((candidate) => candidate.id === pending.unitId);
+    const target = this.state.units.find((candidate) => candidate.id === pending.targetId);
+
+    if (!unit || !target) {
+      return;
+    }
+
+    const planned = planState(this.state, this.plan, unit.id) ?? unit;
+    const from = this.mapView.center(planned.pos);
+    const to = this.mapView.center(target.pos);
+
+    this.drawDashedLine(from, to, 2.5, 0.9, PENDING_ATTACK_COLOR);
+    outlineHex(this.pathHints, to, PENDING_ATTACK_COLOR, 3, ATTACK_HINT_SIZE);
+  }
+
+  private showPendingGhost(unit: Unit, coord: HexCoord): void {
+    if (!this.pendingGhost) {
+      this.pendingGhost = this.add
+        .image(0, 0, unitTexture(this, 'infantry', 'blue').key)
+        .setDepth(3)
+        .setAlpha(0.35)
+        .setVisible(false);
+
+      this.uiCamera?.ignore(this.pendingGhost);
+    }
+
+    const center = this.mapView.center(coord);
+
+    this.pendingGhost
+      .setTexture(unitTexture(this, unit.kind, unit.faction).key)
+      .setPosition(center.x, center.y)
+      .setAlpha(0.35)
+      .setVisible(true);
+  }
+
+  private drawShotLines(selectedId: string | null): void {
+    for (const clip of this.timeline.clips) {
+      if (clip.kind !== 'attack') {
+        continue;
+      }
+
+      const selected = clip.unitId === selectedId;
+      const from = this.mapView.center(clip.attackerPos);
+      const to = this.mapView.center(clip.targetPos);
+
+      this.drawDashedLine(
+        from,
+        to,
+        selected ? 2.5 : 1.5,
+        selected ? 0.85 : 0.5,
+        ATTACK_HINT_COLOR,
+      );
+    }
+  }
+
+  private drawDashedLine(
+    from: { x: number; y: number },
+    to: { x: number; y: number },
+    width: number,
+    alpha: number,
+    color: number,
+  ): void {
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    const length = Math.hypot(dx, dy);
+
+    if (length === 0) {
+      return;
+    }
+
+    const ux = dx / length;
+    const uy = dy / length;
+    const step = SHOT_LINE_DASH + SHOT_LINE_GAP;
+
+    this.pathHints.lineStyle(width, color, alpha);
+
+    for (let offset = 0; offset < length; offset += step) {
+      const end = Math.min(offset + SHOT_LINE_DASH, length);
+      this.pathHints.lineBetween(
+        from.x + ux * offset,
+        from.y + uy * offset,
+        from.x + ux * end,
+        from.y + uy * end,
+      );
+    }
   }
 
   private ghostFor(index: number): Phaser.GameObjects.Image {
@@ -823,6 +1076,8 @@ export class ScenarioScene extends Phaser.Scene {
     for (const ghost of this.planGhosts) {
       ghost.setVisible(false);
     }
+
+    this.pendingGhost?.setVisible(false);
   }
 
   private drawCursor(): void {

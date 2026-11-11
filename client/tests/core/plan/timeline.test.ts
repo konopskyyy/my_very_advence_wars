@@ -83,6 +83,17 @@ describe('timeline', () => {
     expect(frame.attacks[0]!.targetId).toBe(state.units[2]!.id);
   });
 
+  it('liczy strzał z pozycji po wcześniejszym ruchu', () => {
+    const { state, plan } = planForTwoUnits();
+    const timeline = buildTimeline(plan, state);
+    const artilleryId = state.units[1]!.id;
+    const attack = timeline.clips.find(
+      (clip) => clip.kind === 'attack' && clip.unitId === artilleryId,
+    );
+
+    expect(attack).toMatchObject({ attackerPos: { col: 6, row: 5 } });
+  });
+
   it('przed startem tury pokazuje pozycje startowe', () => {
     const { state, plan } = planForTwoUnits();
     const frame = sampleTimeline(buildTimeline(plan, state), state, 0);
