@@ -1,6 +1,7 @@
 import { defineConfig } from 'vitest/config';
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
+  base: command === 'build' ? './' : '/',
   server: {
     // host: true — bez tego Vite nie wyjdzie poza kontener i mapping portu nie zadziała.
     host: true,
@@ -11,7 +12,8 @@ export default defineConfig({
     include: ['phaser'],
   },
   build: {
-    outDir: 'dist',
+    outDir: '../server/public/game',
+    emptyOutDir: true,
     target: 'es2022',
     // Phaser traktuje każde `data:` URL jak base64, a Vite 8 wstawia małe
     // pliki jako zakodowany procentowo data URI — wtedy ładowanie SVG pada.
@@ -20,4 +22,4 @@ export default defineConfig({
   test: {
     include: ['tests/**/*.test.ts'],
   },
-});
+}));

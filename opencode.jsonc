@@ -10,6 +10,7 @@
     { "action": "read", "resource": "client/.stryker-tmp/*", "effect": "deny" },
     { "action": "read", "resource": "client/package-lock.json", "effect": "deny" },
     { "action": "read", "resource": "server/vendor/*", "effect": "deny" },
+    { "action": "read", "resource": "server/public/game/*", "effect": "deny" },
     { "action": "read", "resource": "server/composer.lock", "effect": "deny" },
     { "action": "read", "resource": "*.log", "effect": "deny" },
 
@@ -39,7 +40,8 @@
       "client/dist/**",
       "client/node_modules/**",
       "client/reports/**",
-      "server/vendor/**"
+      "server/vendor/**",
+      "server/public/game/**"
     ]
   }
 }

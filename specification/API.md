@@ -1,6 +1,6 @@
 # API
 
-Backend Symfony wystawia JSON/REST pod `http://localhost:18080` (port z
+Backend Symfony wystawia JSON/REST pod `http://localhost:18080/api` (port z
 `BACKEND_PORT`, patrz [[Infrastruktura]]). Dokument opisuje **faktyczny
 kontrakt** endpointów; zmiana pola albo kodu odpowiedzi wymaga aktualizacji
 tego pliku i testu w `server/tests/`.
@@ -14,6 +14,24 @@ Wspólne zasady:
   chronionych,
 - brak wersjonowania w URL; moduł auth jest pierwszym API i odpowiada pod
   `/api/auth`.
+
+## Status usługi
+
+### `GET /api`
+
+Zwraca informacje o działającym backendzie:
+
+```json
+{
+  "service": "server",
+  "status": "ok",
+  "framework": "Symfony 8.x"
+}
+```
+
+Pod `/` nginx serwuje stronę startową, pod `/game/` — grę, a nie backend —
+status sprawdzisz wyłącznie
+pod `/api` (albo `/admin`). Test: `server/tests/Controller/HomeControllerTest.php`.
 
 ## API-001: Uwierzytelnianie
 
@@ -132,8 +150,7 @@ tylko w dev/test.
   (ignorowany plik lokalny).
 - `CORS_ALLOW_ORIGIN` — wyrażenie regularne originów klienta (domyślnie
   localhost/127.0.0.1 na dowolnym porcie, m.in. Vite `18573`).
-- Firewall `api`: bezstanowy, `^/api`, jwt; publiczne są wyłącznie
-  `register` i `login`.
+- Firewall `api`: bezstanowy, `^/api`, jwt; publiczne są `GET /api` (status), `register` i `login`.
 
 ### Testy
 

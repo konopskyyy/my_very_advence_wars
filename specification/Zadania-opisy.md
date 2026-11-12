@@ -255,6 +255,17 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
   - **Ustalenia:** dokument wskazuje `@vitest/coverage-v8`, Biome i cel Psalm/phpcs jako must-have oraz odrzuca ESLint z typescript-eslint i SonarQube; dependency-cruiser jest oznaczony jako niedziałający z TS 7 (0 modułów).
   - **Dokumentacja:** `specification/Spis treści.md` linkuje [[Jakosc-kodu]], a `specification/Infrastruktura.md` opisuje cel `make metrics`.
 
+## INFRA-007: Wspólny build gry w server/public/game
+- **Kontekst:** Klient budował się do `client/dist` na hoście, przeglądarka korzystała wyłącznie z Vite, a Electron pakietował osobny katalog. Trzy źródła tej samej gry rozjeżdżały się po zmianach, a `make electron` zależał od świeżości ręcznego builda.
+- **Opis:** Vite zapisuje build do `server/public/game` (względna baza `./`), katalog jest montowany do kontenera klienta. Nginx serwuje stronę startową pod `/`, samą grę pod `/game/`, a `/api` i `/admin` zostają po stronie Symfony. `make client-build` uruchamia build w kontenerze Node, a cele Electrona najpierw go wywołują. Electron domyślnie ładuje `server/public/game` przez `app://bundle`, a `VITE_DEV_SERVER_URL` pozostaje opcją dla HMR. Flaga `?desktop=1` (albo ścieżka `/game/`) ukrywa stronę startową już w `<head>`, więc gra nie miga.
+- **Kryteria:**
+  - **Jeden build:** `make client-build` tworzy `server/public/game` z `index.html` i `assets/`, a wynik jest niezależny od hostowego `client/dist`.
+  - **Przeglądarka:** `http://localhost:18080/` pokazuje stronę startową, `/game/` startuje samą grę, a `/api` i `/admin` trafiają do Symfony.
+  - **Electron:** `make electron`, `make electron-build` i cele Windows najpierw budują grę, a okno/paczka biorą pliki z `server/public/game`.
+  - **Bez mignięcia:** Electron z `?desktop=1` nie renderuje `#auth-screen` przed pierwszym malowaniem; strona startowa nadal działa w przeglądarce.
+  - **Testy:** `make verify` przechodzi.
+  - **Dokumentacja:** `specification/Infrastruktura.md` opisuje build, nginx `/` (strona), `/game/` (gra) z rezerwacją `/api` i `/admin` oraz Electrona, a INTERF-008 — start bez strony.
+
 ## GRA-034: Wzmocnienie testów pod mutacje
 - **Kontekst:** Pierwszy przebieg Strykera (INFRA-002) dał 61% i odsłonił pliki z niskim pokryciem zachowań: `scenario.ts` (32%), `map/catalog.ts` (22%) i `state.ts` (61%). Testy sprawdzały głównie, że jednostki powstają, a nie gdzie dokładnie trafiają ani których heksów unikają.
 - **Opis:** Nowe testy katalogu map (metadane, wymiary, konkretne kafle malowane prostokątami) oraz rozbudowa testów scenariusza (puste mapy, dokładne kolumny i rzędy rozmieszczenia, pomijanie wody, brakujących kafli i heksów zajętych) i ruchu (`canMoveUnit`, `getMovePath`, `getMoveCost`, zachowanie przy zużytym ruchu).

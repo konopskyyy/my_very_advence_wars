@@ -9,15 +9,15 @@ a Electron uruchamiasz na hoście.
 ```bash
 make install     # .env z .env.example + hooki git
 make up          # kontenery: client (Vite), nginx, server, db
-make electron    # okno Electrona; ładuje Vite z localhost:18573
+make electron    # build do server/public/game + okno Electrona
 ```
 
 Przydatne cele:
 
 ```bash
 make help        # lista celów
-make verify      # typy, testy, build klienta i restart Vite
-make electron-build  # build klienta + rozpakowana paczka Electrona
+make verify      # typy, testy i build do server/public/game
+make electron-build  # build gry + rozpakowana paczka Electrona
 make test-server     # testy backendu
 ```
 

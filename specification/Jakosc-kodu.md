@@ -204,5 +204,5 @@ wymaga aktualizacji [[Infrastruktura]] w tym samym commicie.
   (`server/var/infection/`); bez niego kolumna ma `—`.
 - **Czasy** zależą od cache, obciążenia maszyny i wersji Node — porównuj serie,
   nie pojedyncze pomiary.
-- **Bundle** liczony jest z `client/dist` po buildzie, tylko pliki `.js`, bez
+- **Bundle** liczony jest z `server/public/game` po buildzie, tylko pliki `.js`, bez
   gzip; nie obejmuje assetów graficznych i dźwiękowych.

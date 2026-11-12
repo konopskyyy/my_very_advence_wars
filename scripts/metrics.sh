@@ -117,7 +117,7 @@ BUNDLE_KB=$(node -e '
         else if (entry.name.endsWith(".js")) bytes += fs.statSync(full).size;
       }
     } catch {}
-  })("client/dist");
+  })("server/public/game");
   console.log((bytes / 1024).toFixed(1));
 ')
 

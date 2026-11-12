@@ -3,6 +3,7 @@ node_modules/
 .vite/
 dist/
 dist-electron/
+server/public/game/
 
 # Electron build output
 release/

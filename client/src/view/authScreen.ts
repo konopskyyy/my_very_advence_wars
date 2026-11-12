@@ -18,8 +18,6 @@ function requireElement<T extends HTMLElement>(id: string): T {
 }
 
 export function mountAuthScreen({ onEnterGame }: AuthScreenOptions): void {
-  const screen = requireElement<HTMLElement>('auth-screen');
-  const app = requireElement<HTMLElement>('app');
   const form = requireElement<HTMLFormElement>('auth-form');
   const submit = requireElement<HTMLButtonElement>('auth-submit');
   const playButtons = [
@@ -62,8 +60,6 @@ export function mountAuthScreen({ onEnterGame }: AuthScreenOptions): void {
 
   for (const button of playButtons) {
     button.addEventListener('click', () => {
-      screen.hidden = true;
-      app.hidden = false;
       onEnterGame();
     });
   }

@@ -405,17 +405,18 @@ kod w innym originie lub profilu widzi inną bazę.
 
 | Środowisko | Origin | Profil / katalog danych | Widzi mapy z dev Electrona? |
 | ---------- | ------ | ----------------------- | :-------------------------: |
-| Przeglądarka na hoście | `http://localhost:18573` | profil przeglądarki | ❌ |
-| Electron dev (`make electron`) | `http://localhost:18573` | Linux: `~/.config/@my-very-advance-wars/electron` | ✅ |
-| Electron po zmianie portu | np. `http://localhost:19000` | ten sam profil, inny origin | ❌ |
-| Electron packaged | `app://bundle/index.html` | katalog zależny od `productName` | ❌ |
-| `http://127.0.0.1:18573` | inny host niż `localhost` | ten sam profil, inny origin | ❌ |
+| Przeglądarka — build nginx | `http://localhost:18080/` (strona) i `/game/` (gra — ten sam origin) | profil przeglądarki | ❌ |
+| Przeglądarka — Vite | `http://localhost:18573` | profil przeglądarki | ❌ |
+| Electron dev (`make electron`) | `app://bundle/index.html` | Linux: `~/.config/@my-very-advance-wars/electron` | ✅ |
+| Electron z `VITE_DEV_SERVER_URL` | np. `http://localhost:19000` | ten sam profil, inny origin | ❌ |
+| Electron packaged | `app://bundle/index.html` | katalog zależny od `productName` | ❌ (inny profil) |
+| `http://127.0.0.1:18080/` | inny host niż `localhost` | ten sam profil przeglądarki, inny origin | ❌ |
 
 > [!important] Zmiana portu lub hosta zmienia origin
-> Po zmianie `CLIENT_PORT` (albo `VITE_DEV_SERVER_URL`) mapa nadal leży w
-> starym `localStorage`, ale aplikacja czyta już inny origin i pokazuje pustą
-> listę. Nie oznacza to, że baza zniknęła. Wróć na stary port/origin albo
-> przenieś base64 z `mvaw:sqlite` ręcznie.
+> Po zmianie `CLIENT_PORT`, `BACKEND_PORT` (albo `VITE_DEV_SERVER_URL`) mapa
+> nadal leży w starym `localStorage`, ale aplikacja czyta już inny origin i
+> pokazuje pustą listę. Nie oznacza to, że baza zniknęła. Wróć na stary
+> port/origin albo przenieś base64 z `mvaw:sqlite` ręcznie.
 
 W Electronie dev dane leżą w profilu:
 
@@ -537,7 +538,7 @@ Node.
    `ZAPISANO`; `ESC` nie zapisuje.
 2. Sprawdź `location.origin` — czy to ten sam host i port co wcześniej.
 3. Sprawdź, czy to ten sam profil Electrona (`app.getPath('userData')`), a nie
-   przeglądarka lub packaged `app://bundle`.
+   przeglądarka, Vite albo inna paczka desktopowa.
 4. Sprawdź, czy nie patrzysz na szkic z sesji (dopisek „szkic”) zamiast stanu
    z bazy; szkic ginie po restarcie strony.
 5. Zobacz `localStorage.getItem('mvaw:sqlite')?.length` — `0`/`null` oznacza

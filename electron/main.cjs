@@ -6,7 +6,13 @@ const { SCHEME, registerDistScheme, serveDist } = require('./distServer.cjs');
 
 // Port zgodny z CLIENT_PORT w .env.
 const DEV_URL = process.env.VITE_DEV_SERVER_URL || 'http://localhost:18573';
-const useDevServer = !!process.env.VITE_DEV_SERVER_URL || !app.isPackaged;
+const useDevServer = !!process.env.VITE_DEV_SERVER_URL;
+
+function gameUrl(url) {
+  const target = new URL(url);
+  target.searchParams.set('desktop', '1');
+  return target.toString();
+}
 
 registerDistScheme();
 
@@ -15,7 +21,7 @@ function distRoot() {
     return path.join(process.resourcesPath, 'client', 'dist');
   }
 
-  return path.join(__dirname, '..', 'client', 'dist');
+  return path.join(__dirname, '..', 'server', 'public', 'game');
 }
 
 function createWindow() {
@@ -35,15 +41,15 @@ function createWindow() {
   });
 
   if (useDevServer) {
-    void win.loadURL(DEV_URL);
+    void win.loadURL(gameUrl(DEV_URL));
 
     // DevTools na życzenie: ELECTRON_DEVTOOLS=1 make electron
     if (process.env.ELECTRON_DEVTOOLS === '1') {
       win.webContents.openDevTools({ mode: 'detach' });
     }
   } else {
-    // Własny schemat zamiast file:// — absolute ścieżki z Vite i fetch WASM działają.
-    void win.loadURL(`${SCHEME}://bundle/index.html`);
+    // Własny schemat zamiast file:// — względne assetki, moduły ES i fetch WASM działają.
+    void win.loadURL(gameUrl(`${SCHEME}://bundle/index.html`));
   }
 
   return win;
