@@ -2,6 +2,8 @@
 
 COMPOSE ?= docker compose
 ELECTRON ?= npm
+HOST_UID := $(shell id -u)
+HOST_GID := $(shell id -g)
 
 # Porty z .env (domyślne zgodne z docker-compose.yml), do wydruku w helpie.
 CLIENT_PORT  ?= 18573
@@ -108,21 +110,18 @@ hooks: ## Zainstaluj hooki git (Husky)
 
 ## ——— Electron (na hoście, poza compose) ———————————————————
 
-electron: ## Uruchom Electrona (dev: ładuje Vite z kontenera)
+electron: client-build ## Zbuduj grę i uruchom Electrona z server/public/game
 	$(ELECTRON) start --prefix electron
 
 run: electron ## Uruchom Electrona (alias make electron)
 
-electron-build: ## Zbuduj klienta i rozpakowaną paczkę Electrona (bieżący system)
-	cd client && npm run build
+electron-build: client-build ## Zbuduj klienta i rozpakowaną paczkę Electrona (bieżący system)
 	$(ELECTRON) run build --prefix electron
 
-electron-win: ## Zbuduj klienta i paczkę ZIP dla Windows (WSL, bez wine)
-	cd client && npm run build
+electron-win: client-build ## Zbuduj klienta i paczkę ZIP dla Windows (WSL, bez wine)
 	$(ELECTRON) run build:win --prefix electron
 
-electron-win-installer: ## Zbuduj instalator NSIS dla Windows (wymaga wine)
-	cd client && npm run build
+electron-win-installer: client-build ## Zbuduj instalator NSIS dla Windows (wymaga wine)
 	$(ELECTRON) run build:win:installer --prefix electron
 
 ## ——— Testy / porządek ——————————————————————————————————————
@@ -133,11 +132,10 @@ test: ## Testy klienta (Vitest, krótka końcówka)
 check: ## Typy i testy klienta (krótkie końcówki, pełny log w tmp)
 	@scripts/compact-run.sh --label check bash -c 'cd client && npx tsc --noEmit && npm test'
 
-client-build: ## Zbuduj klienta i zrestartuj Vite
-	@scripts/compact-run.sh --label build bash -c 'cd client && npm run build'
-	@scripts/compact-run.sh --label vite bash -c '$(COMPOSE) restart client'
+client-build: ## Zbuduj klienta do server/public/game (kontener Node)
+	@scripts/compact-run.sh --label build -- $(COMPOSE) run --rm --no-deps client sh -c 'npm install && npm run build && chown -R $(HOST_UID):$(HOST_GID) /server/public/game'
 
-verify: check client-build ## Typy, testy, build i restart Vite (jedno polecenie)
+verify: check client-build ## Typy, testy i build do server/public/game (jedno polecenie)
 
 mutation: ## Testy mutacyjne klienta (Stryker)
 	cd client && npm run mutation

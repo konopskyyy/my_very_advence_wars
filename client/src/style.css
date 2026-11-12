@@ -32,6 +32,14 @@ body {
   height: 100%;
 }
 
+html[data-game] #auth-screen {
+  display: none;
+}
+
+html[data-game] #app {
+  display: block;
+}
+
 .home {
   position: fixed;
   inset: 0;

@@ -11,6 +11,7 @@ services:
     working_dir: /app
     volumes:
       - ./client:/app
+      - ./server/public/game:/server/public/game
       - client_node_modules:/app/node_modules
     command: sh -c "npm install && npm run dev"
     ports:
@@ -81,5 +82,5 @@ volumes:
   server_vendor:
 
 # Electron nie ma tu serwisu i mieć nie powinien: okno wymaga displaya, a build
-# pod każdy system — jego własnych narzędzi. Opakowuje gotowy client/dist,
+# pod każdy system — jego własnych narzędzi. Opakowuje gotowy server/public/game,
 # więc buduje się na hoście: make electron-build.

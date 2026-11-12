@@ -35,7 +35,7 @@ stan. Zmiany zbieraj w serię i przebudowuj **raz na końcu**, nie po każdym
 drobiazgu:
 
 ```bash
-make verify   # typy, testy, build i restart Vite; krótkie końcówki logów
+make verify   # typy, testy i build do server/public/game; krótkie końcówki logów
 ```
 
 Tylko przebudowa bez testów: `make client-build`. `make check` uruchamia same
@@ -49,7 +49,7 @@ Nie czytaj logów w całości ani nie wklejaj ich do rozmowy — wystarczy statu
 ścieżka i fragment.
 
 HMR nie nadąża po zmianie struktury modułów (`core/map.ts` → `core/map/`),
-a `client/dist` bywa starszy od kodu. Bez przebudowy przeglądarka pokazuje
+a `server/public/game` bywa starszy od kodu. Bez przebudowy Electron pokazuje
 starą wersję, a diagnoza zachowania jest myląca.
 
 ## Komentarze — tylko gdy wnoszą wiedzę
@@ -143,8 +143,9 @@ tokenów, z których większość była do uniknięcia.
 - **Testy przez `make`.** `make verify`/`make check`, backend przez
   `make test-server` (opakowany w `compact-run.sh`) zamiast
   `make test-server 2>&1 | tail -80`.
-- **Nie czytaj artefaktów.** Pomijaj `client/dist/`, `client/node_modules/`,
-  `server/vendor/`, `client/reports/` i locki; `opencode.jsonc` blokuje ich
+- **Nie czytaj artefaktów.** Pomijaj `client/dist/`, `server/public/game/`,
+  `client/node_modules/`, `server/vendor/`, `client/reports/` i locki;
+  `opencode.jsonc` blokuje ich
   odczyt przez `read`. Nie obchodź blokady shellem — `cat` i `grep` też są
   zablokowane.
 - **Jedno źródło opisu zadania.** Status i powiązania są w

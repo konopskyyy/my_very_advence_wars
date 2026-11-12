@@ -7,13 +7,29 @@ import { ScenarioMenuScene } from './scenes/ScenarioMenuScene';
 import { ScenarioScene } from './scenes/ScenarioScene';
 import { mountAuthScreen } from './view/authScreen';
 import { preloadCombatAudio } from './view/combatAudio';
+import { isGameEntry } from './view/gameEntry';
 
 let game: Phaser.Game | undefined;
+
+function revealGame(): void {
+  const authScreen = document.getElementById('auth-screen');
+  const app = document.getElementById('app');
+
+  if (authScreen) {
+    authScreen.hidden = true;
+  }
+
+  if (app) {
+    app.hidden = false;
+  }
+}
 
 function startGame(): void {
   if (game) {
     return;
   }
+
+  revealGame();
 
   game = new Phaser.Game({
     type: Phaser.AUTO,
@@ -41,5 +57,14 @@ function startGame(): void {
   (globalThis as { __mvawGame?: Phaser.Game }).__mvawGame = game;
 }
 
-mountAuthScreen({ onEnterGame: startGame });
+if (isGameEntry(window.location.pathname, window.location.search)) {
+  startGame();
+} else {
+  mountAuthScreen({
+    onEnterGame: () => {
+      window.location.assign('/game');
+    },
+  });
+}
+
 preloadCombatAudio();

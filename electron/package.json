@@ -24,7 +24,7 @@
     ],
     "extraResources": [
       {
-        "from": "../client/dist",
+        "from": "../server/public/game",
         "to": "client/dist"
       }
     ],

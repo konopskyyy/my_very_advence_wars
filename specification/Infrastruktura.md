@@ -49,6 +49,7 @@ graph LR
 
     subgraph "Compose: my-very-advance-wars"
         C[client<br/>Vite + Phaser]
+        G[(server/public/game<br/>build gry)]
         N[nginx<br/>:18080]
         S[server<br/>php-fpm]
         D[db<br/>MySQL 8.4]
@@ -56,18 +57,25 @@ graph LR
     end
 
     E -->|dev: localhost:18573| C
-    E -->|prod: client/dist| C
+    E -->|gra: server/public/game| G
+    G --> N
+    N -->|/| B[strona startowa]
+    N -->|/game/| P[gra]
     N -->|fastcgi :9000| S
     S -->|DATABASE_URL| D
     A --> D
 ```
 
-Dwie role, dwie ścieżki:
+Trzy role, trzy ścieżki:
 
 - **Front HTTP backendu** — `nginx` (:18080) przyjmuje ruch i przekazuje do
   `server` (php-fpm) przez FastCGI.
-- **Klient gry** — `client` (Vite, :18573) serwuje grę niezależnie; backendu
-  używa dopiero realna logika multiplayer/sejwów.
+- **Build gry** — Vite buduje klienta do `server/public/game`; nginx serwuje
+  stronę startową pod `/`, samą grę pod `/game/`, a Electron bierze ten sam
+  katalog przez `app://`. Pod `/api` działa backend, a `/admin` jest
+  zarezerwowane na panel administracyjny.
+- **Klient gry w dev** — `client` (Vite, :18573) daje hot-reload; backendu używa
+  dopiero realna logika multiplayer/sejwów.
 - **Mapy z edytora** — nie przechodzą przez Compose ani MySQL. Klient trzyma je
   w SQLite (`sql.js`/WASM) w `localStorage`; szczegóły w [[Mapy]].
 
@@ -90,8 +98,8 @@ Domyślne wartości z `docker-compose.yml`:
 
 | Serwis  | Port hosta (domyślny) | Zmienna `.env`  | Port kontenera | Do czego                                |
 | ------- | --------------------- | --------------- | -------------- | --------------------------------------- |
-| client  | `18573`               | `CLIENT_PORT`   | 5173           | Vite dev server (gra)                   |
-| nginx   | `18080`               | `BACKEND_PORT`  | 80             | Front HTTP backendu (Symfony)           |
+| client  | `18573`               | `CLIENT_PORT`   | 5173           | Vite dev server (HMR)                   |
+| nginx   | `18080`               | `BACKEND_PORT`  | 80             | Strona (`/`), gra (`/game/`), API (`/api`), admin (`/admin`) |
 | db      | `127.0.0.1:13306`     | `DB_PORT`       | 3306           | MySQL — **tylko localhost**             |
 | adminer | `18081`               | `ADMINER_PORT`  | 8080           | Panel do bazy (profil `tools`)          |
 | server  | —                     | —               | 9000           | php-fpm — wewnątrz sieci, nieexponowany |
@@ -121,15 +129,21 @@ czyli **dev serwer Vite na żywo** z podpiętym kodem z `./client`.
 - `node_modules` siedzi w **wymianowym woluminie** `client_node_modules`, nie na
   hoście — inaczej montowanie `./client` zasłoniłoby moduły zainstalowane w
   kontenerze (host nie ma ich w tej samej wersji/architekturze).
+- `./server/public/game` jest montowane do kontenera, więc `npm run build`
+  zapisuje gotową grę od razu w drzewie Symfony. Ten sam katalog serwuje nginx
+  i pakuje Electron.
 - Klient zawiera `sql.js` (SQLite w WebAssembly). Build emituje plik
-  `dist/assets/sql-wasm-*.wasm`, a baza map jest trzymana lokalnie w
-  `localStorage` przeglądarki/Electrona — nie w MySQL i bez nowego portu.
+  `server/public/game/assets/sql-wasm-*.wasm`, a baza map jest trzymana lokalnie
+  w `localStorage` przeglądarki/Electrona — nie w MySQL i bez nowego portu.
   Format i schemat opisuje [[Mapy]].
 
 ### `nginx` — front HTTP backendu
 
 Obraz `nginx:1.27-alpine`. Serwuje `public/` z `server/` i przekazuje `.php`
-do php-fpm. Konfig: `docker/nginx/default.conf` (montowany `:ro`).
+do php-fpm. Strona startowa jest pod `http://localhost:18080/`, sama gra pod
+`http://localhost:18080/game/` (ten sam build z `public/game/`), a `/api`
+i `/admin` zostają po stronie Symfony. Konfig: `docker/nginx/default.conf`
+(montowany `:ro`).
 
 ### `server` — backend (php-fpm + Symfony)
 
@@ -190,12 +204,23 @@ Najważniejsze linie: katalog publiczny to `public/` (wejście Symfony), a ruch
 
 ```nginx
 root /var/www/html/public;
-location /            { try_files $uri $uri/ /index.php$is_args$args; }
-location ~ \.php$     { fastcgi_pass server:9000; ... }
+absolute_redirect off;
+location = /         { try_files /game/index.html =404; }
+location = /game     { return 301 /game/; }
+location /game/      { index index.html; try_files $uri $uri/ /game/index.html; }
+location /assets/    { alias /var/www/html/public/game/assets/; }
+location /game/assets/ { alias /var/www/html/public/game/assets/; }
+location /api        { try_files $uri $uri/ /index.php$is_args$args; }
+location /admin      { try_files $uri $uri/ /index.php$is_args$args; }
+location /           { try_files $uri $uri/ /index.php$is_args$args; }
+location ~ \.php$    { fastcgi_pass server:9000; ... }
 ```
 
 `try_files ... /index.php` to front controller pattern — wszystkie nieznane
-ścieżki trafiają do Symfony, które ma własny routing.
+ścieżki trafiają do Symfony, które ma własny routing. Wyjątkiem są `/` (strona
+startowa), `/game/` (sama gra) i ich assety: nginx serwuje je z `public/game/`,
+nie angażując PHP. `/api` i `/admin` mają własne prefiksy, więc build gry ich
+nie przechwytuje.
 
 ---
 
@@ -211,12 +236,15 @@ Dwa ostatnie to **wymianowe woluminy (named volumes)** osłaniające podkatalogi
 kodu. Są potrzebne, bo `node_modules`/`vendor` powstają *wewnątrz* kontenera i
 nie powinny mieszać się z drzewem na hoście.
 
+`server/public/game` nie jest woluminem — to bind mount z hosta (`./server`),
+dzięki czemu nginx, Electron i build w kontenerze widzą ten sam katalog.
+
 > [!warning] Pierwsze uruchomienie `server_vendor` jest puste
 > Wymianowy wolumin nadpisuje katalog `vendor/` z hosta. Jeśli więc `vendor`
 > istnieje tylko na hoście (a nie w woluminie), backend odpali się bez autoloada
 > i skończy na `Failed to open stream: .../autoload_runtime.php`.
 >
-> **Objaw:** `500` zamiast JSON-a z `GET /`.
+> **Objaw:** `500` zamiast JSON-a z `GET /api`.
 > **Fix:** `docker compose exec server composer install` (wypełnia wolumin).
 > Szczegóły w [[#Rozwiązywanie problemów]].
 
@@ -246,7 +274,7 @@ i `DATABASE_URL` potrzebuje:
 | `JWT_SECRET_KEY`    | `%kernel.project_dir%/config/jwt/private.pem` | Klucz prywatny JWT.       |
 | `JWT_PUBLIC_KEY`    | `%kernel.project_dir%/config/jwt/public.pem`  | Klucz publiczny JWT.      |
 | `JWT_PASSPHRASE`    | dowolne hasło dev             | Hasło klucza; nie commituj produkcji.      |
-| `CORS_ALLOW_ORIGIN` | regex localhost/127.0.0.1     | Origin klienta Vite (`18573`) i Electrona. |
+| `CORS_ALLOW_ORIGIN` | regex localhost/127.0.0.1     | Origin klienta Vite (`18573`) i buildu z nginx (`18080`). |
 
 > [!tip]
 > Skopiuj `.env.example` na `.env` i dopisz własne hasła. Plik `.env` jest
@@ -262,23 +290,26 @@ Electron **celowo nie ma serwisu w Compose** i nie powinien mieć:
 
 - okno gry wymaga ekranu — kontener nie ma displaya (trzeba by X11/vfb),
 - build pod Windows/macOS/Linux wymaga narzędzi z systemu docelowego,
-- Electron tylko opakowuje gotowy build klienta (`client/dist`).
+- Electron tylko opakowuje gotowy build klienta z `server/public/game`.
 
 Dlatego uruchamiasz i budujesz go **na hoście**:
 
 ```bash
-make electron                # dev: ładuje Vite z kontenera (localhost:18573)
+make electron                # build do server/public/game + Electron z tych plików
 make run                     # alias make electron
-make electron-build          # client/dist + rozpakowana paczka dla bieżącego systemu
-make electron-win            # client/dist + ZIP z .exe dla Windows (WSL, bez wine)
-make electron-win-installer  # instalator NSIS + portable .exe (wymaga wine)
+make electron-build          # build gry + rozpakowana paczka dla bieżącego systemu
+make electron-win            # build gry + ZIP z .exe dla Windows (WSL, bez wine)
+make electron-win-installer  # build gry + instalator NSIS + portable .exe (wymaga wine)
 ```
 
-Albo równoważnie przez npm bezpośrednio:
+Cele Electrona najpierw uruchamiają `make client-build`, więc paczka nie
+korzysta ze starego `server/public/game`. Sam build klienta działa w kontenerze
+Node i zapisuje wynik przez bind mount do `server/public/game`.
+
+Albo równoważnie przez npm bezpośrednio (po wcześniejszym buildzie):
 
 ```bash
-cd client && npm run build              # produkuje client/dist
-npm start --prefix electron             # dev: ładuje localhost:18573
+npm start --prefix electron             # ładuje server/public/game
 npm run build --prefix electron         # paczka dla bieżącego systemu
 npm run build:win --prefix electron     # ZIP dla Windows (bez wine)
 npm run build:win:installer --prefix electron  # NSIS/portable (wymaga wine)
@@ -286,23 +317,35 @@ npm run build:win:installer --prefix electron  # NSIS/portable (wymaga wine)
 
 Pliki: `electron/main.cjs` (okno — pełne ekran, bez menu, F11/Alt+Enter
 przełącza fullscreen), `electron/preload.cjs` (contextIsolation + sandbox) i
-`electron/distServer.cjs` (serwowanie `client/dist` pod schematem `app://`).
+`electron/distServer.cjs` (serwowanie `server/public/game` pod schematem
+`app://`).
 
-W trybie dev Electron ładuje Vite z kontenera pod `http://localhost:18573`.
-To adres domyślny — `make electron` **nie przekazuje** `CLIENT_PORT` z `.env`
-do Electrona. Po zmianie portu uruchom jawnie:
+Domyślnie Electron (także niepackowany) ładuje statyczny build przez własny
+schemat `app://bundle/`, a nie przez `file://`. Dzięki temu względne ścieżki
+`./assets/...` z Vite, moduły ES i `fetch` pliku `sql-wasm.wasm` działają, a
+`localStorage` ma stabilny origin.
+
+Hot-reload jest opcjonalny: ustaw `VITE_DEV_SERVER_URL`, żeby Electron wczytał
+Vite z kontenera zamiast gotowego builda. Po zmianie `CLIENT_PORT` z `.env`
+uruchom jawnie:
 
 ```bash
 VITE_DEV_SERVER_URL=http://localhost:19000 make electron
 ```
 
-W buildzie produkcyjnym `main.cjs` ładuje statyczny `client/dist/index.html`
-przez własny schemat `app://bundle/`, a nie przez `file://`. Dzięki temu
-bezwzględne ścieżki `/assets/...` z Vite, moduły ES i `fetch` pliku
-`sql-wasm.wasm` działają, a `localStorage` ma stabilny origin.
+Wtedy `make electron` nadal najpierw przebudowuje `server/public/game`, ale
+okno ładuje Vite; to celowe, bo ten sam build jest potrzebny paczce.
 
-> [!note] Gdzie trafia `client/dist`
-> `extraResources` w `electron/package.json` kopiuje `client/dist` do
+Electron pomija stronę startową klienta: `main.cjs` dokłada do adresu
+`?desktop=1`, a klient od razu pokazuje menu Phasera. Flaga jest czytana
+w `<head>` przed pierwszym malowaniem, więc strona nie mignie. W przeglądarce
+strona główna (INTERF-008) nadal jest ekranem wejściowym.
+
+W buildzie produkcyjnym `main.cjs` ładuje statyczny `index.html` skopiowany
+przez `extraResources` do `resources/client/dist`.
+
+> [!note] Gdzie trafia build gry
+> `extraResources` w `electron/package.json` kopiuje `server/public/game` do
 > `resources/client/dist`. `make electron-build` daje `release/*-unpacked`,
 > `make electron-win` — `release/My Very Advance Wars-<wersja>-win.zip`
 > (rozpakować na Windows i uruchomić `.exe`).
@@ -327,19 +370,19 @@ przeglądarki/Electrona.
 | Element | Gdzie |
 | ------- | ----- |
 | Baza | `localStorage['mvaw:sqlite']` (base64 pliku SQLite) |
-| Silnik | `sql.js` + `sql-wasm.wasm` (build: `client/dist/assets/sql-wasm-*.wasm`) |
+| Silnik | `sql.js` + `sql-wasm.wasm` (build: `server/public/game/assets/sql-wasm-*.wasm`) |
 | Kod | `client/src/integrations/sqlite/`, `client/src/storage/maps.ts`, `client/src/storage/mapSerialization.ts` |
 | Format | `GameState` jako JSON w kolumnie `maps.state` |
 | Profil Electrona (Linux) | `~/.config/@my-very-advance-wars/electron` |
-| Origin dev | `http://localhost:18573` |
-| Origin packaged | `app://bundle` |
+| Origin Electrona (dev i paczka) | `app://bundle` |
+| Origin przeglądarki | `http://localhost:18080/` (strona) i `/game/` (gra — ten sam origin) lub `http://localhost:18573` (Vite) |
 | MySQL/Adminer | **nie zawierają** map z edytora |
 
 `localStorage` jest przypisany do originu i profilu. Zmiana portu, hosta
-(`localhost` → `127.0.0.1`) albo uruchomienie packaged `app://bundle` zamiast
-dev `http://localhost:18573` powoduje, że aplikacja czyta inny magazyn i
-pokazuje pustą listę — mimo że stara baza nadal istnieje. `make clean` również
-jej nie usuwa, bo nie jest wolumenem Compose.
+(`localhost` → `127.0.0.1`), przejście z przeglądarki na `app://bundle` albo
+uruchomienie Vite zamiast buildu z nginx powoduje, że aplikacja czyta inny
+magazyn i pokazuje pustą listę — mimo że stara baza nadal istnieje. `make clean`
+również jej nie usuwa, bo nie jest wolumenem Compose.
 Pełny opis schematu, formatu JSON, limitów i diagnostyki: [[Mapy]].
 
 ---
@@ -430,15 +473,15 @@ Compose bezpośrednio też działa — poniżej oba warianty.
 | Testy backendu                           | `make test-server`    | `scripts/compact-run.sh --label test-server -- docker compose exec server php bin/phpunit` |
 | MySQL CLI                                | `make db-shell`       | —                                                         |
 | Rebuild backendu (po Dockerfile)         | `make rebuild`        | `docker compose build --no-cache && docker compose up -d` |
-| Uruchom Electrona (dev)                  | `make electron`       | `npm start --prefix electron`                             |
+| Uruchom Electrona (build + okno)         | `make electron`       | `npm start --prefix electron`                             |
 | Uruchom Electrona (alias)                | `make run`            | `npm start --prefix electron`                             |
-| Build klienta + paczka Electrona (host)  | `make electron-build` | `npm run build --prefix electron`                         |
+| Build gry + paczka Electrona             | `make electron-build` | `npm run build --prefix electron`                         |
 | Paczka ZIP dla Windows (WSL)             | `make electron-win`   | `npm run build:win --prefix electron`                     |
 | Instalator Windows (wymaga wine)         | `make electron-win-installer` | `npm run build:win:installer --prefix electron`   |
-| Przebuduj klienta (po zmianach)           | `make client-build`   | `cd client && npm run build && docker compose restart client` |
+| Przebuduj klienta do `server/public/game` | `make client-build`  | `docker compose run --rm --no-deps client sh -c 'npm install && npm run build'` |
 | Testy klienta (Vitest)                   | `make test`           | `scripts/compact-run.sh --label test -- bash -c 'cd client && npm test'` |
 | Typy i testy klienta (krótki log)        | `make check`          | `scripts/compact-run.sh --label check -- bash -c 'cd client && npx tsc --noEmit && npm test'` |
-| Weryfikacja klienta (typy, testy, build, restart) | `make verify` | `make check && make client-build`                    |
+| Weryfikacja klienta (typy, testy, build) | `make verify`         | `make check && make client-build`                         |
 | Testy mutacyjne klienta (Stryker)        | `make mutation`       | `cd client && npm run mutation`                           |
 | Typy klienta (krótki log)                | `make lint`           | `scripts/compact-run.sh --label lint -- bash -c 'cd client && npx tsc --noEmit'` |
 | Ocena jakości klienta (typy, zależności, martwy kod, duplikaty) | `make quality-client` | `cd client && npm run quality` |
@@ -473,7 +516,7 @@ częścią CI; progi i tabele porównawcze opisuje [[Jakosc-kodu]].
 
 ## Rozwiązywanie problemów
 
-> [!question]- `GET http://localhost:18080/` zwraca 500 o brakującym `autoload_runtime.php`
+> [!question]- `GET http://localhost:18080/api` zwraca 500 o brakującym `autoload_runtime.php`
 > **Przyczyna:** wymianowy wolumin `server_vendor` nadpisał katalog `vendor/`,
 > więc w kontenerze nie ma autoloadera.
 >
@@ -486,7 +529,7 @@ częścią CI; progi i tabele porównawcze opisuje [[Jakosc-kodu]].
 > make cache-clear
 > ```
 
-> [!question]- Backend startuje, ale `GET /` pokazuje stronę „Welcome to Symfony" (404)
+> [!question]- Backend startuje, ale `GET /api` pokazuje stronę „Welcome to Symfony" (404)
 > **Przyczyna:** routing nie rejestruje Twojego kontrolera.
 >
 > W Symfony 8.1 tag `routing.controller` jest dodawany przez autokonfigurację
@@ -538,10 +581,10 @@ częścią CI; progi i tabele porównawcze opisuje [[Jakosc-kodu]].
 > Najczęstsze przyczyny:
 > 1. mapa nie została zapisana przyciskiem `ZAPISZ` — samo `ESC` odkłada tylko
 >    szkic sesji (`registry`),
-> 2. uruchomiono inny origin (np. po zmianie `CLIENT_PORT` lub
->    `VITE_DEV_SERVER_URL`),
-> 3. uruchomiono inny profil Electrona albo przeglądarkę zamiast Electrona,
-> 4. uruchomiono packaged `app://bundle` zamiast dev `http://localhost:18573`.
+> 2. uruchomiono inny origin (np. przeglądarkę `http://localhost:18080/`
+>    albo Vite `http://localhost:18573` zamiast Electrona `app://bundle`),
+> 3. uruchomiono inny profil Electrona,
+> 4. wyczyszczono dane profilu dla `app://bundle`.
 >
 > Sprawdź w DevTools: `location.origin` i
 > `localStorage.getItem('mvaw:sqlite')?.length`. Więcej: [[Mapy#Diagnostyka i kopie zapasowe]].
@@ -555,12 +598,12 @@ częścią CI; progi i tabele porównawcze opisuje [[Jakosc-kodu]].
 > albo `localStorage.removeItem('mvaw:sqlite')`.
 
 > [!question]- Paczka Electrona pokazuje biały ekran albo `ERR_FILE_NOT_FOUND`
-> `extraResources` kopiuje `client/dist` do `resources/client/dist`, a okno
-> ładuje je przez `app://bundle/index.html` (`electron/distServer.cjs`).
+> `extraResources` kopiuje `server/public/game` do `resources/client/dist`,
+> a okno ładuje je przez `app://bundle/index.html` (`electron/distServer.cjs`).
 > Sprawdź, czy `make electron-build` / `make electron-win` wykonał najpierw
-> `npm run build` w `client/` i czy w `release/.../resources/client/dist/`
-> jest `index.html` oraz `assets/`. Build ZIP na WSL nie wymaga wine;
-> instalator NSIS wymaga `wine` (patrz wyżej).
+> `client-build` i czy w `release/.../resources/client/dist/` jest `index.html`
+> oraz `assets/`. Build ZIP na WSL nie wymaga wine; instalator NSIS wymaga
+> `wine` (patrz wyżej).
 
 > [!question]- W Electronie nie ma dźwięku (WSL)
 > **Przyczyna:** Chromium w Electronie ładuje `libpulse.so.0` dynamicznie. Na

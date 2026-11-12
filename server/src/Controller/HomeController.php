@@ -9,10 +9,10 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Kernel;
 use Symfony\Component\Routing\Attribute\Route;
 
-#[Route('/')]
+#[Route('/api')]
 final class HomeController extends AbstractController
 {
-    #[Route('', name: 'home', methods: ['GET'])]
+    #[Route('', name: 'api_status', methods: ['GET'])]
     public function __invoke(): JsonResponse
     {
         return $this->json([
