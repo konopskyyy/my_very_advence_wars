@@ -11,14 +11,16 @@ import {
 import {
   BUILT_IN_SCENARIOS,
   ensureScenarioArmies,
+  findRecruitSlot,
   findScenarioDefinition,
+  recruitUnit,
   SCENARIO_COLS,
   SCENARIO_ROWS,
 } from '../../src/core/scenario';
 import { countUnits, createInitialState, deployUnits, placeUnit } from '../../src/core/state';
 import { TERRAIN_DEFS, TERRAIN_IDS } from '../../src/core/map/terrain';
 import type { TerrainId } from '../../src/core/map/terrain';
-import type { FactionId, UnitKind } from '../../src/core/units';
+import { UNIT_DEFS, type FactionId, type UnitKind } from '../../src/core/units';
 
 const AUTO_KINDS: readonly UnitKind[] = [
   'infantry',
@@ -143,6 +145,59 @@ describe('scenariusze', () => {
 
     expect(scenario.state.map.fogOfWar).toBe(true);
     expect(scenario.withFogOfWar?.(state)?.map.fogOfWar).toBe(true);
+  });
+});
+
+describe('rekrutacja', () => {
+  it('stawia kupioną jednostkę na wolnym przechodnim heksie tyłów', () => {
+    const state = deployUnits(createInitialState(createMap(12, 8)), 'blue', [
+      { kind: 'infantry', col: 0, row: 0 },
+    ]);
+    const result = recruitUnit(state, 'blue', 'scout');
+
+    expect(result).toBeDefined();
+
+    if (!result) {
+      return;
+    }
+
+    const terrain = result.state.map.cells[cellKey(result.coord)];
+    const recruited = result.state.units.find((unit) => unit.id === result.unitId);
+
+    expect(terrain).toBeDefined();
+    expect(TERRAIN_DEFS[terrain!].moveCost).toBeLessThan(99);
+    expect(
+      result.state.units.some(
+        (unit) =>
+          unit.id !== result.unitId &&
+          unit.pos.col === result.coord.col &&
+          unit.pos.row === result.coord.row,
+      ),
+    ).toBe(false);
+    expect(recruited).toMatchObject({
+      kind: 'scout',
+      faction: 'blue',
+      pos: result.coord,
+      movesLeft: UNIT_DEFS.scout.moveRange,
+      hasActed: false,
+    });
+    expect(result.state.nextUnitSeq).toBe(state.nextUnitSeq + 1);
+  });
+
+  it('szuka wolnego heksu od krawędzi właściwej strony', () => {
+    const state = deployUnits(createInitialState(createMap(12, 8)), 'red', [
+      { kind: 'infantry', col: 11, row: 0 },
+    ]);
+
+    expect(findRecruitSlot(state, 'red')?.col).toBeLessThan(11);
+    expect(findRecruitSlot(state, 'blue')?.col).toBe(0);
+  });
+
+  it('nie rekrutuje, gdy nie ma wolnego heksu', () => {
+    const state = placeUnit(createInitialState(createMap(1, 1)), 'infantry', { col: 0, row: 0 }, 'blue');
+
+    expect(findRecruitSlot(state, 'blue')).toBeUndefined();
+    expect(recruitUnit(state, 'blue', 'tank')).toBeUndefined();
   });
 });
 

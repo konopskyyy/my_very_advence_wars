@@ -5,6 +5,7 @@ import { mapTileCount, moveTargets } from '../core/map';
 import {
   BUILT_IN_SCENARIOS,
   ensureScenarioArmies,
+  recruitUnit,
   type ScenarioDefinition,
 } from '../core/scenario';
 import type { GameState } from '../core/state';
@@ -14,6 +15,7 @@ import {
   buildTimeline,
   commitPlan,
   createTurnPlan,
+  planningState,
   planState,
   removeActionFrom,
   removeLastAction,
@@ -31,7 +33,13 @@ import {
   nextTurn,
   type TurnState,
 } from '../core/turn';
-import { FULL_MAP_RANGE, UNIT_DEFS, type FactionId, type Unit } from '../core/units';
+import {
+  FULL_MAP_RANGE,
+  UNIT_DEFS,
+  type FactionId,
+  type Unit,
+  type UnitKind,
+} from '../core/units';
 import { visibleTileKeys, visibleUnitAt, visibleUnits } from '../core/vision';
 import { HexMapView, HEX_SIZE, outlineHex } from '../view/hexGrid';
 import { MapViewport } from '../view/mapViewport';
@@ -188,7 +196,9 @@ export class ScenarioScene extends Phaser.Scene {
         this.removePlannedAction(unitId, actionIndex),
       onRemoveLast: () => this.removeSelectedLastAction(),
     });
-    this.recruitDialog = new RecruitDialog(this);
+    this.recruitDialog = new RecruitDialog(this, {
+      onRecruit: (kind) => this.recruit(kind),
+    });
 
     this.setupUiCamera();
 
@@ -359,10 +369,17 @@ export class ScenarioScene extends Phaser.Scene {
         return;
       }
 
-      if (!target) {
+      const ontoOwnUnit = target !== undefined && target.id !== unit.id;
+
+      if (!target || ontoOwnUnit) {
         const result = setMove(this.plan, this.state, unit.id, coord);
 
         if (!result.ok) {
+          if (ontoOwnUnit) {
+            this.selectAt(coord);
+            return;
+          }
+
           this.pendingMove = null;
           this.pendingAttack = null;
           this.drawPath();
@@ -444,6 +461,28 @@ export class ScenarioScene extends Phaser.Scene {
     this.drawPath();
     this.refreshHud();
     this.refreshUnitPreview();
+  }
+
+  private recruit(kind: UnitKind): boolean {
+    if (this.playing || this.turn.faction !== this.playerFaction) {
+      return false;
+    }
+
+    const result = recruitUnit(this.state, this.turn.faction, kind);
+
+    if (!result) {
+      return false;
+    }
+
+    this.state = result.state;
+    this.spawns = new Map([...this.spawns, [result.unitId, result.coord]]);
+    this.refreshUnits();
+    this.refreshHud();
+    this.refreshUnitPreview();
+    this.refreshPlan();
+    this.drawPath();
+    this.planner.notice(`${UNIT_DEFS[kind].label} dołącza do armii`);
+    return true;
   }
 
   private setPreview(timeMs: number): void {
@@ -807,8 +846,10 @@ export class ScenarioScene extends Phaser.Scene {
     }
 
     const own = unit.faction === this.turn.faction;
-    const planned = own ? (planState(this.state, this.plan, unit.id) ?? unit) : unit;
-    const rangeState = this.stateWithUnit(planned);
+    const rangeState = own ? planningState(this.state, this.plan) : this.stateWithUnit(unit);
+    const planned = own
+      ? (rangeState.units.find((candidate) => candidate.id === unit.id) ?? unit)
+      : unit;
     const canStrike = own
       ? canAttackThisTurn(planned)
       : UNIT_DEFS[planned.kind].attackRange > 0;
@@ -867,6 +908,7 @@ export class ScenarioScene extends Phaser.Scene {
       const color = PLAN_COLORS[index % PLAN_COLORS.length]!;
       const selected = selectedId === unit.id;
       const lineWidth = selected ? 3 : 2;
+      let from = unit.pos;
 
       for (const action of unitPlan.actions) {
         if (action.kind === 'move') {
@@ -874,10 +916,13 @@ export class ScenarioScene extends Phaser.Scene {
             outlineHex(this.pathHints, this.mapView.center(coord), color, lineWidth);
           }
 
+          this.drawMovementArrows(from, action.path, color, lineWidth);
+
           const end = action.path[action.path.length - 1];
 
           if (end) {
             outlineHex(this.pathHints, this.mapView.center(end), color, 4);
+            from = end;
           }
 
           continue;
@@ -949,6 +994,8 @@ export class ScenarioScene extends Phaser.Scene {
       outlineHex(this.pathHints, this.mapView.center(coord), color, 2);
     }
 
+    this.drawMovementArrows(unit.pos, action.path, color, 2);
+
     const end = action.path[action.path.length - 1];
 
     if (!end) {
@@ -999,6 +1046,62 @@ export class ScenarioScene extends Phaser.Scene {
       .setPosition(center.x, center.y)
       .setAlpha(0.35)
       .setVisible(true);
+  }
+
+  private drawMovementArrows(
+    from: HexCoord,
+    path: readonly HexCoord[],
+    color: number,
+    width: number,
+  ): void {
+    let start = this.mapView.center(from);
+
+    for (const coord of path) {
+      const end = this.mapView.center(coord);
+      this.drawMovementArrow(start, end, color, width);
+      start = end;
+    }
+  }
+
+  private drawMovementArrow(
+    from: { x: number; y: number },
+    to: { x: number; y: number },
+    color: number,
+    width: number,
+  ): void {
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    const length = Math.hypot(dx, dy);
+
+    if (length === 0) {
+      return;
+    }
+
+    const ux = dx / length;
+    const uy = dy / length;
+    const startX = from.x + ux * HEX_SIZE * 0.34;
+    const startY = from.y + uy * HEX_SIZE * 0.34;
+    const endX = to.x - ux * HEX_SIZE * 0.2;
+    const endY = to.y - uy * HEX_SIZE * 0.2;
+
+    this.pathHints.lineStyle(width + 2, 0x05080c, 0.55);
+    this.pathHints.lineBetween(startX, startY, endX, endY);
+    this.pathHints.lineStyle(width, color, 1);
+    this.pathHints.lineBetween(startX, startY, endX, endY);
+
+    const head = Math.max(7, width * 2.6);
+    const angle = Math.atan2(dy, dx);
+    const spread = 0.55;
+
+    this.pathHints.fillStyle(color, 1);
+    this.pathHints.fillTriangle(
+      endX,
+      endY,
+      endX - head * Math.cos(angle - spread),
+      endY - head * Math.sin(angle - spread),
+      endX - head * Math.cos(angle + spread),
+      endY - head * Math.sin(angle + spread),
+    );
   }
 
   private drawShotLines(selectedId: string | null): void {

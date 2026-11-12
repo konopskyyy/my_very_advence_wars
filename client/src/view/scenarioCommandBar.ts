@@ -14,7 +14,7 @@ import type { TurnState } from '../core/turn';
 import { FACTION_DEFS, shotsLeft, UNIT_DEFS, type FactionId, type Unit } from '../core/units';
 import { visibleUnitAt } from '../core/vision';
 import { FACTION_THEMES, type FactionTheme } from './factionTheme';
-import { formatPoints } from './format';
+import { formatPoints, formatRange } from './format';
 import { unitTexture } from './unitLayer';
 
 export const BAR_HEIGHT = 116;
@@ -403,8 +403,8 @@ export class ScenarioCommandBar {
     this.moveRangeText
       .setText(`Ruch ${formatPoints(canMove ? current.movesLeft : 0)}/${stats.moveRange}`)
       .setColor(canMove ? '#6fd08c' : '#9fb0a5');
-    this.visionRangeText.setText(`Wzrok ${formatPoints(stats.visionRange)}`);
-    this.attackRangeText.setText(`Strzał ${formatPoints(stats.attackRange)}`);
+    this.visionRangeText.setText(`Wzrok ${formatRange(stats.visionRange)}`);
+    this.attackRangeText.setText(`Strzał ${formatRange(stats.attackRange)}`);
     this.unitMeta.setText(
       `Teren: ${terrain ? TERRAIN_DEFS[terrain].label : 'pusto'} · Heks: ${doubled.col},${doubled.row}`,
     );
