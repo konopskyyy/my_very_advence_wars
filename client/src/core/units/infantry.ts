@@ -9,6 +9,7 @@ export interface InfantryUnit extends UnitBase {
 
 export const INFANTRY_STATS: UnitStats = {
   label: 'Piechota',
+  cost: 100,
   maxHp: 10,
   moveRange: 4,
   attack: 5,

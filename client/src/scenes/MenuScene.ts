@@ -1,11 +1,17 @@
 import Phaser from 'phaser';
 import { installButtonClickSound } from '../view/buttonAudio';
+import { drawEmblem, drawMenuBackdrop } from '../view/menuBackdrop';
+import { createMenuButton } from '../view/menuButton';
+import { MenuMusic } from '../view/menuMusic';
 import { preloadTerrainTiles } from '../view/terrainTiles';
+
+const GAME_TITLE = 'My Very Advance Wars';
 
 export class MenuScene extends Phaser.Scene {
   private title!: Phaser.GameObjects.Text;
   private hint!: Phaser.GameObjects.Text;
-  private entries: Phaser.GameObjects.Text[] = [];
+  private subtitle!: Phaser.GameObjects.Text;
+  private entries: Phaser.GameObjects.Container[] = [];
 
   constructor() {
     super('menu');
@@ -17,52 +23,64 @@ export class MenuScene extends Phaser.Scene {
 
   create(): void {
     installButtonClickSound(this);
+    drawMenuBackdrop(this);
 
     const { width, height } = this.scale;
+    const cx = width / 2;
+
+    drawEmblem(this, cx, 130, 52);
 
     this.title = this.add
-      .text(width / 2, height / 2 - 100, 'My Very Advance Wars', {
-        fontFamily: 'monospace',
-        fontSize: '28px',
-        color: '#d8e2dc',
+      .text(cx, 226, GAME_TITLE.toUpperCase(), {
+        fontFamily: 'Trebuchet MS, Verdana, sans-serif',
+        fontSize: '44px',
+        fontStyle: 'bold',
+        color: '#f1f5f9',
+        stroke: '#05080d',
+        strokeThickness: 6,
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setLetterSpacing(4);
 
-    this.addMenuEntry(width / 2, height / 2 - 40, 'Kampanie', () =>
-      this.scene.start('campaign-menu'),
-    );
-    this.addMenuEntry(width / 2, height / 2, 'Scenariusze', () =>
-      this.scene.start('scenario-menu'),
-    );
-    this.addMenuEntry(width / 2, height / 2 + 40, 'Edytor map', () =>
-      this.scene.start('map-menu'),
-    );
-    this.addMenuEntry(width / 2, height / 2 + 80, 'Wyjście', () => this.quit());
+    this.subtitle = this.add
+      .text(cx, 270, 'TUROWA WOJNA NA HEKSACH', {
+        fontFamily: 'Trebuchet MS, Verdana, sans-serif',
+        fontSize: '14px',
+        color: '#8fa3b8',
+      })
+      .setOrigin(0.5)
+      .setLetterSpacing(6);
+
+    const items: [string, 'blue' | 'red' | 'neutral', () => void][] = [
+      ['Kampanie', 'blue', () => this.scene.start('campaign-menu')],
+      ['Scenariusze', 'blue', () => this.scene.start('scenario-menu')],
+      ['Edytor map', 'red', () => this.scene.start('map-menu')],
+      ['Wyjście', 'neutral', () => this.quit()],
+    ];
+    items.forEach(([label, accent, action], i) => {
+      this.entries.push(createMenuButton(this, cx, 340 + i * 62, label, accent, action).container);
+    });
+
+    this.setupMusic();
 
     this.hint = this.add
-      .text(width / 2, height - 30, 'Wskaż opcję myszką', {
-        fontFamily: 'monospace',
+      .text(cx, height - 28, 'Wskaż opcję myszką', {
+        fontFamily: 'Trebuchet MS, Verdana, sans-serif',
         fontSize: '12px',
-        color: '#9fb0a5',
+        color: '#6b7d90',
       })
       .setOrigin(0.5);
   }
 
-  private addMenuEntry(x: number, y: number, label: string, action: () => void): void {
-    const button = this.add
-      .text(x, y, `> ${label} <`, {
-        fontFamily: 'monospace',
-        fontSize: '16px',
-        color: '#ffffff',
-      })
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true });
+  private setupMusic(): void {
+    const music = MenuMusic.create(this);
+    if (!music) {
+      return;
+    }
 
-    button.on('pointerover', () => button.setColor('#a6f4c5'));
-    button.on('pointerout', () => button.setColor('#ffffff'));
-    button.on('pointerdown', action);
+    music.start();
 
-    this.entries.push(button);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => music.stop());
   }
 
   private quit(): void {
@@ -70,13 +88,14 @@ export class MenuScene extends Phaser.Scene {
 
     this.title.setVisible(false);
     this.hint.setVisible(false);
+    this.subtitle.setVisible(false);
 
     for (const entry of this.entries) {
       entry.setVisible(false);
     }
 
     this.add
-      .text(this.scale.width / 2, this.scale.height / 2, 'Zamknij okno, aby zakończyć grę', {
+      .text(this.scale.width / 2, this.scale.height - 90, 'Zamknij okno, aby zakończyć grę', {
         fontFamily: 'monospace',
         fontSize: '14px',
         color: '#d8e2dc',

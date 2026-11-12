@@ -8,6 +8,7 @@ export interface ScoutUnit extends UnitBase {
 
 export const SCOUT_STATS: UnitStats = {
   label: 'Zwiadowca',
+  cost: 150,
   maxHp: 8,
   moveRange: 6,
   attack: 3,

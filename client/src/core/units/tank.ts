@@ -11,6 +11,7 @@ export const TANK_AMMO = 6;
 
 export const TANK_STATS: UnitStats = {
   label: 'Czołg',
+  cost: 300,
   maxHp: 20,
   moveRange: TANK_MOVE_RANGE,
   attack: 9,

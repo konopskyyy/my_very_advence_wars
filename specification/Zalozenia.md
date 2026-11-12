@@ -54,12 +54,15 @@
 
 ## ZAL-004: Jednostki
 
-| `UnitKind`  | Etykieta  | Max HP | Ruch | Atak | Obrona | Zasięg wzroku | Zasięg strzału | Amunicja |
-| ----------- | --------- | -----: | ---: | ---: | -----: | ------------: | -------------: | -------: |
-| `infantry`  | Piechota  |     10 |    4 |    5 |      4 |             2 |              2 |        — |
-| `tank`      | Czołg     |     20 |    3 |    9 |      7 |             3 |              1 |        6 |
-| `artillery` | Artyleria |     14 |    2 |   12 |      3 |    cała mapa |     cała mapa |        6 |
-| `scout`     | Zwiadowca |      8 |    6 |    3 |      2 |    cała mapa |              1 |        — |
+| `UnitKind`  | Etykieta  | Cena | Max HP | Ruch | Atak | Obrona | Zasięg wzroku | Zasięg strzału | Amunicja |
+| ----------- | --------- | ---: | -----: | ---: | ---: | -----: | ------------: | -------------: | -------: |
+| `infantry`  | Piechota  |  100 |     10 |    4 |    5 |      4 |             2 |              2 |        — |
+| `tank`      | Czołg     |  300 |     20 |    3 |    9 |      7 |             3 |              1 |        6 |
+| `artillery` | Artyleria |  250 |     14 |    2 |   12 |      3 |    cała mapa |     cała mapa |        6 |
+| `scout`     | Zwiadowca |  150 |      8 |    6 |    3 |      2 |    cała mapa |              1 |        — |
+
+- `cost` to cena zakupu jednostki w oknie `KUP`; budżet scenariusza
+  i limity zakupów opisuje ADR-046.
 
 - `moveRange` to budżet ruchu na turę, `visionRange` — promień widzenia,
   a `attackRange` — maksymalna odległość ataku.
@@ -175,8 +178,8 @@
 - zaawansowane SI (współpraca jednostek, ocena terenu, reakcja na plan gracza),
 - rozgrywka sieciowa i synchronizacja tur,
 - kontratak, animacje trafień i redukcja obrażeń przez `defense` lub teren,
-- zaopatrzenie, naprawa, ekonomia i płatna rekrutacja; bezpłatna rekrutacja
-  z okna `KUP` jest w zakresie,
+- zaopatrzenie, naprawa i trwała ekonomia między misjami; płatna rekrutacja
+  z okna `KUP` w budżecie scenariusza jest w zakresie (ADR-046),
 - cele misji i metadane scenariusza,
 - trwałe odkrywanie pól i zasłanianie widoku przez teren.
 

@@ -47,6 +47,13 @@ export const PIERWSZE_KROKI: CampaignTile = {
     description:
       'Prosta mapa samouczka. Trzech niebieskich piechurów naprzeciw jednego czerwonego, ukrytego w mgle wojny.',
     state: buildState(),
+    recruitment: {
+      funds: 150,
+      allowedKinds: ['scout'],
+      grants: [
+        { after: 'scout', funds: 300, allowedKinds: ['infantry'], limits: { infantry: 3 } },
+      ],
+    },
     withFogOfWar: (state) => ({ ...state, map: setFogOfWar(state.map, true) }),
   },
 };

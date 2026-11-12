@@ -11,7 +11,7 @@ import type { PlanAction } from '../core/plan';
 import { countUnits, type GameState } from '../core/state';
 import { TERRAIN_DEFS } from '../core/map/terrain';
 import type { TurnState } from '../core/turn';
-import { FACTION_DEFS, shotsLeft, UNIT_DEFS, type FactionId, type Unit } from '../core/units';
+import { FACTION_DEFS, shotsLeft, UNIT_DEFS, type FactionId, type Unit, type UnitKind } from '../core/units';
 import { visibleUnitAt } from '../core/vision';
 import { FACTION_THEMES, type FactionTheme } from './factionTheme';
 import { formatPoints, formatRange } from './format';
@@ -25,6 +25,8 @@ export interface ScenarioBarState {
   readonly state: GameState;
   readonly turn: TurnState;
   readonly hover: HexCoord | null;
+  readonly funds?: number;
+  readonly recruitKind?: UnitKind;
 }
 
 export interface ScenarioUnitState {
@@ -48,6 +50,8 @@ export class ScenarioCommandBar {
   private readonly recruitButton: Phaser.GameObjects.Rectangle;
   private readonly recruitIcon: Phaser.GameObjects.Image;
   private readonly recruitLabel: Phaser.GameObjects.Text;
+  private readonly recruitPrice: Phaser.GameObjects.Text;
+  private readonly recruitFunds: Phaser.GameObjects.Text;
   private readonly endTurnButton: Phaser.GameObjects.Rectangle;
   private readonly barTurnLabel: Phaser.GameObjects.Text;
   private readonly scenarioName: Phaser.GameObjects.Text;
@@ -63,6 +67,7 @@ export class ScenarioCommandBar {
   private readonly unitStatus: Phaser.GameObjects.Text;
   private readonly hud: Phaser.GameObjects.Text;
   private theme: FactionTheme = FACTION_THEMES.blue;
+  private recruitKind: UnitKind = 'infantry';
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -233,7 +238,7 @@ export class ScenarioCommandBar {
     this.makeBarLink('MENU GŁÓWNE', navX, barY + 42, this.handlers.onMainMenu);
     this.recruitButton = this.register(
       this.scene.add
-        .rectangle(930, barY + 14, 44, 88, theme.accentDark, 1)
+        .rectangle(902, barY + 12, 76, 92, theme.accentDark, 1)
         .setOrigin(0, 0)
         .setScrollFactor(0)
         .setDepth(21)
@@ -243,18 +248,41 @@ export class ScenarioCommandBar {
 
     this.recruitIcon = this.register(
       this.scene.add
-        .image(952, barY + 48, unitTexture(this.scene, 'infantry', 'blue').key)
-        .setScale(1.15)
+        .image(940, barY + 32, unitTexture(this.scene, 'infantry', 'blue').key)
         .setScrollFactor(0)
         .setDepth(22),
     );
 
     this.recruitLabel = this.register(
       this.scene.add
-        .text(952, barY + 76, 'KUP', {
+        .text(940, barY + 52, 'KUP', {
           fontFamily: 'monospace',
           fontSize: '11px',
           color: '#ffffff',
+        })
+        .setOrigin(0.5)
+        .setScrollFactor(0)
+        .setDepth(22),
+    );
+
+    this.recruitPrice = this.register(
+      this.scene.add
+        .text(940, barY + 70, '', {
+          fontFamily: 'monospace',
+          fontSize: '9px',
+          color: theme.accentSoft,
+        })
+        .setOrigin(0.5)
+        .setScrollFactor(0)
+        .setDepth(22),
+    );
+
+    this.recruitFunds = this.register(
+      this.scene.add
+        .text(940, barY + 88, '', {
+          fontFamily: 'monospace',
+          fontSize: '9px',
+          color: '#f2d35c',
         })
         .setOrigin(0.5)
         .setScrollFactor(0)
@@ -319,8 +347,16 @@ export class ScenarioCommandBar {
     return this.objects;
   }
 
-  refreshScenario({ scenario, state, turn, hover }: ScenarioBarState): void {
+  refreshScenario({ scenario, state, turn, hover, funds, recruitKind }: ScenarioBarState): void {
     this.applyTheme(turn.faction);
+
+    if (recruitKind) {
+      this.recruitKind = recruitKind;
+    }
+
+    this.recruitIcon.setTexture(unitTexture(this.scene, this.recruitKind, turn.faction).key);
+    this.recruitPrice.setText(`Cena ${UNIT_DEFS[this.recruitKind].cost}`);
+    this.recruitFunds.setText(`Konto ${funds ?? 0}`);
 
     const counts = countUnits(state.units);
     const description = scenario.description.trim();
@@ -452,8 +488,9 @@ export class ScenarioCommandBar {
     this.recruitButton
       .setFillStyle(theme.accentDark, 1)
       .setStrokeStyle(1, theme.accentBright, 0.8);
-    this.recruitIcon.setTexture(unitTexture(this.scene, 'infantry', faction).key);
+    this.recruitIcon.setTexture(unitTexture(this.scene, this.recruitKind, faction).key);
     this.recruitLabel.setColor(theme.accentSoft);
+    this.recruitPrice.setColor(theme.accentSoft);
     this.endTurnButton
       .setFillStyle(theme.accentDark, 1)
       .setStrokeStyle(1, theme.accentBright, 0.8);

@@ -9,6 +9,11 @@ import {
   type ScenarioDefinition,
 } from '../core/scenario';
 import type { GameState } from '../core/state';
+import {
+  createRecruitment,
+  purchaseUnit,
+  type RecruitmentState,
+} from '../core/recruitment';
 import { attackTiles } from '../core/ranges';
 import {
   addAttack,
@@ -106,6 +111,8 @@ export class ScenarioScene extends Phaser.Scene {
   private readonly exploredByFaction = new Map<FactionId, Set<string>>();
   private readonly shotFx = new Set<Phaser.GameObjects.GameObject>();
   private spawns: SiSpawns = new Map();
+  private recruitment: RecruitmentState = createRecruitment();
+  private recruitKind: UnitKind = 'infantry';
 
   private viewport!: MapViewport;
   private mapView!: HexMapView;
@@ -147,6 +154,8 @@ export class ScenarioScene extends Phaser.Scene {
     this.previewMs = null;
     this.playing = false;
     this.playback = null;
+    this.recruitment = createRecruitment(this.scenario.recruitment);
+    this.recruitKind = this.recruitment.allowedKinds[0] ?? 'infantry';
     this.exploredByFaction.clear();
     this.shotFx.clear();
   }
@@ -181,7 +190,7 @@ export class ScenarioScene extends Phaser.Scene {
       onEndTurn: () => this.playTurn(),
       onRecruit: () => {
         if (!this.playing) {
-          this.recruitDialog.show(this.turn.faction);
+          this.recruitDialog.show(this.turn.faction, this.recruitment);
         }
       },
       onScenarioMenu: () => this.scene.start('scenario-menu'),
@@ -198,6 +207,10 @@ export class ScenarioScene extends Phaser.Scene {
     });
     this.recruitDialog = new RecruitDialog(this, {
       onRecruit: (kind) => this.recruit(kind),
+      onSelectKind: (kind) => {
+        this.recruitKind = kind;
+        this.refreshHud();
+      },
     });
 
     this.setupUiCamera();
@@ -468,14 +481,22 @@ export class ScenarioScene extends Phaser.Scene {
       return false;
     }
 
+    const next = purchaseUnit(this.recruitment, kind);
+
+    if (!next) {
+      return false;
+    }
+
     const result = recruitUnit(this.state, this.turn.faction, kind);
 
     if (!result) {
       return false;
     }
 
+    this.recruitment = next;
     this.state = result.state;
     this.spawns = new Map([...this.spawns, [result.unitId, result.coord]]);
+    this.syncRecruitKind();
     this.refreshUnits();
     this.refreshHud();
     this.refreshUnitPreview();
@@ -483,6 +504,12 @@ export class ScenarioScene extends Phaser.Scene {
     this.drawPath();
     this.planner.notice(`${UNIT_DEFS[kind].label} dołącza do armii`);
     return true;
+  }
+
+  private syncRecruitKind(): void {
+    if (!this.recruitment.allowedKinds.includes(this.recruitKind)) {
+      this.recruitKind = this.recruitment.allowedKinds[0] ?? this.recruitKind;
+    }
   }
 
   private setPreview(timeMs: number): void {
@@ -1210,6 +1237,8 @@ export class ScenarioScene extends Phaser.Scene {
       state: this.state,
       turn: this.turn,
       hover: this.hover,
+      funds: this.recruitment.funds,
+      recruitKind: this.recruitKind,
     });
   }
 }

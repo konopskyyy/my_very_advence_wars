@@ -7,8 +7,8 @@
 
 ## INTERF-001: Menu główne
 - **Status:** Zaimplementowane
-- **Opis:** Ekran startowy z opcjami „Kampanie”, „Scenariusze”, „Edytor map” i „Wyjście”. Otwiera się po wybraniu „Przejdź do gry” na ekranie demo (INTERF-008). „Kampanie” jako pierwsza pozycja otwiera ekran wstążek samouczka i kampanii (INTERF-007), „Scenariusze” otwiera listę scenariuszy testowych, „Edytor map” otwiera menu map, z którego wybiera się mapę do edycji albo zaczyna nową. „Wyjście” zamyka okno gry; gdy przeglądarka nie pozwala zamknąć karty, gra wyjaśnia, że trzeba zamknąć okno ręcznie.
-- **Pliki:** `client/src/scenes/MenuScene.ts`, `client/src/main.ts`
+- **Opis:** Ekran startowy z opcjami „Kampanie”, „Scenariusze”, „Edytor map” i „Wyjście”. Otwiera się po wybraniu „Przejdź do gry” na ekranie demo (INTERF-008). „Kampanie” jako pierwsza pozycja otwiera ekran wstążek samouczka i kampanii (INTERF-007), „Scenariusze” otwiera listę scenariuszy testowych, „Edytor map” otwiera menu map, z którego wybiera się mapę do edycji albo zaczyna nową. „Wyjście” zamyka okno gry; gdy przeglądarka nie pozwala zamknąć karty, gra wyjaśnia, że trzeba zamknąć okno ręcznie. Wygląd (GRA-073): tło z heksów z niebieskim i czerwonym frontem, znak z dwubarwnym heksem, tytuł z podtytułem i przyciski-panele z akcentem frakcji, cicha muzyka ambientowa; grafika powstaje w kodzie.
+- **Pliki:** `client/src/scenes/MenuScene.ts`, `client/src/view/menuBackdrop.ts`, `client/src/view/menuButton.ts`, `client/src/view/menuMusic.ts`, `client/src/main.ts`
 
 ## INTERF-002: Pole bitwy
 - **Status:** Do zrobienia
