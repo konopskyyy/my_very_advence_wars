@@ -367,7 +367,6 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
 - **Kryteria:**
   - **Struktura:** każda kampania ma osobny plik, a każda misja osobny plik w `core/campaign/missions/`; `index.ts` tylko scala dane.
   - **Mapa:** prosta mapa 16×10 z kilkoma kaflami terenu, bez przeszkód blokujących start jednostek.
-  - **Jednostki:** trzech niebieskich piechurów po lewej stronie i jeden czerwony piechur po prawej.
   - **Mgła:** mapa ma włączoną mgłę wojny, a `visibleUnits` dla niebieskich nie zwraca czerwonego piechura na starcie.
   - **Uruchomienie:** kliknięcie „Pierwsze kroki” otwiera scenariusz z tą mapą i armią; pozostałe kafelki nadal pokazują „WKRÓTCE”.
   - **Powrót:** dolny pasek misji prowadzi do „MENU KAMPANII”, a nie do listy scenariuszy.
@@ -637,3 +636,14 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
   - **Spójność:** podgląd, oś czasu i stan po `commitPlan()` liczą trasy w tej samej kolejności planów.
   - **Testy:** `tests/core/plan/plan.test.ts` pokrywa wejście na zwolniony heks i przelot przez niego.
   - **Dokumentacja:** ZAL-004, ADR-045 i INTERF-005 opisują kolejność planów i rysowanie tras.
+
+## GRA-073: Nowe menu główne z grafiką
+- **Kontekst:** Menu główne było białym tekstem `> Opcja <` na czarnym tle. Nazwa gry jest robocza, więc grafika nie może zależeć od niej na stałe.
+- **Opis:** `MenuScene` rysuje tło z heksów (`view/menuBackdrop.ts`): ciemna siatka, po lewej niebieskie, po prawej czerwone pola frontu, powoli pulsujące. Na środku znak z heksem i dwiema kolorowymi połówkami oraz tytuł z podtytułem. Pozycje menu to przyciski-panele (`view/menuButton.ts`) z akcentem koloru frakcji, podświetleniem po najechaniu i krótkim wsunięciem. W tle gra spokojna, generowana w kodzie muzyka ambientowa (`view/menuMusic.ts`, Web Audio). Grafika i dźwięk powstają w kodzie, bez nowych plików zasobów.
+- **Kryteria:**
+  - **Tło:** siatka heksów z niebieską i czerwoną stroną frontu, bez wpływu na wydajność (jeden obiekt `Graphics` + tween alfa).
+  - **Tytuł:** nazwa pochodzi z jednej stałej `GAME_TITLE`, więc zmiana nazwy to jedna linia.
+  - **Przyciski:** hover, wciśnięcie i dźwięk kliknięcia jak dotąd; te same akcje (Kampanie, Scenariusze, Edytor map, Wyjście).
+  - **Muzyka:** cicha (gain ~0,045), startuje z menu, cichnie przy wyjściu ze sceny.
+  - **Wyjście:** komunikat o ręcznym zamknięciu okna nadal działa.
+  - **Dokumentacja:** INTERF-001 opisuje nowy wygląd.

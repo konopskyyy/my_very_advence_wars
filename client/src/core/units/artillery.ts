@@ -11,6 +11,7 @@ export const ARTILLERY_AMMO = 6;
 
 export const ARTILLERY_STATS: UnitStats = {
   label: 'Artyleria',
+  cost: 250,
   maxHp: 14,
   moveRange: ARTILLERY_MOVE_RANGE,
   attack: 12,

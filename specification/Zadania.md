@@ -89,3 +89,5 @@ zadań do wykonania.
 | [[Zadania-opisy#GRA-069: Zwiadowca z wzrokiem na całą mapę\|GRA-069]] | Zwiadowca z wzrokiem na całą mapę | ✅ | GRA-038, GRA-050, ADR-001, ADR-030, ZAL-004, INTERF-005 |
 | [[Zadania-opisy#GRA-070: Bezpłatna rekrutacja jednostek z okna KUP\|GRA-070]] | Bezpłatna rekrutacja jednostek z okna KUP | ✅ | GRA-046, GRA-068, ADR-001, ADR-020, ADR-044, ZAL-009, INTERF-005 |
 | [[Zadania-opisy#GRA-071: Kolorowe strzałki ruchu i koniec na zwolnionym heksie\|GRA-071]] | Kolorowe strzałki ruchu i koniec na zwolnionym heksie | ✅ | GRA-057, GRA-064, ADR-001, ADR-039, ADR-045, ZAL-004, INTERF-005 |
+| [[Zadania-opisy#GRA-072: Płatna rekrutacja z saldem i limitami misji\|GRA-072]] | Płatna rekrutacja z saldem i limitami misji | ✅ | GRA-046, GRA-070, ADR-001, ADR-044, ADR-046, ZAL-004, ZAL-009, INTERF-005 |
+| [[Zadania-opisy#GRA-073: Nowe menu główne z grafiką\|GRA-073]] | Nowe menu główne z grafiką | ✅ | INTERF-001, GRA-067 |

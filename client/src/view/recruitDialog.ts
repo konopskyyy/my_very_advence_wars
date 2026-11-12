@@ -6,6 +6,13 @@ import {
   type FactionId,
   type UnitKind,
 } from '../core/units';
+import {
+  recruitmentDenial,
+  remainingPurchases,
+  unitCost,
+  type RecruitmentDenial,
+  type RecruitmentState,
+} from '../core/recruitment';
 import { FACTION_THEMES, type FactionTheme } from './factionTheme';
 import { formatPoints, formatRange } from './format';
 import { drawInfantryPortrait } from './recruitPortrait';
@@ -35,6 +42,7 @@ interface UnitRow {
   readonly icon: Phaser.GameObjects.Image;
   readonly name: Phaser.GameObjects.Text;
   readonly role: Phaser.GameObjects.Text;
+  readonly price: Phaser.GameObjects.Text;
 }
 
 interface LoadoutChip {
@@ -58,6 +66,7 @@ const UNIT_ROLES: Record<UnitKind, string> = {
 
 export interface RecruitDialogHandlers {
   readonly onRecruit?: (kind: UnitKind) => boolean;
+  readonly onSelectKind?: (kind: UnitKind) => void;
 }
 
 const LOADOUTS: Record<UnitKind, readonly EquipmentSlot[]> = {
@@ -206,6 +215,17 @@ function selectedColor(slots: readonly EquipmentSlot[], selection: readonly numb
   return option?.color ?? 0xffffff;
 }
 
+function denialMessage(denial: RecruitmentDenial): string {
+  switch (denial) {
+    case 'forbidden':
+      return 'Niedostępne w tej misji';
+    case 'limit':
+      return 'Limit zakupów wyczerpany';
+    case 'funds':
+      return 'Za mało środków';
+  }
+}
+
 export class RecruitDialog {
   private readonly objects: Array<
     Phaser.GameObjects.GameObject & Phaser.GameObjects.Components.Visible
@@ -224,7 +244,9 @@ export class RecruitDialog {
   private readonly statsText: Phaser.GameObjects.Text;
   private readonly equipmentTitle: Phaser.GameObjects.Text;
   private readonly recruitButton: Phaser.GameObjects.Rectangle;
+  private readonly recruitLabel: Phaser.GameObjects.Text;
   private readonly recruitNotice: Phaser.GameObjects.Text;
+  private readonly balanceText: Phaser.GameObjects.Text;
   private readonly closeButton: Phaser.GameObjects.Rectangle;
   private readonly selection: Record<UnitKind, number[]> = {
     infantry: [0, 0, 0, 0],
@@ -235,6 +257,7 @@ export class RecruitDialog {
   private theme: FactionTheme = FACTION_THEMES.blue;
   private faction: FactionId = 'blue';
   private selectedKind: UnitKind = 'infantry';
+  private recruitment: RecruitmentState | null = null;
   private open = false;
 
   constructor(
@@ -291,6 +314,18 @@ export class RecruitDialog {
         .setDepth(DEPTH + 2),
     );
 
+    this.balanceText = this.register(
+      scene.add
+        .text(panelX + PANEL_WIDTH - 20, panelY + 18, '', {
+          fontFamily: 'monospace',
+          fontSize: '13px',
+          color: '#f2d35c',
+        })
+        .setOrigin(1, 0)
+        .setScrollFactor(0)
+        .setDepth(DEPTH + 2),
+    );
+
     this.register(
       scene.add
         .rectangle(listX, listY, LIST_WIDTH, LIST_HEIGHT, 0x05080c, 0.7)
@@ -339,6 +374,17 @@ export class RecruitDialog {
           .setScrollFactor(0)
           .setDepth(DEPTH + 3),
       );
+      const price = this.register(
+        scene.add
+          .text(listX + LIST_WIDTH - 12, top + 12, '', {
+            fontFamily: 'monospace',
+            fontSize: '11px',
+            color: '#f2d35c',
+          })
+          .setOrigin(1, 0)
+          .setScrollFactor(0)
+          .setDepth(DEPTH + 3),
+      );
 
       background.on('pointerover', () => {
         if (this.selectedKind !== kind) {
@@ -352,7 +398,7 @@ export class RecruitDialog {
       });
       background.on('pointerdown', () => this.selectUnit(kind));
 
-      this.rows.push({ kind, background, icon, name, role });
+      this.rows.push({ kind, background, icon, name, role, price });
     });
 
     this.portraitFrame = this.register(
@@ -504,7 +550,7 @@ export class RecruitDialog {
         .setInteractive({ useHandCursor: true }),
     );
 
-    this.register(
+    this.recruitLabel = this.register(
       scene.add
         .text(centerX - 84, buttonY, 'KUP JEDNOSTKĘ', {
           fontFamily: 'monospace',
@@ -564,13 +610,18 @@ export class RecruitDialog {
     return this.open;
   }
 
-  show(faction: FactionId): void {
+  show(faction: FactionId, recruitment: RecruitmentState): void {
     this.open = true;
     this.faction = faction;
+    this.recruitment = recruitment;
     this.recruitNotice.setText('');
+    this.selectedKind = recruitment.allowedKinds.includes(this.selectedKind)
+      ? this.selectedKind
+      : (recruitment.allowedKinds[0] ?? this.selectedKind);
     this.applyTheme(FACTION_THEMES[faction]);
     this.setVisible(true);
     this.render();
+    this.handlers.onSelectKind?.(this.selectedKind);
   }
 
   hide(): void {
@@ -579,7 +630,14 @@ export class RecruitDialog {
   }
 
   private tryRecruit(): void {
-    if (!this.handlers.onRecruit) {
+    if (!this.handlers.onRecruit || !this.recruitment) {
+      return;
+    }
+
+    const denial = recruitmentDenial(this.recruitment, this.selectedKind);
+
+    if (denial) {
+      this.recruitNotice.setText(denialMessage(denial));
       return;
     }
 
@@ -591,12 +649,17 @@ export class RecruitDialog {
     this.recruitNotice.setText('Brak wolnego heksu do rozmieszczenia');
   }
 
+  private isAllowed(kind: UnitKind): boolean {
+    return this.recruitment?.allowedKinds.includes(kind) ?? true;
+  }
+
   private selectUnit(kind: UnitKind): void {
-    if (this.selectedKind === kind) {
+    if (this.selectedKind === kind || !this.isAllowed(kind)) {
       return;
     }
 
     this.selectedKind = kind;
+    this.handlers.onSelectKind?.(kind);
     this.render();
   }
 
@@ -615,11 +678,16 @@ export class RecruitDialog {
   private render(): void {
     this.renderRows();
     this.renderUnit();
+    this.renderRecruitment();
   }
 
   private renderRows(): void {
     for (const row of this.rows) {
       const selected = row.kind === this.selectedKind;
+      const remaining = this.recruitment
+        ? remainingPurchases(this.recruitment, row.kind)
+        : undefined;
+      const available = this.isAllowed(row.kind) && !(remaining !== undefined && remaining <= 0);
 
       row.background.setFillStyle(selected ? this.theme.accentDark : 0x0f1114, selected ? 1 : 0.5);
       row.background.setStrokeStyle(
@@ -628,9 +696,43 @@ export class RecruitDialog {
         1,
       );
       row.icon.setTexture(unitTexture(this.scene, row.kind, this.faction).key);
-      row.name.setColor(selected ? '#f2f5f7' : '#d8e2dc');
-      row.role.setColor(selected ? this.theme.accentSoft : '#6c7d72');
+      row.icon.setAlpha(available ? 1 : 0.35);
+      row.name.setColor(available ? (selected ? '#f2f5f7' : '#d8e2dc') : '#5a6a60');
+      row.role.setColor(available ? (selected ? this.theme.accentSoft : '#6c7d72') : '#4a574f');
+      row.price.setText(this.rowPriceLabel(row.kind, remaining));
+      row.price.setColor(available ? '#f2d35c' : '#7a6a3a');
     }
+  }
+
+  private rowPriceLabel(kind: UnitKind, remaining: number | undefined): string {
+    if (!this.isAllowed(kind)) {
+      return 'NIEDOSTĘPNE';
+    }
+
+    if (remaining !== undefined && remaining <= 0) {
+      return 'WYCZERPANE';
+    }
+
+    return remaining === undefined ? `${unitCost(kind)}` : `${unitCost(kind)} · ×${remaining}`;
+  }
+
+  private renderRecruitment(): void {
+    if (!this.recruitment) {
+      return;
+    }
+
+    this.balanceText.setText(`KONTO ${this.recruitment.funds}`);
+
+    const denial = recruitmentDenial(this.recruitment, this.selectedKind);
+    const disabled = denial !== undefined;
+
+    this.recruitButton
+      .setFillStyle(disabled ? 0x2a2f33 : this.theme.accentDark, 1)
+      .setStrokeStyle(1, disabled ? this.theme.divider : this.theme.accentBright, 0.8);
+    this.recruitLabel
+      .setText(`KUP JEDNOSTKĘ · ${unitCost(this.selectedKind)}`)
+      .setColor(disabled ? '#7a848a' : '#ffffff');
+    this.recruitNotice.setText(disabled ? denialMessage(denial) : '');
   }
 
   private renderUnit(): void {
@@ -643,6 +745,7 @@ export class RecruitDialog {
       [
         `HP ${stats.maxHp}/${stats.maxHp} · ATK ${stats.attack} · DEF ${stats.defense}${ammo}`,
         `Ruch ${formatPoints(stats.moveRange)} · Wzrok ${formatRange(stats.visionRange)} · Strzał ${formatRange(stats.attackRange)}`,
+        `Cena ${unitCost(this.selectedKind)}`,
       ].join('\n'),
     );
     this.renderPortrait();

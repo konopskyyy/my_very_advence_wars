@@ -15,6 +15,7 @@ import {
   type UnitDeployment,
 } from './state';
 import { IMPASSABLE, TERRAIN_DEFS } from './map/terrain';
+import type { RecruitmentRules } from './recruitment';
 import type { FactionId, UnitKind } from './units';
 
 export interface ScenarioDefinition {
@@ -22,6 +23,7 @@ export interface ScenarioDefinition {
   readonly name: string;
   readonly description: string;
   readonly state: GameState;
+  readonly recruitment?: RecruitmentRules;
   readonly withFogOfWar?: (state: GameState) => GameState;
 }
 

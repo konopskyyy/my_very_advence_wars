@@ -18,6 +18,7 @@ export interface UnitBase {
 
 export interface UnitStats {
   readonly label: string;
+  readonly cost: number;
   readonly maxHp: number;
   readonly moveRange: number;
   readonly attack: number;
