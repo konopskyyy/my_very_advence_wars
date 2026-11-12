@@ -11,6 +11,7 @@ import {
 } from '../../../src/core/plan';
 import { createInitialState, placeUnit } from '../../../src/core/state';
 import { createTurnState } from '../../../src/core/turn';
+import { UNIT_DEFS } from '../../../src/core/units';
 
 function blueInfantryAt(state: ReturnType<typeof createInitialState>, col: number, row: number) {
   return placeUnit(state, 'infantry', { col, row }, 'blue');
@@ -59,21 +60,27 @@ describe('plan', () => {
     expect(planningState(state, second.plan).units[0]!.pos).toEqual({ col: 5, row: 3 });
   });
 
-  it('dodaje atak i blokuje kolejny dla piechoty', () => {
+  it('dodaje ataki, dopóki piechocie starcza ruchu', () => {
     let state = blueInfantryAt(createInitialState(createMap(10, 10)), 2, 3);
     state = placeUnit(state, 'infantry', { col: 3, row: 3 }, 'red');
     const attacker = state.units[0]!;
     const target = state.units[1]!;
-    const first = addAttack(createTurnPlan(createTurnState()), state, attacker.id, target.id);
+    let plan = createTurnPlan(createTurnState());
 
-    expect(first.ok).toBe(true);
+    for (let shot = 0; shot < UNIT_DEFS.infantry.moveRange; shot += 1) {
+      const result = addAttack(plan, state, attacker.id, target.id);
 
-    if (!first.ok) {
-      return;
+      expect(result.ok).toBe(true);
+
+      if (!result.ok) {
+        return;
+      }
+
+      plan = result.plan;
     }
 
-    expect(unitActions(first.plan, attacker.id)).toEqual([{ kind: 'attack', targetId: target.id }]);
-    expect(addAttack(first.plan, state, attacker.id, target.id)).toEqual({
+    expect(unitActions(plan, attacker.id)).toHaveLength(UNIT_DEFS.infantry.moveRange);
+    expect(addAttack(plan, state, attacker.id, target.id)).toEqual({
       ok: false,
       reason: 'no-shots',
     });
@@ -135,6 +142,80 @@ describe('plan', () => {
       ok: false,
       reason: 'occupied-target',
     });
+  });
+
+  it('pozwala zakończyć ruch na heksie opuszczonym przez inną jednostkę', () => {
+    let state = blueInfantryAt(createInitialState(createMap(10, 10)), 2, 3);
+    state = blueInfantryAt(state, 2, 5);
+    const [first, second] = state.units;
+    const plan = createTurnPlan(createTurnState());
+    const moved = setMove(plan, state, first!.id, { col: 3, row: 4 });
+
+    expect(moved.ok).toBe(true);
+
+    if (!moved.ok) {
+      return;
+    }
+
+    const followUp = setMove(moved.plan, state, second!.id, { col: 2, row: 3 });
+
+    expect(followUp.ok).toBe(true);
+
+    if (!followUp.ok) {
+      return;
+    }
+
+    const finalState = planningState(state, followUp.plan);
+
+    expect(finalState.units.find((unit) => unit.id === first!.id)?.pos).toEqual({
+      col: 3,
+      row: 4,
+    });
+    expect(finalState.units.find((unit) => unit.id === second!.id)?.pos).toEqual({
+      col: 2,
+      row: 3,
+    });
+  });
+
+  it('liczy trasę przez heks opuszczony przez wcześniej zaplanowaną jednostkę', () => {
+    let state = blueInfantryAt(createInitialState(createMap(10, 10)), 3, 3);
+    state = blueInfantryAt(state, 2, 3);
+    const [first, second] = state.units;
+    const plan = createTurnPlan(createTurnState());
+    const moved = setMove(plan, state, first!.id, { col: 3, row: 4 });
+
+    expect(moved.ok).toBe(true);
+
+    if (!moved.ok) {
+      return;
+    }
+
+    expect(setMove(moved.plan, state, second!.id, { col: 4, row: 3 }).ok).toBe(true);
+  });
+
+  it('pozwala zwiadowcy wykorzystać cały budżet ruchu', () => {
+    const state = placeUnit(
+      createInitialState(createMap(12, 6)),
+      'scout',
+      { col: 1, row: 2 },
+      'blue',
+    );
+    const unit = state.units[0]!;
+    const target = { col: 7, row: 2 };
+    const result = setMove(createTurnPlan(createTurnState()), state, unit.id, target);
+
+    expect(UNIT_DEFS.scout.moveRange).toBe(6);
+    expect(result.ok).toBe(true);
+
+    if (!result.ok) {
+      return;
+    }
+
+    const planned = planningState(state, result.plan).units[0]!;
+
+    expect(planned.pos).toEqual(target);
+    expect(planned.movesLeft).toBe(0);
+    expect(planned.hasActed).toBe(true);
   });
 
   it('usuwa ostatnią akcję jednostki', () => {

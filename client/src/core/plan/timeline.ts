@@ -61,9 +61,10 @@ function idleFrame(unit: Unit): UnitFrame {
 
 export function buildTimeline(plan: TurnPlan, state: GameState): TurnTimeline {
   const builds: UnitBuild[] = [];
+  let current = state;
 
   for (const unitPlan of plan.units) {
-    const unit = state.units.find((candidate) => candidate.id === unitPlan.unitId);
+    const unit = current.units.find((candidate) => candidate.id === unitPlan.unitId);
 
     if (!unit) {
       continue;
@@ -71,7 +72,7 @@ export function buildTimeline(plan: TurnPlan, state: GameState): TurnTimeline {
 
     let cursor = 0;
     const clips: TimelineClip[] = [];
-    walkActions(state, unit, unitPlan.actions, (step) => {
+    const simulated = walkActions(current, unit, unitPlan.actions, (step) => {
       const startMs = cursor;
       const action = step.action;
 
@@ -89,7 +90,7 @@ export function buildTimeline(plan: TurnPlan, state: GameState): TurnTimeline {
         return;
       }
 
-      const target = state.units.find((candidate) => candidate.id === action.targetId);
+      const target = current.units.find((candidate) => candidate.id === action.targetId);
       cursor += FIRE_MS;
       clips.push({
         kind: 'attack',
@@ -103,6 +104,15 @@ export function buildTimeline(plan: TurnPlan, state: GameState): TurnTimeline {
         damage: UNIT_DEFS[unit.kind].attack,
       });
     });
+
+    if (simulated) {
+      current = {
+        ...current,
+        units: current.units.map((candidate) =>
+          candidate.id === simulated.id ? simulated : candidate,
+        ),
+      };
+    }
 
     builds.push({ unitId: unit.id, total: cursor, clips });
   }

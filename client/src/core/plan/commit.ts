@@ -1,5 +1,4 @@
 import type { GameState } from '../state';
-import type { Unit } from '../units';
 import { simulateUnit } from './simulate';
 import type { PlanHit, TurnPlan } from './types';
 import { planVolley } from './volley';
@@ -11,25 +10,29 @@ export interface PlanCommit {
 }
 
 export function commitPlan(state: GameState, plan: TurnPlan): PlanCommit {
-  const simulated = new Map<string, Unit>();
+  let current = state;
 
   for (const unitPlan of plan.units) {
-    const unit = state.units.find((candidate) => candidate.id === unitPlan.unitId);
+    const unit = current.units.find((candidate) => candidate.id === unitPlan.unitId);
 
     if (!unit) {
       continue;
     }
 
-    const moved = simulateUnit(state, unit, unitPlan.actions);
+    const moved = simulateUnit(current, unit, unitPlan.actions);
 
     if (moved) {
-      simulated.set(unit.id, moved);
+      current = {
+        ...current,
+        units: current.units.map((candidate) =>
+          candidate.id === moved.id ? moved : candidate,
+        ),
+      };
     }
   }
 
   const volley = planVolley(state, plan);
-  const units = state.units
-    .map((unit) => simulated.get(unit.id) ?? unit)
+  const units = current.units
     .map((unit) => {
       const damage = volley.damageByTarget.get(unit.id);
 
@@ -42,7 +45,7 @@ export function commitPlan(state: GameState, plan: TurnPlan): PlanCommit {
     .filter((unit) => unit.hp > 0);
 
   return {
-    state: { ...state, units },
+    state: { ...current, units },
     hits: volley.hits,
     killed: volley.killed,
   };

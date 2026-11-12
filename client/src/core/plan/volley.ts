@@ -12,22 +12,23 @@ export interface VolleyPlan {
 export function planVolley(state: GameState, plan: TurnPlan): VolleyPlan {
   const hits: PlanHit[] = [];
   const damageByTarget = new Map<string, number>();
+  let current = state;
 
   for (const unitPlan of plan.units) {
-    const unit = state.units.find((candidate) => candidate.id === unitPlan.unitId);
+    const unit = current.units.find((candidate) => candidate.id === unitPlan.unitId);
 
     if (!unit) {
       continue;
     }
 
-    walkActions(state, unit, unitPlan.actions, (step) => {
+    const simulated = walkActions(current, unit, unitPlan.actions, (step) => {
       const action = step.action;
 
       if (action.kind !== 'attack') {
         return;
       }
 
-      const target = state.units.find((candidate) => candidate.id === action.targetId);
+      const target = current.units.find((candidate) => candidate.id === action.targetId);
 
       if (!target) {
         return;
@@ -45,6 +46,15 @@ export function planVolley(state: GameState, plan: TurnPlan): VolleyPlan {
       });
       damageByTarget.set(target.id, (damageByTarget.get(target.id) ?? 0) + damage);
     });
+
+    if (simulated) {
+      current = {
+        ...current,
+        units: current.units.map((candidate) =>
+          candidate.id === simulated.id ? simulated : candidate,
+        ),
+      };
+    }
   }
 
   const killed = state.units

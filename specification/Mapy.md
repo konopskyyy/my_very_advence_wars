@@ -134,7 +134,8 @@ również tam.
 Jednostka ma `id`, `kind`, `faction`, `pos`, `hp`, `movesLeft` i `hasActed`.
 Czołg i artyleria mają zapas sześciu strzałów wyliczany z ruchu: pełny
 `movesLeft` daje 6 pocisków, a każdy wydany punkt ruchu proporcjonalnie
-zmniejsza zapas. Jednostka nie przechowuje pola `ammo`; starszy zapis z tym
+zmniejsza zapas. Piechota i zwiad nie mają amunicji; ich strzał kosztuje
+1 punkt ruchu. Jednostka nie przechowuje pola `ammo`; starszy zapis z tym
 polem jest akceptowany i ignorowany. `beginTurn()` przywraca ruch jednostkom
 aktywnej strony, więc pociski wracają razem z nim. Zasięg wzroku i strzału nie
 jest zapisywany w jednostce — wynika z `UnitStats` w `UNIT_DEFS` i służy do

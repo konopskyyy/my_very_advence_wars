@@ -78,8 +78,10 @@ describe('zasięgi jednostek', () => {
     expect(visionTiles(map, unit('artillery'))).toHaveLength(Object.keys(map.cells).length - 1);
   });
 
-  it('zwiad widzi dalej niż czołg', () => {
-    expect(UNIT_DEFS.scout.visionRange).toBeGreaterThan(UNIT_DEFS.tank.visionRange);
+  it('zwiadowca widzi całą mapę', () => {
+    expect(UNIT_DEFS.scout.label).toBe('Zwiadowca');
+    expect(UNIT_DEFS.scout.visionRange).toBe(FULL_MAP_RANGE);
+    expect(visionTiles(map, unit('scout'))).toHaveLength(Object.keys(map.cells).length - 1);
     expect(visionTiles(map, unit('scout')).length).toBeGreaterThan(
       visionTiles(map, unit('tank')).length,
     );

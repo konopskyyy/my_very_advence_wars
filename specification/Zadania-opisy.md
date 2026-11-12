@@ -303,7 +303,7 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
 - **Kontekst:** Scenariusz pokazywał tokeny wszystkich jednostek obu stron, więc przeciwnik był widoczny niezależnie od położenia własnego wojska. Do rozgrywki potrzebna jest mgła wojny sterowana flagą mapy i zasięgiem wzroku jednostek.
 - **Opis:** `UnitStats` dostaje `visionRange`, a `GameMap` — flagę `fogOfWar`. Czysty moduł `client/src/core/vision.ts` liczy widoczność z perspektywy aktywnej strony: własne jednostki są zawsze widoczne, a wrogie tylko wtedy, gdy leżą w zasięgu wzroku dowolnej jednostki tej strony (odległość heksagonalna). `ScenarioScene` rysuje wyłącznie widoczne tokeny, a kliknięcie i podgląd heksu nie ujawniają ukrytej jednostki. Edytor ma przełącznik `MGŁA WOJNY` w lewym panelu, a `mapSerialization` zapisuje flagę i domyśla się `false` dla starszych zapisów. Scenariusz `front-wschodni` włącza mgłę także na starszym wpisie z SQLite przez `withFogOfWar`.
 - **Kryteria:**
-  - **Dane:** piechota ma zasięg wzroku 2, czołg 3, artyleria 2, zwiad 5; wartości są w `UNIT_DEFS`.
+  - **Dane:** piechota ma zasięg wzroku 2, czołg 3, artyleria i zwiadowca widzą całą mapę; wartości są w `UNIT_DEFS` (zasięg zwiadowcy podniesiony w GRA-069).
   - **Mapa:** `GameMap.fogOfWar` domyślnie `false`, a operacje na kaflach zachowują flagę; nowa mapa i `clearMap()` startują z wyłączoną mgłą.
   - **Widoczność:** przy włączonej mgle tokeny wroga poza zasięgiem znikają, jednostki w zasięgu dowolnej własnej jednostki pozostają widoczne, a po zakończeniu tury widoczność przełącza się na nową stronę.
   - **Interakcja:** ukrytej jednostki nie da się wybrać ani zobaczyć jej opisu w podglądzie heksu; edytor nadal pokazuje wszystkie jednostki.
@@ -325,25 +325,25 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
 
 ## GRA-040: Atak jednostek z obrażeniami i usuwaniem
 - **Kontekst:** Zasięg strzału był tylko obrysem na mapie — kliknięcie wrogiej jednostki w zasięgu wybierało ją zamiast atakować. Statystyka `attack` i pole `hp` nie miały zastosowania w rozgrywce, więc walki nie było.
-- **Opis:** Czysty moduł `client/src/core/combat.ts` udostępnia `canAttack()` i `attackUnit()`. Atak jest dozwolony, gdy wybrana jednostka należy do aktywnej strony, nie działała jeszcze w tej turze, a cel jest wrogiem w promieniu `attackRange`. Obrażenia są równe `attack` atakującego i odejmowane od `hp` celu; jednostka z `hp <= 0` znika ze stanu. Atak kończy akcję jednostki (`hasActed`), więc ta sama jednostka nie zaatakuje dwa razy w turze. `ScenarioScene` przechwytuje kliknięcie w widocznego wroga w zasięgu przed wyborem jednostki i odświeża tokeny, zasięgi oraz pasek.
+- **Opis:** Czysty moduł `client/src/core/combat.ts` udostępnia `canAttack()` i `attackUnit()`. Atak jest dozwolony, gdy wybrana jednostka należy do aktywnej strony, nie działała jeszcze w tej turze, a cel jest wrogiem w promieniu `attackRange`. Obrażenia są równe `attack` atakującego i odejmowane od `hp` celu; jednostka z `hp <= 0` znika ze stanu. Atak zużywa ruch jednostki; od GRA-068 koszt zależy od rodzaju jednostki, a `hasActed` pojawia się dopiero przy zerowym ruchu. `ScenarioScene` przechwytuje kliknięcie w widocznego wroga w zasięgu przed wyborem jednostki i odświeża tokeny, zasięgi oraz pasek.
 - **Kryteria:**
   - **Dozwolony atak:** własna jednostka aktywnej strony, bez `hasActed`, cel wrogi i w odległości nie większej niż `attackRange`.
   - **Obrażenia:** `hp` celu spada o `attack` atakującego; obrona i teren nie zmniejszają obrażeń.
   - **Śmierć:** przy `hp <= 0` jednostka jest usuwana ze `state.units`, a jej token znika z mapy.
-  - **Akcja:** po ataku atakujący dostaje `hasActed` i nie może ponownie zaatakować ani ruszyć się do końca tury.
+  - **Akcja:** po ataku atakujący traci koszt strzału z `movesLeft`; `hasActed` dostaje dopiero przy zerowym ruchu (GRA-068).
   - **Interakcja:** kliknięcie wroga poza zasięgiem nie zadaje obrażeń; ukrytej jednostki nadal nie da się zaatakować. Podgląd heksu pokazuje HP widocznej jednostki.
   - **Testy:** `tests/core/combat.test.ts` pokrywa obrażenia, śmierć, zasięg, własną stronę, limit akcji i wartości z `UNIT_DEFS`.
   - **Dokumentacja:** ADR-032, `Mapy.md` i `Interfejs.md` opisują obrażenia, warunki ataku i zachowanie sceny.
 
 ## GRA-041: Artyleria z pełnym zasięgiem i ruchowym kosztem strzału
 - **Kontekst:** Artyleria miała zasięg strzału 3 przy zasięgu wzroku 2, więc bez podpierania jej inną jednostką nie widziała celów, które mogła razić. Strzał kończył też całą akcję (`hasActed`), więc po dojściu do wroga jednostka nie mogła już atakować. Długi zasięg był w praktyce bezużyteczny, a pole `ammo` nie było widoczne ani zużywane.
-- **Opis:** `UNIT_DEFS.artillery` ma nieskończony `attackRange` i `visionRange` — artyleria widzi i razi każdy heks mapy. Strzał artylerii nie ustawia od razu `hasActed`: odejmuje od `movesLeft` stałą proporcję `moveRange / ARTILLERY_AMMO` (`ARTILLERY_SHOT_MOVE_COST`) oraz zużywa jeden pocisk. Pełny zapas ruchu wystarcza na tyle strzałów, ile wynosi `ammo`; dopiero wyczerpanie ruchu ustawia `hasActed`. Każdy atak (także czołgu) zmniejsza `ammo` o 1, a `canAttack()` odrzuca jednostkę bez pocisków. `beginTurn()` uzupełnia amunicję jednostkom aktywnej strony do wartości z `UnitStats.ammo`. Pozostałe rodzaje jednostek nadal kończą akcję po jednym ataku. Scena rysuje dla artylerii czerwone obrysy wyłącznie na widocznych wrogach i pomija mgłę wzroku (cała mapa), a pasek pokazuje `Wzrok ∞`, `Strzał ∞`, `POCISKI X/6` i ułamkowy ruch z dokładnością do dwóch miejsc.
+- **Opis:** `UNIT_DEFS.artillery` ma nieskończony `attackRange` i `visionRange` — artyleria widzi i razi każdy heks mapy. Strzał artylerii nie ustawia od razu `hasActed`: odejmuje od `movesLeft` stałą proporcję `moveRange / ARTILLERY_AMMO` (`ARTILLERY_SHOT_MOVE_COST`) oraz zużywa jeden pocisk. Pełny zapas ruchu wystarcza na tyle strzałów, ile wynosi `ammo`; dopiero wyczerpanie ruchu ustawia `hasActed`. Każdy atak (także czołgu) zmniejsza `ammo` o 1, a `canAttack()` odrzuca jednostkę bez pocisków. `beginTurn()` uzupełnia amunicję jednostkom aktywnej strony do wartości z `UnitStats.ammo`. Pozostałe rodzaje jednostek kończyły akcję po jednym ataku; od GRA-068 każdy strzał zużywa ruch. Scena rysuje dla artylerii czerwone obrysy wyłącznie na widocznych wrogach i pomija mgłę wzroku (cała mapa), a pasek pokazuje `Wzrok ∞`, `Strzał ∞`, `POCISKI X/6` i ułamkowy ruch z dokładnością do dwóch miejsc.
 - **Kryteria:**
   - **Zasięg:** artyleria widzi i atakuje wroga na dowolnym heksie mapy; warunki własnej strony pozostają bez zmian.
   - **Koszt strzału:** każdy strzał odejmuje `moveRange / ammo` od bieżącego `movesLeft`; po wyczerpaniu ruchu jednostka dostaje `hasActed`.
   - **Amunicja:** każdy atak zużywa 1 pocisk; przy `ammo = 0` `canAttack()` zwraca `false`. Pociski wracają do maksimum na początku tury strony.
   - **Seria:** artyleria może strzelać wielokrotnie w turze, dopóki ma ruch i pociski.
-  - **Inne jednostki:** piechota, czołg i zwiad po ataku nadal dostają `hasActed` bez zużywania ruchu; czołg dodatkowo zużywa pocisk.
+  - **Inne jednostki:** od GRA-068 piechota, czołg i zwiad odejmują od `movesLeft` odpowiednio 1 punkt lub `moveRange / ammo`; `hasActed` dostają dopiero przy zerowym ruchu.
   - **Interfejs:** HUD pokazuje `Wzrok ∞`, `Strzał ∞`, `POCISKI X/6`, ruch z częścią dziesiętną, a obrysy strzału obejmują tylko widocznych wrogów zamiast całej mapy.
   - **Testy:** `tests/core/combat.test.ts` pokrywa pełny zasięg, koszt ruchu, amunicję, serię strzałów i zachowanie innych jednostek; `vision.test.ts` i `ranges.test.ts` — pełny wzrok; `turn.test.ts` — uzupełnianie pocisków; `movement.test.ts` — ułamkowy ruch.
   - **Dokumentacja:** ADR-033, `Mapy.md` i `Interfejs.md` opisują zasięgi, amunicję i koszt strzału artylerii.
@@ -472,7 +472,7 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
 - **Kryteria:**
   - **Krok po kroku:** token zatrzymuje się na każdym heksie trasy, a pasek pokazuje stan po dotarciu do tego heksa, nie od razu stan końcowy.
   - **Pociski:** `POCISKI X/6` maleje proporcjonalnie do wydanego ruchu; przy pełnym ruchu wynosi 6, a po wyczerpaniu ruchu 0.
-  - **Atak:** artyleria nadal odejmuje koszt strzału od `movesLeft`; czołg po ataku dostaje `hasActed` i pokazuje 0 pocisków.
+  - **Atak:** artyleria i czołg odejmują koszt strzału od `movesLeft`; `hasActed` i 0 pocisków pojawiają się dopiero po wyczerpaniu ruchu.
   - **Wejście:** w trakcie przechodzenia trasy kliknięcia mapy, `T`, rekrutacja i atak nie wykonują akcji.
   - **Zapis:** jednostka nie przechowuje już `ammo`; starszy JSON z tym polem jest akceptowany, a brak pola nie jest błędem.
   - **Testy:** `tests/core/map/movement.test.ts` pokrywa ruch o jeden krok i spadek pocisków po każdym kroku, `tests/core/units/ammo.test.ts` — przeliczanie strzałów, `tests/core/combat.test.ts` — atak z wynikających pocisków, `tests/core/turn.test.ts` — przywracanie zapasu, a `tests/storage/mapSerialization.test.ts` — zgodność ze starym zapisem.
@@ -594,3 +594,46 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
   - **Responsywność:** układ jest czytelny na wąskich ekranach.
   - **Testy:** `make verify` przechodzi.
   - **Dokumentacja:** INTERF-008 opisuje zaktualizowaną stronę główną i pliki.
+
+## GRA-068: Ruch po strzale z wspólnego budżetu
+- **Kontekst:** Artyleria od ADR-033 płaciła za strzał częścią ruchu, ale piechota, czołg i zwiad po ataku dostawały `hasActed`. Czołg miał `ammo = 6`, którego nie mógł wykorzystać, a resztka `movesLeft` przepadała — po jednym strzale jednostka nie mogła już podejść ani odsunąć się.
+- **Opis:** `shotMoveCost()` liczy koszt strzału dla każdej jednostki: `moveRange / ammo` dla czołgu i artylerii oraz 1 punkt ruchu dla piechoty i zwiadu. `applyAttackCost()` w `core/units/ammo.ts` odejmuje ten koszt od `movesLeft` i ustawia `hasActed` dopiero przy zerowym ruchu; korzystają z niego `attackUnit()` i planer tury. `shotsLeft()` dla jednostek bez amunicji liczy strzały z pozostałego ruchu zamiast zwracać nieskończoność. HUD nadal pokazuje `POCISKI` tylko dla czołgu i artylerii, a po ataku odświeża ruch i zasięgi.
+- **Kryteria:**
+  - **Koszt strzału:** czołg i artyleria odejmują `moveRange / ammo`, piechota i zwiad 1 punkt ruchu.
+  - **Ruch po strzale:** dopóki `movesLeft > 0`, jednostka może zaplanować i wykonać kolejny ruch; `hasActed` pojawia się tylko przy zerowym ruchu.
+  - **Limit strzałów:** jednostka nie atakuje bez wystarczającego ruchu; po wyczerpaniu budżetu `canAttackThisTurn()` zwraca `false`.
+  - **Plan i commit:** planer i `commitPlan()` liczą ten sam koszt, więc podgląd ruchu przed wykonaniem tury zgadza się ze stanem po niej.
+  - **Testy:** `tests/core/combat.test.ts`, `tests/core/units/ammo.test.ts`, `tests/core/plan/plan.test.ts` i `tests/core/plan/volley.test.ts` pokrywają koszt, ruch po ataku i limit budżetu.
+  - **Dokumentacja:** ZAL-004, ZAL-006, ADR-043, INTERF-005 i `Mapy.md` opisują wspólny budżet ruchu i strzału.
+
+## GRA-069: Zwiadowca z wzrokiem na całą mapę
+- **Kontekst:** Zwiad miał `visionRange = 5`, więc nie pełnił roli jednostki rozpoznawczej. Gracz nie miał powodu wybierać go do odkrywania mapy pod mgłą wojny, a po zakupie nie widział całej planszy.
+- **Opis:** `SCOUT_STATS` w `client/src/core/units/scout.ts` dostaje `visionRange: FULL_MAP_RANGE` i etykietę `Zwiadowca`, a tabela jednostek w ZAL-004 oraz opis mgły (GRA-038) podają nową wartość. Zwiadowca widzi całą mapę, tak jak artyleria; odróżnia go od niej ruch 6 i rola rozpoznawcza. Pasek dowodzenia i okno `KUP` pokazują pełny zasięg jako `∞`.
+- **Kryteria:**
+  - **Dane:** zwiadowca ma `visionRange = FULL_MAP_RANGE`, a etykieta i nazwa rodzaju to `Zwiadowca`.
+  - **Widoczność:** przy włączonej mgle wojny zwiadowca odsłania wszystkie kafle mapy, także po zakupie w trakcie tury.
+  - **Testy:** `tests/core/ranges.test.ts` i `tests/core/vision.test.ts` sprawdzają pełny zasięg wzroku zwiadowcy.
+  - **Dokumentacja:** ZAL-004, INTERF-005 i GRA-038 opisują widok całej mapy.
+
+## GRA-070: Bezpłatna rekrutacja jednostek z okna KUP
+- **Kontekst:** Okno `KUP` (GRA-046) pokazywało tylko opis jednostki, bo ekonomia i rekrutacja były poza zakresem (ZAL-009). Bez waluty gracz nie miał sposobu dodania jednostki do armii w trakcie bitwy.
+- **Opis:** `core/scenario.ts` dostaje `deploymentSlots(state, faction, limit)` z limitem wyboru heksów, `findRecruitSlot()` i `recruitUnit()`, które stawiają jednostkę przez `placeUnit()` na pierwszym wolnym przechodnim heksie od krawędzi strony — tak samo jak automatyczne uzupełnianie armii. `RecruitDialog` ma przycisk `KUP JEDNOSTKĘ`, a `ScenarioScene.recruit()` przyjmuje rodzaj jednostki, dopisuje nowe `unitId` do `spawns` dla SI i odświeża jednostki, HUD, podgląd i plan. Rekrutacja jest bezpłatna, działa tylko w turze gracza i tylko wtedy, gdy nie trwa odtwarzanie tury; nowa jednostka startuje z pełnym ruchem. Nie trafia do zapisu mapy — żyje w stanie sesji.
+- **Kryteria:**
+  - **Przycisk:** `KUP JEDNOSTKĘ` w oknie `KUP` stawia wybrany rodzaj jednostki na planszy i zamyka okno.
+  - **Heks:** jednostka pojawia się na pierwszym wolnym przechodnim heksie od krawędzi aktywnej strony; nie nadpisuje istniejącej jednostki.
+  - **Brak miejsca:** gdy nie ma wolnego heksu, okno zostaje otwarte i pokazuje `Brak wolnego heksu do rozmieszczenia`.
+  - **Zakres:** rekrutacja działa tylko w turze gracza i tylko poza odtwarzaniem; nowa jednostka ma pełny ruch i jest widoczna dla SI przez `spawns`.
+  - **Testy:** `tests/core/scenario.test.ts` pokrywa wybór heksu, krawędź strony i brak miejsca.
+  - **Dokumentacja:** ZAL-009, ADR-044 i INTERF-005 opisują bezpłatną rekrutację i jej zakres.
+
+## GRA-071: Kolorowe strzałki ruchu i koniec na zwolnionym heksie
+- **Kontekst:** Trasy planowanych jednostek były cienkimi liniami, więc przy wielu jednostkach trudno było odróżnić kierunek i właściciela. Planer walidował każdą trasę względem początku tury, więc druga jednostka nie mogła wejść na heks opuszczony przez pierwszą w tej samej turze.
+- **Opis:** `ScenarioScene` rysuje trasę jako łańcuch strzałek od heksu do heksu (`drawMovementArrows()`), każda z ciemnym podkładem i grotem, w kolorze jednostki; wybrana jednostka ma grubszą strzałkę. `planningState()` w `core/plan/simulate.ts` symuluje plany sekwencyjnie, więc `setMove()`, `commitPlan()`, `planVolley()` i `buildTimeline()` widzą docelowe pozycje wcześniej zaplanowanych jednostek. Dzięki temu można zakończyć ruch na heksie zajętym na początku tury, jeśli jego jednostka w tej samej turze z niego odchodzi; heksy końcowe nadal muszą być unikalne.
+- **Kryteria:**
+  - **Rysowanie:** każdy krok trasy to kolorowa strzałka z grotem i ciemnym podkładem; kolor i grubość zależą od jednostki, a wybrana jest wyróżniona.
+  - **Zwolniony heks:** druga jednostka może zakończyć ruch na heksie, z którego pierwsza odchodzi w tej samej turze, oraz przelecieć przez taki heks.
+  - **Klik na token:** klik własnej jednostki stojącej na takim heksie planuje ruch wybranej jednostki, a nie przełącza zaznaczenia; przy nieosiągalnym celu klik nadal wybiera tę jednostkę.
+  - **Unikalność celów:** dwie jednostki nadal nie mogą skończyć na tym samym heksie.
+  - **Spójność:** podgląd, oś czasu i stan po `commitPlan()` liczą trasy w tej samej kolejności planów.
+  - **Testy:** `tests/core/plan/plan.test.ts` pokrywa wejście na zwolniony heks i przelot przez niego.
+  - **Dokumentacja:** ZAL-004, ADR-045 i INTERF-005 opisują kolejność planów i rysowanie tras.

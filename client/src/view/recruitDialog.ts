@@ -7,7 +7,7 @@ import {
   type UnitKind,
 } from '../core/units';
 import { FACTION_THEMES, type FactionTheme } from './factionTheme';
-import { formatPoints } from './format';
+import { formatPoints, formatRange } from './format';
 import { drawInfantryPortrait } from './recruitPortrait';
 import { unitTexture } from './unitLayer';
 
@@ -53,8 +53,12 @@ const UNIT_ROLES: Record<UnitKind, string> = {
   infantry: 'ŻOŁNIERZ · piechota liniowa',
   tank: 'POJAZD · czołg',
   artillery: 'POJAZD · artyleria',
-  scout: 'POJAZD · zwiad',
+  scout: 'POJAZD · zwiadowca',
 };
+
+export interface RecruitDialogHandlers {
+  readonly onRecruit?: (kind: UnitKind) => boolean;
+}
 
 const LOADOUTS: Record<UnitKind, readonly EquipmentSlot[]> = {
   infantry: [
@@ -219,6 +223,8 @@ export class RecruitDialog {
   private readonly roleText: Phaser.GameObjects.Text;
   private readonly statsText: Phaser.GameObjects.Text;
   private readonly equipmentTitle: Phaser.GameObjects.Text;
+  private readonly recruitButton: Phaser.GameObjects.Rectangle;
+  private readonly recruitNotice: Phaser.GameObjects.Text;
   private readonly closeButton: Phaser.GameObjects.Rectangle;
   private readonly selection: Record<UnitKind, number[]> = {
     infantry: [0, 0, 0, 0],
@@ -231,7 +237,10 @@ export class RecruitDialog {
   private selectedKind: UnitKind = 'infantry';
   private open = false;
 
-  constructor(private readonly scene: Phaser.Scene) {
+  constructor(
+    private readonly scene: Phaser.Scene,
+    private readonly handlers: RecruitDialogHandlers = {},
+  ) {
     const centerX = scene.scale.width / 2;
     const centerY = scene.scale.height / 2;
     const panelX = centerX - PANEL_WIDTH / 2;
@@ -472,9 +481,23 @@ export class RecruitDialog {
       });
     }
 
-    this.closeButton = this.register(
+    const buttonY = panelY + PANEL_HEIGHT - 34;
+
+    this.recruitNotice = this.register(
       scene.add
-        .rectangle(centerX, panelY + PANEL_HEIGHT - 34, 140, 32, this.theme.accentDark, 1)
+        .text(centerX, buttonY - 24, '', {
+          fontFamily: 'monospace',
+          fontSize: '10px',
+          color: '#ffb347',
+        })
+        .setOrigin(0.5)
+        .setScrollFactor(0)
+        .setDepth(DEPTH + 2),
+    );
+
+    this.recruitButton = this.register(
+      scene.add
+        .rectangle(centerX - 84, buttonY, 160, 32, this.theme.accentDark, 1)
         .setScrollFactor(0)
         .setDepth(DEPTH + 2)
         .setStrokeStyle(1, this.theme.accentBright, 0.8)
@@ -483,7 +506,28 @@ export class RecruitDialog {
 
     this.register(
       scene.add
-        .text(centerX, panelY + PANEL_HEIGHT - 34, 'ZAMKNIJ', {
+        .text(centerX - 84, buttonY, 'KUP JEDNOSTKĘ', {
+          fontFamily: 'monospace',
+          fontSize: '13px',
+          color: '#ffffff',
+        })
+        .setOrigin(0.5)
+        .setScrollFactor(0)
+        .setDepth(DEPTH + 3),
+    );
+
+    this.closeButton = this.register(
+      scene.add
+        .rectangle(centerX + 84, buttonY, 140, 32, this.theme.accentDark, 1)
+        .setScrollFactor(0)
+        .setDepth(DEPTH + 2)
+        .setStrokeStyle(1, this.theme.accentBright, 0.8)
+        .setInteractive({ useHandCursor: true }),
+    );
+
+    this.register(
+      scene.add
+        .text(centerX + 84, buttonY, 'ZAMKNIJ', {
           fontFamily: 'monospace',
           fontSize: '13px',
           color: '#ffffff',
@@ -494,6 +538,13 @@ export class RecruitDialog {
     );
 
     this.overlay.on('pointerup', () => this.hide());
+    this.recruitButton.on('pointerover', () =>
+      this.recruitButton.setFillStyle(this.theme.accent, 1),
+    );
+    this.recruitButton.on('pointerout', () =>
+      this.recruitButton.setFillStyle(this.theme.accentDark, 1),
+    );
+    this.recruitButton.on('pointerup', () => this.tryRecruit());
     this.closeButton.on('pointerover', () =>
       this.closeButton.setFillStyle(this.theme.accent, 1),
     );
@@ -516,6 +567,7 @@ export class RecruitDialog {
   show(faction: FactionId): void {
     this.open = true;
     this.faction = faction;
+    this.recruitNotice.setText('');
     this.applyTheme(FACTION_THEMES[faction]);
     this.setVisible(true);
     this.render();
@@ -524,6 +576,19 @@ export class RecruitDialog {
   hide(): void {
     this.open = false;
     this.setVisible(false);
+  }
+
+  private tryRecruit(): void {
+    if (!this.handlers.onRecruit) {
+      return;
+    }
+
+    if (this.handlers.onRecruit(this.selectedKind)) {
+      this.hide();
+      return;
+    }
+
+    this.recruitNotice.setText('Brak wolnego heksu do rozmieszczenia');
   }
 
   private selectUnit(kind: UnitKind): void {
@@ -577,7 +642,7 @@ export class RecruitDialog {
     this.statsText.setText(
       [
         `HP ${stats.maxHp}/${stats.maxHp} · ATK ${stats.attack} · DEF ${stats.defense}${ammo}`,
-        `Ruch ${formatPoints(stats.moveRange)} · Wzrok ${formatPoints(stats.visionRange)} · Strzał ${formatPoints(stats.attackRange)}`,
+        `Ruch ${formatPoints(stats.moveRange)} · Wzrok ${formatRange(stats.visionRange)} · Strzał ${formatRange(stats.attackRange)}`,
       ].join('\n'),
     );
     this.renderPortrait();
@@ -641,6 +706,9 @@ export class RecruitDialog {
     this.title.setColor(theme.accentSoft);
     this.portraitFrame.setStrokeStyle(1, theme.divider, 1);
     this.equipmentTitle.setColor(theme.accentSoft);
+    this.recruitButton
+      .setFillStyle(theme.accentDark, 1)
+      .setStrokeStyle(1, theme.accentBright, 0.8);
     this.closeButton
       .setFillStyle(theme.accentDark, 1)
       .setStrokeStyle(1, theme.accentBright, 0.8);

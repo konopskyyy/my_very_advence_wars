@@ -10,6 +10,7 @@ import {
 import {
   createInitialState,
   deployUnits,
+  placeUnit,
   type GameState,
   type UnitDeployment,
 } from './state';
@@ -89,7 +90,11 @@ export function ensureScenarioArmies(state: GameState): GameState {
   return next;
 }
 
-function deploymentSlots(state: GameState, faction: FactionId): HexCoord[] {
+function deploymentSlots(
+  state: GameState,
+  faction: FactionId,
+  limit: number = AUTO_DEPLOYMENT.length,
+): HexCoord[] {
   const bounds = mapBounds(state.map);
 
   if (!bounds) {
@@ -100,7 +105,7 @@ function deploymentSlots(state: GameState, faction: FactionId): HexCoord[] {
   const occupied = new Set(state.units.map((unit) => cellKey(unit.pos)));
   const slots: HexCoord[] = [];
 
-  for (const row of spreadRows(bounds.minRow, bounds.maxRow, AUTO_DEPLOYMENT.length)) {
+  for (const row of spreadRows(bounds.minRow, bounds.maxRow, limit)) {
     const coord = columns
       .map((col) => ({ col, row }))
       .find((candidate) => isFreeDeployment(state, occupied, candidate));
@@ -113,7 +118,7 @@ function deploymentSlots(state: GameState, faction: FactionId): HexCoord[] {
 
   for (const row of spreadRows(bounds.minRow, bounds.maxRow, bounds.maxRow - bounds.minRow + 1)) {
     for (const col of columns) {
-      if (slots.length >= AUTO_DEPLOYMENT.length) {
+      if (slots.length >= limit) {
         return slots;
       }
 
@@ -127,6 +132,38 @@ function deploymentSlots(state: GameState, faction: FactionId): HexCoord[] {
   }
 
   return slots;
+}
+
+export function findRecruitSlot(state: GameState, faction: FactionId): HexCoord | undefined {
+  return deploymentSlots(state, faction, 1)[0];
+}
+
+export interface RecruitResult {
+  readonly state: GameState;
+  readonly unitId: string;
+  readonly coord: HexCoord;
+}
+
+export function recruitUnit(
+  state: GameState,
+  faction: FactionId,
+  kind: UnitKind,
+): RecruitResult | undefined {
+  const coord = findRecruitSlot(state, faction);
+
+  if (!coord) {
+    return undefined;
+  }
+
+  const next = placeUnit(state, kind, coord, faction);
+  const unit = next.units.find(
+    (candidate) =>
+      !state.units.some((existing) => existing.id === candidate.id) &&
+      candidate.faction === faction &&
+      candidate.kind === kind,
+  );
+
+  return unit ? { state: next, unitId: unit.id, coord } : undefined;
 }
 
 function spreadRows(minRow: number, maxRow: number, count: number): number[] {

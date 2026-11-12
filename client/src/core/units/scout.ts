@@ -1,18 +1,18 @@
 import type { HexCoord } from '../map';
 import type { FactionId } from './faction';
-import type { UnitBase, UnitStats } from './types';
+import { FULL_MAP_RANGE, type UnitBase, type UnitStats } from './types';
 
 export interface ScoutUnit extends UnitBase {
   readonly kind: 'scout';
 }
 
 export const SCOUT_STATS: UnitStats = {
-  label: 'Zwiad',
+  label: 'Zwiadowca',
   maxHp: 8,
   moveRange: 6,
   attack: 3,
   defense: 2,
-  visionRange: 5,
+  visionRange: FULL_MAP_RANGE,
   attackRange: 1,
 };
 
