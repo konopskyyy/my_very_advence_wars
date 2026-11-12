@@ -36,13 +36,21 @@ describe('widoczność jednostek przy mgle wojny', () => {
     expect(visibleUnits(state, 'blue')).toHaveLength(1);
   });
 
-  it('pokazuje przeciwnika w zasięgu wzroku zwiadu', () => {
+  it('zwiadowca widzi przeciwnika na drugim końcu mapy', () => {
     let state = createInitialState(createMap(20, 20));
     state = { ...state, map: { ...state.map, fogOfWar: true } };
     state = placeUnit(state, 'scout', { col: 0, row: 0 }, 'blue');
-    state = placeUnit(state, 'infantry', { col: 5, row: 0 }, 'red');
+    state = placeUnit(state, 'infantry', { col: 19, row: 19 }, 'red');
 
     expect(isUnitVisible(state, state.units[1]!, 'blue')).toBe(true);
+  });
+
+  it('zwiadowca odsłania wszystkie kafle mapy', () => {
+    let state = createInitialState(createMap(8, 6));
+    state = { ...state, map: { ...state.map, fogOfWar: true } };
+    state = placeUnit(state, 'scout', { col: 0, row: 0 }, 'blue');
+
+    expect(visibleTileKeys(state, 'blue').size).toBe(48);
   });
 
   it('artyleria widzi przeciwnika na drugim końcu mapy', () => {

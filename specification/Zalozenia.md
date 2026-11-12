@@ -59,17 +59,19 @@
 | `infantry`  | Piechota  |     10 |    4 |    5 |      4 |             2 |              2 |        — |
 | `tank`      | Czołg     |     20 |    3 |    9 |      7 |             3 |              1 |        6 |
 | `artillery` | Artyleria |     14 |    2 |   12 |      3 |    cała mapa |     cała mapa |        6 |
-| `scout`     | Zwiad     |      8 |    6 |    3 |      2 |             5 |              1 |        — |
+| `scout`     | Zwiadowca |      8 |    6 |    3 |      2 |    cała mapa |              1 |        — |
 
 - `moveRange` to budżet ruchu na turę, `visionRange` — promień widzenia,
   a `attackRange` — maksymalna odległość ataku.
+- Zwiadowca widzi całą mapę, tak jak artyleria; od artylerii odróżnia go
+  ruch (6 zamiast 2) i rola jednostki rozpoznawczej.
 - `defense` jest zapisane, ale nie zmniejsza obrażeń; walka korzysta wyłącznie
   z `attack` atakującego.
 - Czołg i artyleria mają zapas strzałów (`ammo`); piechota i zwiad nie mają
-  pola amunicji i nie zużywają pocisków. Bieżąca liczba pocisków wynika
-  z pozostałego ruchu: pełny `moveRange` daje `ammo` strzałów, a każdy wydany
-  punkt ruchu proporcjonalnie zmniejsza zapas. Jednostka nie przechowuje
-  osobnego licznika amunicji.
+  pola amunicji i nie zużywają pocisków — ich strzał kosztuje 1 punkt ruchu.
+  Bieżąca liczba strzałów wynika z pozostałego ruchu: pełny `moveRange` daje
+  `ammo` strzałów, a każdy wydany punkt ruchu proporcjonalnie zmniejsza zapas.
+  Jednostka nie przechowuje osobnego licznika amunicji.
 - Jednostka zajmuje jeden heks; na jednym heksie stoi najwyżej jedna jednostka.
 - Strony jednostek to `blue`, `red` i `neutral`; edytor i rozgrywka używają
   niebieskiej i czerwonej.
@@ -87,8 +89,9 @@
   po najtańszej trasie przez sąsiednie heksy.
 - Koszt trasy to suma kosztów terenu odwiedzanych pól; nie może przekroczyć
   `movesLeft`.
-- Teren nieprzechodni i zajęte heksy są wykluczone. Ukryta jednostka nadal
-  zajmuje heks i blokuje ruch.
+- Teren nieprzechodni i zajęte heksy są wykluczone; w planie wyjątkiem jest
+  heks opuszczony w tej samej turze przez inną jednostkę. Ukryta jednostka
+  nadal zajmuje heks i blokuje ruch.
 - Droga kosztuje 0,5 punktu ruchu, więc ułamkowy `movesLeft` jest normalnym
   stanem.
 - Po ruchu odejmowany jest koszt każdego pokonanego heksa, a `hasActed`
@@ -97,8 +100,9 @@
 - Ruch planuje się w planerze: klik wybranej jednostki i heksa ustala trasę,
   a akcje wszystkich jednostek strony wykonują się dopiero po przycisku
   „WYKONAJ TURĘ”. Planowanie nie zmienia stanu gry.
-- Plan nie zależy od kolejności klikania: trasa jest walidowana względem
-  stanu na początku tury (teren i zajęte heksy), a heksy końcowe planów
+- Plan pozwala zakończyć ruch na heksie zajętym na początku tury, jeśli jego
+  jednostka w tej samej turze się z niego rusza. Trasa jest liczona względem
+  docelowych pozycji wcześniej zaplanowanych jednostek, a heksy końcowe planów
   muszą być unikalne. Przelot przez ten sam heks jest dozwolony.
 - Jednostki poruszają się równolegle. Oś czasu wyrównuje koniec akcji:
   jednostka z krótszym planem startuje później, a wszystkie ruchy i ataki
@@ -109,8 +113,8 @@
 
 ## ZAL-006: Walka
 
-- Atakuje jednostka aktywnej strony, która nie ma `hasActed`, ma strzał
-  (jeśli używa pocisków) i ma cel w zasięgu `attackRange`.
+- Atakuje jednostka aktywnej strony, która nie ma `hasActed`, ma w budżecie
+  ruchu co najmniej koszt strzału i ma cel w zasięgu `attackRange`.
 - W scenariuszu kliknąć można tylko widocznego wroga; ukryta jednostka nie
   ujawnia się przez próbę ataku.
 - Obrażenia są równe `attack` atakującego i odejmowane od `hp` celu; obrona
@@ -118,10 +122,11 @@
 - Cel z `hp <= 0` znika ze stanu gry, a jego token jest usuwany.
 - Liczba dostępnych pocisków wynika z `movesLeft`: pełny ruch daje `ammo`
   strzałów, a każdy wydany punkt ruchu proporcjonalnie zmniejsza zapas.
-  Piechota i zwiad nie mają pocisków i nie zużywają ich.
-- Piechota, czołg i zwiad po ataku dostają `hasActed`, co blokuje ruch
-  i kolejny atak do następnej tury.
-- Artyleria widzi i atakuje każdy heks mapy. Każdy strzał odejmuje od
+  Piechota i zwiad nie mają pocisków; ich strzał kosztuje 1 punkt ruchu.
+- Każdy strzał odejmuje od `movesLeft` koszt ruchu: czołg i artyleria
+  `moveRange / ammo`, piechota i zwiad 1 punkt. `hasActed` pojawia się
+  dopiero po wyczerpaniu ruchu, więc resztka pozwala iść dalej.
+- Artyleria widzi i atakuje każdy heks mapy. Każdy jej strzał odejmuje od
   `movesLeft` `moveRange / ammo` punktu ruchu, więc może strzelać seriami,
   dopóki ma ruch; `hasActed` dostaje po wyczerpaniu ruchu.
 - Ataki są częścią planu tury: gracz wskazuje cel, a atak trafia do sekwencji
@@ -170,7 +175,8 @@
 - zaawansowane SI (współpraca jednostek, ocena terenu, reakcja na plan gracza),
 - rozgrywka sieciowa i synchronizacja tur,
 - kontratak, animacje trafień i redukcja obrażeń przez `defense` lub teren,
-- zaopatrzenie, naprawa, ekonomia i rekrutacja,
+- zaopatrzenie, naprawa, ekonomia i płatna rekrutacja; bezpłatna rekrutacja
+  z okna `KUP` jest w zakresie,
 - cele misji i metadane scenariusza,
 - trwałe odkrywanie pól i zasłanianie widoku przez teren.
 

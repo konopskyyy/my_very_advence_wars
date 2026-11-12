@@ -1,13 +1,6 @@
 import { hexDistance } from './map/layout';
 import type { GameState } from './state';
-import {
-  ARTILLERY_SHOT_MOVE_COST,
-  shotsLeft,
-  UNIT_DEFS,
-  type Unit,
-} from './units';
-
-const MOVE_EPSILON = 1e-9;
+import { applyAttackCost, shotsLeft, UNIT_DEFS, type Unit } from './units';
 
 export function canAttackThisTurn(unit: Unit): boolean {
   if (unit.hasActed) {
@@ -42,18 +35,7 @@ export function attackUnit(state: GameState, attackerId: string, targetId: strin
     .filter((unit) => unit.id !== target.id || hp > 0)
     .map((unit) => {
       if (unit.id === attacker.id) {
-        if (attacker.kind === 'artillery') {
-          const movesLeft = attacker.movesLeft - ARTILLERY_SHOT_MOVE_COST;
-          const exhausted = movesLeft <= MOVE_EPSILON;
-
-          return {
-            ...unit,
-            movesLeft: exhausted ? 0 : movesLeft,
-            hasActed: exhausted,
-          };
-        }
-
-        return { ...unit, hasActed: true };
+        return applyAttackCost(unit);
       }
 
       if (unit.id === target.id) {

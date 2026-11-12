@@ -5,7 +5,7 @@ import { cellKey } from '../map/model';
 import type { GameState } from '../state';
 import type { TurnState } from '../turn';
 import { UNIT_DEFS, type Unit } from '../units';
-import { simulateUnit, walkActions } from './simulate';
+import { planningState } from './simulate';
 import type {
   PlanAction,
   PlanEditResult,
@@ -50,22 +50,15 @@ function fail(reason: PlanError): PlanEditResult {
 }
 
 function plannedUnit(state: GameState, plan: TurnPlan, unitId: string): Unit | undefined {
-  const unit = state.units.find((candidate) => candidate.id === unitId);
-
-  if (!unit) {
-    return undefined;
-  }
-
-  const simulated = simulateUnit(state, unit, unitActions(plan, unitId));
-
-  return simulated ?? unit;
+  return planningState(state, plan).units.find((candidate) => candidate.id === unitId);
 }
 
 function uniqueFinalPositions(plan: TurnPlan, state: GameState): boolean {
   const seen = new Set<string>();
+  const finalState = planningState(state, plan);
 
   for (const unitPlan of plan.units) {
-    const unit = plannedUnit(state, plan, unitPlan.unitId);
+    const unit = finalState.units.find((candidate) => candidate.id === unitPlan.unitId);
 
     if (!unit) {
       continue;
@@ -102,17 +95,25 @@ export function setMove(
   const actions = unitActions(plan, unitId);
   const trailingMove = actions[actions.length - 1]?.kind === 'move';
   const baseActions = trailingMove ? actions.slice(0, -1) : actions;
-  const base = walkActions(state, unit, baseActions);
+  const baseState = planningState(state, withActions(plan, unitId, baseActions));
+  const base = baseState.units.find((candidate) => candidate.id === unitId);
 
   if (!base) {
     return fail('invalid-action');
   }
 
-  const moveState: GameState = {
-    ...state,
-    units: state.units.map((candidate) => (candidate.id === base.id ? base : candidate)),
-  };
-  const path = getMovePath(moveState, base, target);
+  const occupied = baseState.units.some(
+    (candidate) =>
+      candidate.id !== unitId &&
+      candidate.pos.col === target.col &&
+      candidate.pos.row === target.row,
+  );
+
+  if (occupied) {
+    return fail('occupied-target');
+  }
+
+  const path = getMovePath(baseState, base, target);
 
   if (!path) {
     return fail('unreachable');
@@ -140,7 +141,9 @@ export function addAttack(
   }
 
   const actions = unitActions(plan, unitId);
-  const simulated = walkActions(state, unit, actions);
+  const simulated = planningState(state, plan).units.find(
+    (candidate) => candidate.id === unitId,
+  );
 
   if (!simulated) {
     return fail('invalid-action');

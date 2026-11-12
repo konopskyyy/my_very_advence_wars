@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createMap, removeTerrain, setTerrain } from '../../../src/core/map';
+import { cellKey, createMap, removeTerrain, setTerrain } from '../../../src/core/map';
 import {
   canMoveNow,
   canMoveUnit,
@@ -12,7 +12,8 @@ import {
 } from '../../../src/core/map/movement';
 import { createInitialState, placeUnit } from '../../../src/core/state';
 import { IMPASSABLE } from '../../../src/core/map/terrain';
-import { shotsLeft, TANK_AMMO } from '../../../src/core/units';
+import { hexesInRange } from '../../../src/core/ranges';
+import { shotsLeft, TANK_AMMO, UNIT_DEFS } from '../../../src/core/units';
 
 describe('findUnitAt', () => {
   it('znajduje jednostkę na heksie', () => {
@@ -41,6 +42,20 @@ describe('ruch jednostek', () => {
       movesLeft: 3,
       hasActed: false,
     });
+  });
+
+  it('zwiadowca ma w zasięgu ruchu wszystkie heksy w promieniu 6', () => {
+    const map = createMap(17, 17);
+    const state = placeUnit(createInitialState(map), 'scout', { col: 8, row: 8 }, 'blue');
+    const unit = state.units[0]!;
+    const reachable = new Set(moveTargets(state, unit).map(cellKey));
+    const expected = hexesInRange(map, unit.pos, UNIT_DEFS.scout.moveRange);
+
+    expect(reachable.size).toBe(expected.length);
+
+    for (const coord of expected) {
+      expect(reachable.has(cellKey(coord))).toBe(true);
+    }
   });
 
   it('kończy działanie jednostki gdy zużyje cały ruch', () => {

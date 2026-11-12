@@ -42,7 +42,15 @@ describe('wolumen i commit', () => {
 
     expect(committed.killed).toEqual([target!.id]);
     expect(committed.state.units.map((unit) => unit.id)).toEqual([first!.id, second!.id]);
-    expect(committed.state.units.every((unit) => unit.hasActed)).toBe(true);
+    expect(
+      committed.state.units.map((unit) => ({
+        movesLeft: unit.movesLeft,
+        hasActed: unit.hasActed,
+      })),
+    ).toEqual([
+      { movesLeft: 3, hasActed: false },
+      { movesLeft: 3, hasActed: false },
+    ]);
     expect(state.units).toHaveLength(3);
   });
 
@@ -153,11 +161,11 @@ describe('wolumen i commit', () => {
     const movedUnit = committed.state.units.find((unit) => unit.id === attacker.id)!;
     const hitUnit = committed.state.units.find((unit) => unit.id === target.id)!;
 
-    expect(movedUnit).toMatchObject({ pos: { col: 3, row: 3 }, movesLeft: 3, hasActed: true });
+    expect(movedUnit).toMatchObject({ pos: { col: 3, row: 3 }, movesLeft: 2, hasActed: false });
     expect(hitUnit.hp).toBe(5);
   });
 
-  it('piechota nie ruszy się po ataku', () => {
+  it('piechota ruszy się po ataku z pozostałego ruchu', () => {
     let state = placeUnit(createInitialState(createMap(10, 10)), 'infantry', { col: 2, row: 3 }, 'blue');
     state = placeUnit(state, 'infantry', { col: 3, row: 3 }, 'red');
     const attacker = state.units[0]!;
@@ -174,9 +182,6 @@ describe('wolumen i commit', () => {
       return;
     }
 
-    expect(setMove(attack.plan, state, attacker.id, { col: 2, row: 4 })).toEqual({
-      ok: false,
-      reason: 'unreachable',
-    });
+    expect(setMove(attack.plan, state, attacker.id, { col: 2, row: 4 }).ok).toBe(true);
   });
 });

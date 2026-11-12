@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { canAttackThisTurn } from '../../../src/core/combat';
 import {
+  applyAttackCost,
   ARTILLERY_AMMO,
   ARTILLERY_STATS,
   createUnit,
+  INFANTRY_STATS,
   TANK_AMMO,
   TANK_STATS,
   shotMoveCost,
@@ -17,8 +19,27 @@ describe('shotMoveCost', () => {
     expect(shotMoveCost(ARTILLERY_STATS)).toBe(ARTILLERY_STATS.moveRange / ARTILLERY_AMMO);
   });
 
-  it('zwraca undefined dla jednostki bez pocisków', () => {
-    expect(shotMoveCost(UNIT_DEFS.infantry)).toBeUndefined();
+  it('zwraca 1 punkt dla jednostki bez pocisków', () => {
+    expect(shotMoveCost(UNIT_DEFS.infantry)).toBe(1);
+    expect(shotMoveCost(UNIT_DEFS.scout)).toBe(1);
+  });
+});
+
+describe('applyAttackCost', () => {
+  it('odejmuje koszt strzału i zostawia resztę ruchu', () => {
+    const tank = createUnit('tank', 'tank', 'blue', { col: 0, row: 0 });
+    const after = applyAttackCost(tank);
+
+    expect(after.movesLeft).toBe(TANK_STATS.moveRange - TANK_STATS.moveRange / TANK_AMMO);
+    expect(after.hasActed).toBe(false);
+  });
+
+  it('ustawia hasActed dopiero przy zerowym ruchu', () => {
+    const infantry = createUnit('infantry', 'infantry', 'blue', { col: 0, row: 0 });
+    const after = applyAttackCost({ ...infantry, movesLeft: 1 });
+
+    expect(after.movesLeft).toBe(0);
+    expect(after.hasActed).toBe(true);
   });
 });
 
@@ -46,10 +67,10 @@ describe('shotsLeft', () => {
     expect(shotsLeft({ ...tank, hasActed: true })).toBe(0);
   });
 
-  it('nie ogranicza jednostek, które nie zużywają pocisków', () => {
+  it('liczy strzały jednostek bez pocisków z ruchu', () => {
     const infantry = createUnit('infantry', 'infantry', 'blue', { col: 0, row: 0 });
 
-    expect(shotsLeft(infantry)).toBe(Number.POSITIVE_INFINITY);
-    expect(canAttackThisTurn({ ...infantry, movesLeft: 0 })).toBe(true);
+    expect(shotsLeft(infantry)).toBe(INFANTRY_STATS.moveRange);
+    expect(canAttackThisTurn({ ...infantry, movesLeft: 0 })).toBe(false);
   });
 });
