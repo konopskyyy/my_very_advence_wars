@@ -3,7 +3,7 @@ import { hexDistance, type HexCoord } from '../map/layout';
 import { findUnitAt, getMoveCost } from '../map/movement';
 import { IMPASSABLE } from '../map/terrain';
 import type { GameState } from '../state';
-import { shotMoveCost, UNIT_DEFS, type Unit } from '../units';
+import { applyAttackCost, UNIT_DEFS, type Unit } from '../units';
 import type { PlanAction, TurnPlan } from './types';
 
 const MOVE_EPSILON = 1e-9;
@@ -65,23 +65,7 @@ function walkPath(state: GameState, unit: Unit, path: readonly HexCoord[]): Unit
   return current;
 }
 
-export function applyAttackCost(unit: Unit): Unit {
-  const stats = UNIT_DEFS[unit.kind];
-
-  if (unit.kind !== 'artillery') {
-    return { ...unit, hasActed: true };
-  }
-
-  const cost = shotMoveCost(stats) ?? 0;
-  const movesLeft = unit.movesLeft - cost;
-  const exhausted = movesLeft <= MOVE_EPSILON;
-
-  return {
-    ...unit,
-    movesLeft: exhausted ? 0 : movesLeft,
-    hasActed: exhausted,
-  };
-}
+export { applyAttackCost };
 
 export function walkActions(
   state: GameState,

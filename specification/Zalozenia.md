@@ -66,10 +66,10 @@
 - `defense` jest zapisane, ale nie zmniejsza obrażeń; walka korzysta wyłącznie
   z `attack` atakującego.
 - Czołg i artyleria mają zapas strzałów (`ammo`); piechota i zwiad nie mają
-  pola amunicji i nie zużywają pocisków. Bieżąca liczba pocisków wynika
-  z pozostałego ruchu: pełny `moveRange` daje `ammo` strzałów, a każdy wydany
-  punkt ruchu proporcjonalnie zmniejsza zapas. Jednostka nie przechowuje
-  osobnego licznika amunicji.
+  pola amunicji i nie zużywają pocisków — ich strzał kosztuje 1 punkt ruchu.
+  Bieżąca liczba strzałów wynika z pozostałego ruchu: pełny `moveRange` daje
+  `ammo` strzałów, a każdy wydany punkt ruchu proporcjonalnie zmniejsza zapas.
+  Jednostka nie przechowuje osobnego licznika amunicji.
 - Jednostka zajmuje jeden heks; na jednym heksie stoi najwyżej jedna jednostka.
 - Strony jednostek to `blue`, `red` i `neutral`; edytor i rozgrywka używają
   niebieskiej i czerwonej.
@@ -109,8 +109,8 @@
 
 ## ZAL-006: Walka
 
-- Atakuje jednostka aktywnej strony, która nie ma `hasActed`, ma strzał
-  (jeśli używa pocisków) i ma cel w zasięgu `attackRange`.
+- Atakuje jednostka aktywnej strony, która nie ma `hasActed`, ma w budżecie
+  ruchu co najmniej koszt strzału i ma cel w zasięgu `attackRange`.
 - W scenariuszu kliknąć można tylko widocznego wroga; ukryta jednostka nie
   ujawnia się przez próbę ataku.
 - Obrażenia są równe `attack` atakującego i odejmowane od `hp` celu; obrona
@@ -118,10 +118,11 @@
 - Cel z `hp <= 0` znika ze stanu gry, a jego token jest usuwany.
 - Liczba dostępnych pocisków wynika z `movesLeft`: pełny ruch daje `ammo`
   strzałów, a każdy wydany punkt ruchu proporcjonalnie zmniejsza zapas.
-  Piechota i zwiad nie mają pocisków i nie zużywają ich.
-- Piechota, czołg i zwiad po ataku dostają `hasActed`, co blokuje ruch
-  i kolejny atak do następnej tury.
-- Artyleria widzi i atakuje każdy heks mapy. Każdy strzał odejmuje od
+  Piechota i zwiad nie mają pocisków; ich strzał kosztuje 1 punkt ruchu.
+- Każdy strzał odejmuje od `movesLeft` koszt ruchu: czołg i artyleria
+  `moveRange / ammo`, piechota i zwiad 1 punkt. `hasActed` pojawia się
+  dopiero po wyczerpaniu ruchu, więc resztka pozwala iść dalej.
+- Artyleria widzi i atakuje każdy heks mapy. Każdy jej strzał odejmuje od
   `movesLeft` `moveRange / ammo` punktu ruchu, więc może strzelać seriami,
   dopóki ma ruch; `hasActed` dostaje po wyczerpaniu ruchu.
 - Ataki są częścią planu tury: gracz wskazuje cel, a atak trafia do sekwencji

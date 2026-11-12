@@ -8,7 +8,9 @@ import {
   ARTILLERY_STATS,
   createUnit,
   FULL_MAP_RANGE,
+  shotMoveCost,
   shotsLeft,
+  TANK_AMMO,
   UNIT_DEFS,
   type UnitKind,
 } from '../../src/core/units';
@@ -114,11 +116,12 @@ describe('canAttackThisTurn', () => {
     expect(canAttackThisTurn(unit)).toBe(false);
   });
 
-  it('nie blokuje piechoty, która nie zużywa pocisków', () => {
+  it('liczy piechocie strzały z pozostałego ruchu', () => {
     const unit = createUnit('unit', 'infantry', 'blue', { col: 4, row: 4 });
 
-    expect(shotsLeft(unit)).toBe(Number.POSITIVE_INFINITY);
+    expect(shotsLeft(unit)).toBe(UNIT_DEFS.infantry.moveRange);
     expect(canAttackThisTurn(unit)).toBe(true);
+    expect(canAttackThisTurn({ ...unit, movesLeft: 0 })).toBe(false);
   });
 });
 
@@ -147,7 +150,7 @@ describe('attackUnit', () => {
     expect(next.units).toHaveLength(1);
   });
 
-  it('oznacza atakującego jako tego, który już działał', () => {
+  it('odejmuje koszt strzału i zostawia resztę ruchu', () => {
     const state = stateWith(
       { kind: 'infantry', pos: { col: 4, row: 4 } },
       { kind: 'infantry', pos: { col: 5, row: 4 } },
@@ -155,19 +158,32 @@ describe('attackUnit', () => {
     const [attacker, target] = state.units;
     const next = attackUnit(state, attacker!.id, target!.id);
 
-    expect(findUnitAt(next, attacker!.pos)?.hasActed).toBe(true);
+    expect(findUnitAt(next, attacker!.pos)).toMatchObject({
+      movesLeft: UNIT_DEFS.infantry.moveRange - shotMoveCost(UNIT_DEFS.infantry),
+      hasActed: false,
+    });
   });
 
-  it('nie pozwala zaatakować dwa razy w tej samej turze', () => {
-    const state = stateWith(
+  it('pozwala atakować, dopóki starcza ruchu', () => {
+    let state = stateWith(
       { kind: 'infantry', pos: { col: 4, row: 4 } },
       { kind: 'infantry', pos: { col: 5, row: 4 } },
     );
-    const [attacker, target] = state.units;
-    const once = attackUnit(state, attacker!.id, target!.id);
-    const twice = attackUnit(once, attacker!.id, target!.id);
+    state = withHp(state, { col: 5, row: 4 }, 1000);
 
-    expect(twice).toBe(once);
+    for (let shot = 0; shot < UNIT_DEFS.infantry.moveRange; shot += 1) {
+      const attacker = findUnitAt(state, { col: 4, row: 4 })!;
+      const target = findUnitAt(state, { col: 5, row: 4 })!;
+
+      expect(canAttack(attacker, target)).toBe(true);
+      state = attackUnit(state, attacker.id, target.id);
+    }
+
+    const attacker = findUnitAt(state, { col: 4, row: 4 })!;
+    const target = findUnitAt(state, { col: 5, row: 4 })!;
+
+    expect(attacker).toMatchObject({ movesLeft: 0, hasActed: true });
+    expect(canAttack(attacker, target)).toBe(false);
   });
 
   it('artyleria po strzale traci część ruchu zamiast kończyć turę', () => {
@@ -233,7 +249,7 @@ describe('attackUnit', () => {
     expect(attackUnit(empty, attacker!.id, target!.id)).toBe(empty);
   });
 
-  it('czołg po ataku kończy turę i traci dostępne strzały', () => {
+  it('czołg po ataku zachowuje resztę ruchu i pocisków', () => {
     const state = stateWith(
       { kind: 'tank', pos: { col: 4, row: 4 } },
       { kind: 'infantry', pos: { col: 5, row: 4 } },
@@ -243,13 +259,13 @@ describe('attackUnit', () => {
     const acted = findUnitAt(next, attacker!.pos)!;
 
     expect(acted).toMatchObject({
-      movesLeft: UNIT_DEFS.tank.moveRange,
-      hasActed: true,
+      movesLeft: UNIT_DEFS.tank.moveRange - shotMoveCost(UNIT_DEFS.tank),
+      hasActed: false,
     });
-    expect(shotsLeft(acted)).toBe(0);
+    expect(shotsLeft(acted)).toBe(TANK_AMMO - 1);
   });
 
-  it('piechota po ataku kończy turę bez zużywania ruchu', () => {
+  it('piechota po ataku zachowuje resztę ruchu', () => {
     const state = stateWith(
       { kind: 'infantry', pos: { col: 4, row: 4 } },
       { kind: 'infantry', pos: { col: 5, row: 4 } },
@@ -258,8 +274,8 @@ describe('attackUnit', () => {
     const next = attackUnit(state, attacker!.id, target!.id);
 
     expect(findUnitAt(next, attacker!.pos)).toMatchObject({
-      movesLeft: UNIT_DEFS.infantry.moveRange,
-      hasActed: true,
+      movesLeft: UNIT_DEFS.infantry.moveRange - shotMoveCost(UNIT_DEFS.infantry),
+      hasActed: false,
     });
   });
 

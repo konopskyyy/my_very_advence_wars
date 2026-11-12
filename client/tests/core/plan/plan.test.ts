@@ -11,6 +11,7 @@ import {
 } from '../../../src/core/plan';
 import { createInitialState, placeUnit } from '../../../src/core/state';
 import { createTurnState } from '../../../src/core/turn';
+import { UNIT_DEFS } from '../../../src/core/units';
 
 function blueInfantryAt(state: ReturnType<typeof createInitialState>, col: number, row: number) {
   return placeUnit(state, 'infantry', { col, row }, 'blue');
@@ -59,21 +60,27 @@ describe('plan', () => {
     expect(planningState(state, second.plan).units[0]!.pos).toEqual({ col: 5, row: 3 });
   });
 
-  it('dodaje atak i blokuje kolejny dla piechoty', () => {
+  it('dodaje ataki, dopóki piechocie starcza ruchu', () => {
     let state = blueInfantryAt(createInitialState(createMap(10, 10)), 2, 3);
     state = placeUnit(state, 'infantry', { col: 3, row: 3 }, 'red');
     const attacker = state.units[0]!;
     const target = state.units[1]!;
-    const first = addAttack(createTurnPlan(createTurnState()), state, attacker.id, target.id);
+    let plan = createTurnPlan(createTurnState());
 
-    expect(first.ok).toBe(true);
+    for (let shot = 0; shot < UNIT_DEFS.infantry.moveRange; shot += 1) {
+      const result = addAttack(plan, state, attacker.id, target.id);
 
-    if (!first.ok) {
-      return;
+      expect(result.ok).toBe(true);
+
+      if (!result.ok) {
+        return;
+      }
+
+      plan = result.plan;
     }
 
-    expect(unitActions(first.plan, attacker.id)).toEqual([{ kind: 'attack', targetId: target.id }]);
-    expect(addAttack(first.plan, state, attacker.id, target.id)).toEqual({
+    expect(unitActions(plan, attacker.id)).toHaveLength(UNIT_DEFS.infantry.moveRange);
+    expect(addAttack(plan, state, attacker.id, target.id)).toEqual({
       ok: false,
       reason: 'no-shots',
     });
