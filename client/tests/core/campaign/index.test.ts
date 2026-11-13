@@ -15,11 +15,11 @@ describe('kampanie', () => {
     ]);
   });
 
-  it('samouczek ma sześć kafelków, a pierwszy to Pierwsze kroki', () => {
+  it('samouczek ma sześć kafelków, a pierwszy to To był zwykły spacer na grzyby', () => {
     const tutorial = findCampaign('tutorial');
 
     expect(tutorial?.tiles).toHaveLength(6);
-    expect(tutorial?.tiles[0]?.title).toBe('Pierwsze kroki');
+    expect(tutorial?.tiles[0]?.title).toBe('To był zwykły spacer na grzyby');
     expect(tutorial?.tiles[0]?.mission).toBeDefined();
     expect(tutorial?.tiles.slice(1).every((tile) => tile.mission === undefined)).toBe(true);
   });

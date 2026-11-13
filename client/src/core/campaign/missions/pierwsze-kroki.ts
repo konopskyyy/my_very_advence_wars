@@ -10,12 +10,6 @@ import type { CampaignTile } from '../types';
 const MAP_COLS = 16;
 const MAP_ROWS = 10;
 
-const PLAYER_DEPLOYMENT = [
-  { kind: 'infantry', col: 1, row: 4 },
-  { kind: 'infantry', col: 2, row: 6 },
-  { kind: 'infantry', col: 3, row: 5 },
-] as const;
-
 const OPPONENT_DEPLOYMENT = [{ kind: 'infantry', col: 13, row: 5 }] as const;
 
 function buildMap(): GameMap {
@@ -31,27 +25,58 @@ function buildMap(): GameMap {
 }
 
 function buildState(): GameState {
-  const state = createInitialState(buildMap());
-  const withPlayer = deployUnits(state, 'blue', PLAYER_DEPLOYMENT);
-
-  return deployUnits(withPlayer, 'red', OPPONENT_DEPLOYMENT);
+  return deployUnits(createInitialState(buildMap()), 'red', OPPONENT_DEPLOYMENT);
 }
 
 export const PIERWSZE_KROKI: CampaignTile = {
   id: 'pierwsze-kroki',
-  title: 'Pierwsze kroki',
-  description: 'Trzech własnych piechurów i ukryty wróg za linią mgły.',
+  title: 'To był zwykły spacer na grzyby',
+  description: 'Zwiad na grzyby zamienia się w pierwszą bitwę. Kup zwiadowcę i wystaw trzech piechurów.',
   mission: {
     id: 'tutorial-pierwsze-kroki',
-    name: 'Pierwsze kroki',
+    name: 'To był zwykły spacer na grzyby',
     description:
-      'Prosta mapa samouczka. Trzech niebieskich piechurów naprzeciw jednego czerwonego, ukrytego w mgle wojny.',
+      'Pusta mapa, 150 kredytów i jeden ukryty wróg. Najpierw zwiadowca, potem trzech piechurów.',
     state: buildState(),
+    autoDeploy: false,
+    spawn: { col: 2, row: 5, vision: 3 },
     recruitment: {
       funds: 150,
       allowedKinds: ['scout'],
       grants: [
         { after: 'scout', funds: 300, allowedKinds: ['infantry'], limits: { infantry: 3 } },
+      ],
+    },
+    tutorial: {
+      steps: [
+        {
+          hint: {
+            title: 'REKRUTACJA',
+            text: 'Jednostki kupujesz na dolnym pasku, przyciskiem KUP. Na start masz 150 kredytów i możesz kupić tylko zwiadowcę.',
+          },
+          until: { purchased: 'scout' },
+        },
+        {
+          hint: {
+            title: 'NAGRODA',
+            text: 'Zwiadowca odsłonił mapę — czerwony piechur jest widoczny po drugiej stronie. W nagrodę masz 300 kredytów — kup za nie trzech piechurów.',
+          },
+          until: { purchased: 'infantry', count: 3 },
+        },
+        {
+          hint: {
+            title: 'PLANER',
+            text: 'Zaplanuj ruch: kliknij własną jednostkę, potem heks. Drugi klik na tym samym heksie zatwierdza trasę. Plan zobaczysz w panelu planera — jeśli jest zwinięty, rozwiń go przyciskiem PLANUJ. Całą turę uruchamia WYKONAJ TURĘ.',
+          },
+          until: { moves: 1 },
+        },
+        {
+          hint: {
+            title: 'ATAK',
+            text: 'Aby zaatakować, wybierz jednostkę i kliknij wroga w zasięgu, potem kliknij go ponownie, aby potwierdzić. Atak trafi do planu w panelu planera — rozwiń go przyciskiem PLANUJ, jeśli jest zwinięty. Po ataku możesz jeszcze zaplanować ruch; obie akcje wykonają się po WYKONAJ TURĘ.',
+          },
+          until: { attacks: 1 },
+        },
       ],
     },
     withFogOfWar: (state) => ({ ...state, map: setFogOfWar(state.map, true) }),

@@ -200,12 +200,19 @@
 
 - Menu główne prowadzi do ekranu „Kampanie”.
 - Ekran ma trzy wstążki: „Samouczek”, „Kampania 1”, „Kampania 2”.
-- Samouczek ma sześć kafelków misji: „Pierwsze kroki”, „Ruch jednostek”,
-  „Walka”, „Mgła wojny”, „Amunicja”, „Artyleria”.
+- Samouczek ma sześć kafelków misji: „To był zwykły spacer na grzyby”,
+  „Ruch jednostek”, „Walka”, „Mgła wojny”, „Amunicja”, „Artyleria”.
 - Każda kampania i każda misja ma osobny plik w `client/src/core/campaign/`;
   `index.ts` tylko scala dane.
-- Pierwsza misja „Pierwsze kroki” jest grywalna: mapa 16×10, trzech
-  niebieskich piechurów i jeden czerwony piechur ukryty w mgle wojny.
+- Pierwsza misja (plik `pierwsze-kroki.ts`) jest grywalna i prowadzi gracza
+  pierwszym aktem: mapa 16×10 startuje bez niebieskich jednostek, a jedyny
+  czerwony piechur stoi od początku ukryty w mgle wojny. Gracz ma 150
+  kredytów i może kupić tylko zwiadowcę. Po zakupie dostaje 300 kredytów na
+  trzech piechurów, a zwiadowca odsłania wroga. Kolejne dymki tłumaczą
+  rekrutację, nagrodę, planowanie ruchu i atak (także możliwość ruchu po
+  ataku); dymki znikają po pierwszym wykonanym ataku. Jednostki wychodzą
+  z bazy na heksie `(2, 5)`, która sama ma zasięg wzroku 3. Zabicie
+  ostatniego wroga kończy misję i pokazuje ekran wyniku.
 - Pozostałe kafelki są zapowiedziami — kliknięcie pokazuje komunikat
   „wkrótce”; nie mają jeszcze scenariusza ani uruchomienia.
 - „Kampania 1” i „Kampania 2” nie mają kafelków do czasu dodania misji.
