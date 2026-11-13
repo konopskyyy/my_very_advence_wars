@@ -23,18 +23,22 @@ final class UserFixtures extends Fixture
     public function load(ObjectManager $manager): void
     {
         $accounts = [
-            'admin@example.com' => 'admin1234',
-            'gracz@example.com' => 'gracz1234',
+            ['email' => 'admin@example.com', 'password' => 'admin1234', 'roles' => ['ROLE_ADMIN']],
+            ['email' => 'gracz@example.com', 'password' => 'gracz1234', 'roles' => []],
         ];
 
-        foreach ($accounts as $email => $password) {
-            $email = Email::fromString($email);
+        foreach ($accounts as $account) {
+            $email = Email::fromString($account['email']);
 
             if (null !== $this->users->findByEmail($email)) {
                 continue;
             }
 
-            $manager->persist(new User($email, $this->passwordHasher->hash($password)));
+            $manager->persist(new User(
+                $email,
+                $this->passwordHasher->hash($account['password']),
+                $account['roles'],
+            ));
         }
 
         $manager->flush();

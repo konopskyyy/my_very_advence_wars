@@ -61,6 +61,7 @@ import {
   playShotSound,
 } from '../view/combatAudio';
 import { preloadFogTile } from '../view/fogTile';
+import { preloadRecruitPortraits } from '../view/recruitPortrait';
 import { playShotEffect } from '../view/shotEffect';
 import { preloadTerrainTiles } from '../view/terrainTiles';
 import { TutorialTip } from '../view/tutorialTip';
@@ -152,6 +153,7 @@ export class ScenarioScene extends Phaser.Scene {
   preload(): void {
     preloadTerrainTiles(this);
     preloadFogTile(this);
+    preloadRecruitPortraits(this);
   }
 
   init(data: ScenarioData): void {

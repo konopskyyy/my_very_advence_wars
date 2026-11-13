@@ -72,10 +72,11 @@ Trzy role, trzy ścieżki:
   `server` (php-fpm) przez FastCGI.
 - **Build gry** — Vite buduje klienta do `server/public/game`; nginx serwuje
   stronę startową pod `/`, samą grę pod `/game/`, a Electron bierze ten sam
-  katalog przez `app://`. Pod `/api` działa backend, a `/admin` jest
-  zarezerwowane na panel administracyjny.
-- **Klient gry w dev** — `client` (Vite, :18573) daje hot-reload; backendu używa
-  dopiero realna logika multiplayer/sejwów.
+  katalog przez `app://`. Pod `/api` działa backend, a pod `/admin` panel
+  Sonata z własnym logowaniem na `ROLE_ADMIN`.
+- **Klient gry w dev** — `client` (Vite, :18573) daje hot-reload i proxuje `/api`
+  do `nginx` (`http://nginx:80`), więc formularz logowania działa też pod Vite;
+  docelowo backend obsłuży też multiplayer i sejwy.
 - **Mapy z edytora** — nie przechodzą przez Compose ani MySQL. Klient trzyma je
   w SQLite (`sql.js`/WASM) w `localStorage`; szczegóły w [[Mapy]].
 
@@ -136,6 +137,9 @@ czyli **dev serwer Vite na żywo** z podpiętym kodem z `./client`.
   `server/public/game/assets/sql-wasm-*.wasm`, a baza map jest trzymana lokalnie
   w `localStorage` przeglądarki/Electrona — nie w MySQL i bez nowego portu.
   Format i schemat opisuje [[Mapy]].
+- Vite proxuje `/api` do `http://nginx:80` (zmienna `API_PROXY_TARGET` w
+  `client/.env` pozwala wskazać inny adres, np. `http://localhost:18080` poza
+  Compose). Dzięki temu strona pod `:18573` woła ten sam backend co build.
 
 ### `nginx` — front HTTP backendu
 
@@ -158,7 +162,8 @@ FastCGI z nginx. Kod z `./server` (bind mount).
   w `server/config/jwt/` (poza git) i powstaje przez `make jwt-keys`; hasło
   klucza (`JWT_PASSPHRASE`) oraz ścieżki ustawia się w `server/.env`.
 - Fixtury deweloperskie: `make fixtures` (czyści tabele i tworzy konta
-  `admin@example.com` / `gracz@example.com`).
+  `admin@example.com` / `admin1234` z `ROLE_ADMIN` oraz
+  `gracz@example.com` / `gracz1234` z `ROLE_USER`). Panel: `/admin/login`.
 
 ### `db` — MySQL 8.4
 
@@ -274,7 +279,7 @@ i `DATABASE_URL` potrzebuje:
 | `JWT_SECRET_KEY`    | `%kernel.project_dir%/config/jwt/private.pem` | Klucz prywatny JWT.       |
 | `JWT_PUBLIC_KEY`    | `%kernel.project_dir%/config/jwt/public.pem`  | Klucz publiczny JWT.      |
 | `JWT_PASSPHRASE`    | dowolne hasło dev             | Hasło klucza; nie commituj produkcji.      |
-| `CORS_ALLOW_ORIGIN` | regex localhost/127.0.0.1     | Origin klienta Vite (`18573`) i buildu z nginx (`18080`). |
+| `CORS_ALLOW_ORIGIN` | regex localhost/127.0.0.1 + `app://bundle` | Origin klienta Vite (`18573`), buildu z nginx (`18080`) i spakowanego Electrona (`app://bundle`). |
 
 > [!tip]
 > Skopiuj `.env.example` na `.env` i dopisz własne hasła. Plik `.env` jest

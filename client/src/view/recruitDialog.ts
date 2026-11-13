@@ -15,16 +15,16 @@ import {
 } from '../core/recruitment';
 import { FACTION_THEMES, type FactionTheme } from './factionTheme';
 import { formatPoints, formatRange } from './format';
-import { drawInfantryPortrait } from './recruitPortrait';
-import { unitTexture } from './unitLayer';
+import { recruitPortraitKey } from './recruitPortrait';
 
-const PANEL_WIDTH = 780;
-const PANEL_HEIGHT = 480;
+const PANEL_MAX_WIDTH = 1160;
+const PANEL_MAX_HEIGHT = 640;
+const PANEL_MARGIN = 24;
 const DEPTH = 40;
-const LIST_WIDTH = 220;
-const LIST_HEIGHT = 360;
-const ROW_HEIGHT = 68;
-const ROW_STEP = 76;
+const HEADER_HEIGHT = 54;
+const FOOTER_HEIGHT = 58;
+const CARD_HEIGHT = 128;
+const CARD_GAP = 10;
 
 interface EquipmentOption {
   readonly label: string;
@@ -38,10 +38,10 @@ interface EquipmentSlot {
 
 interface UnitRow {
   readonly kind: UnitKind;
+  readonly container: Phaser.GameObjects.Container;
   readonly background: Phaser.GameObjects.Rectangle;
-  readonly icon: Phaser.GameObjects.Image;
+  readonly portrait: Phaser.GameObjects.Image;
   readonly name: Phaser.GameObjects.Text;
-  readonly role: Phaser.GameObjects.Text;
   readonly price: Phaser.GameObjects.Text;
 }
 
@@ -208,13 +208,6 @@ const LOADOUTS: Record<UnitKind, readonly EquipmentSlot[]> = {
   ],
 };
 
-function selectedColor(slots: readonly EquipmentSlot[], selection: readonly number[], index: number): number {
-  const slot = slots[index];
-  const option = slot?.options[selection[index] ?? 0];
-
-  return option?.color ?? 0xffffff;
-}
-
 function denialMessage(denial: RecruitmentDenial): string {
   switch (denial) {
     case 'forbidden':
@@ -237,8 +230,14 @@ export class RecruitDialog {
   private readonly accent: Phaser.GameObjects.Rectangle;
   private readonly title: Phaser.GameObjects.Text;
   private readonly portraitFrame: Phaser.GameObjects.Rectangle;
-  private readonly portraitGraphics: Phaser.GameObjects.Graphics;
   private readonly portraitImage: Phaser.GameObjects.Image;
+  private readonly scrollBar: Phaser.GameObjects.Rectangle;
+  private readonly listX: number;
+  private readonly listY: number;
+  private readonly listWidth: number;
+  private readonly listHeight: number;
+  private scrollY = 0;
+  private scrollMax = 0;
   private readonly nameText: Phaser.GameObjects.Text;
   private readonly roleText: Phaser.GameObjects.Text;
   private readonly statsText: Phaser.GameObjects.Text;
@@ -261,20 +260,35 @@ export class RecruitDialog {
   private open = false;
 
   constructor(
-    private readonly scene: Phaser.Scene,
+    scene: Phaser.Scene,
     private readonly handlers: RecruitDialogHandlers = {},
   ) {
     const centerX = scene.scale.width / 2;
     const centerY = scene.scale.height / 2;
-    const panelX = centerX - PANEL_WIDTH / 2;
-    const panelY = centerY - PANEL_HEIGHT / 2;
+    const panelWidth = Math.min(PANEL_MAX_WIDTH, scene.scale.width - PANEL_MARGIN * 2);
+    const panelHeight = Math.min(PANEL_MAX_HEIGHT, scene.scale.height - PANEL_MARGIN * 2);
+    const panelX = centerX - panelWidth / 2;
+    const panelY = centerY - panelHeight / 2;
+    const contentTop = panelY + HEADER_HEIGHT;
+    const contentHeight = panelHeight - HEADER_HEIGHT - FOOTER_HEIGHT;
     const listX = panelX + 20;
-    const listY = panelY + 70;
-    const infoX = panelX + 500;
-    const portraitX = panelX + 280;
-    const portraitY = panelY + 70;
-    const portraitWidth = 200;
-    const portraitHeight = 300;
+    const listY = contentTop;
+    const listWidth = Math.floor((panelWidth - 60) * 0.54);
+    const listHeight = contentHeight;
+    const rightX = listX + listWidth + 20;
+    const rightWidth = panelWidth - (rightX - panelX) - 20;
+    const portraitX = rightX;
+    const portraitY = contentTop;
+    const portraitWidth = 190;
+    const portraitHeight = 220;
+    const infoX = rightX + portraitWidth + 16;
+    const infoWidth = rightWidth - portraitWidth - 16;
+    const buttonCenterX = rightX + rightWidth / 2;
+
+    this.listX = listX;
+    this.listY = listY;
+    this.listWidth = listWidth;
+    this.listHeight = listHeight;
 
     this.overlay = this.register(
       scene.add
@@ -287,7 +301,7 @@ export class RecruitDialog {
 
     this.panel = this.register(
       scene.add
-        .rectangle(centerX, centerY, PANEL_WIDTH, PANEL_HEIGHT, this.theme.barBackground, 0.98)
+        .rectangle(centerX, centerY, panelWidth, panelHeight, this.theme.barBackground, 0.98)
         .setScrollFactor(0)
         .setDepth(DEPTH + 1)
         .setStrokeStyle(1, this.theme.accent, 1)
@@ -296,7 +310,7 @@ export class RecruitDialog {
 
     this.accent = this.register(
       scene.add
-        .rectangle(panelX + 20, panelY + 46, PANEL_WIDTH - 40, 2, this.theme.accent, 1)
+        .rectangle(panelX + 20, panelY + 46, panelWidth - 40, 2, this.theme.accent, 1)
         .setOrigin(0, 0)
         .setScrollFactor(0)
         .setDepth(DEPTH + 2),
@@ -316,7 +330,7 @@ export class RecruitDialog {
 
     this.balanceText = this.register(
       scene.add
-        .text(panelX + PANEL_WIDTH - 20, panelY + 18, '', {
+        .text(panelX + panelWidth - 20, panelY + 18, '', {
           fontFamily: 'monospace',
           fontSize: '13px',
           color: '#f2d35c',
@@ -328,63 +342,60 @@ export class RecruitDialog {
 
     this.register(
       scene.add
-        .rectangle(listX, listY, LIST_WIDTH, LIST_HEIGHT, 0x05080c, 0.7)
+        .rectangle(listX, listY, listWidth, listHeight, 0x05080c, 0.7)
         .setOrigin(0, 0)
         .setScrollFactor(0)
         .setDepth(DEPTH + 1)
         .setStrokeStyle(1, this.theme.divider, 1),
     );
 
+    const maskShape = scene.make.graphics();
+    maskShape.fillStyle(0xffffff, 1);
+    maskShape.fillRect(listX, listY, listWidth, listHeight);
+    const mask = maskShape.createGeometryMask();
+
+    this.scrollBar = this.register(
+      scene.add
+        .rectangle(listX + listWidth - 6, listY + 2, 4, 40, this.theme.accentBright, 0.8)
+        .setOrigin(0, 0)
+        .setScrollFactor(0)
+        .setDepth(DEPTH + 4)
+        .setVisible(false),
+    );
+
     UNIT_KINDS.forEach((kind, index) => {
-      const top = listY + 10 + index * ROW_STEP;
-      const background = this.register(
-        scene.add
-          .rectangle(listX, top, LIST_WIDTH, ROW_HEIGHT, 0x0f1114, 0.5)
-          .setOrigin(0, 0)
-          .setScrollFactor(0)
-          .setDepth(DEPTH + 2)
-          .setStrokeStyle(1, this.theme.divider, 1)
-          .setInteractive({ useHandCursor: true }),
-      );
-      const icon = this.register(
-        scene.add
-          .image(listX + 34, top + ROW_HEIGHT / 2, unitTexture(scene, kind, 'blue').key)
-          .setScale(1.15)
-          .setScrollFactor(0)
-          .setDepth(DEPTH + 3),
-      );
-      const name = this.register(
-        scene.add
-          .text(listX + 62, top + 14, UNIT_DEFS[kind].label, {
-            fontFamily: 'monospace',
-            fontSize: '13px',
-            color: '#d8e2dc',
-          })
-          .setScrollFactor(0)
-          .setDepth(DEPTH + 3),
-      );
-      const role = this.register(
-        scene.add
-          .text(listX + 62, top + 38, UNIT_ROLES[kind], {
-            fontFamily: 'monospace',
-            fontSize: '9px',
-            color: '#6c7d72',
-            wordWrap: { width: 146 },
-          })
-          .setScrollFactor(0)
-          .setDepth(DEPTH + 3),
-      );
-      const price = this.register(
-        scene.add
-          .text(listX + LIST_WIDTH - 12, top + 12, '', {
-            fontFamily: 'monospace',
-            fontSize: '11px',
-            color: '#f2d35c',
-          })
-          .setOrigin(1, 0)
-          .setScrollFactor(0)
-          .setDepth(DEPTH + 3),
-      );
+      const container = scene.add
+        .container(listX, listY + index * (CARD_HEIGHT + CARD_GAP))
+        .setScrollFactor(0)
+        .setDepth(DEPTH + 2)
+        .setMask(mask);
+      const background = scene.add
+        .rectangle(0, 0, listWidth, CARD_HEIGHT, 0x0f1114, 0.5)
+        .setOrigin(0, 0)
+        .setStrokeStyle(1, this.theme.divider, 1)
+        .setInteractive({ useHandCursor: true });
+      const portrait = scene.add
+        .image(64, CARD_HEIGHT / 2, recruitPortraitKey(kind))
+        .setDisplaySize(96, 96);
+      const name = scene.add.text(124, 30, UNIT_DEFS[kind].label, {
+        fontFamily: 'monospace',
+        fontSize: '16px',
+        color: '#d8e2dc',
+      });
+      const price = scene.add
+        .text(listWidth - 14, 30, '', {
+          fontFamily: 'monospace',
+          fontSize: '13px',
+          color: '#f2d35c',
+        })
+        .setOrigin(1, 0);
+
+      container.add([background, portrait, name, price]);
+      this.register(container);
+      this.register(background);
+      this.register(portrait);
+      this.register(name);
+      this.register(price);
 
       background.on('pointerover', () => {
         if (this.selectedKind !== kind) {
@@ -398,7 +409,12 @@ export class RecruitDialog {
       });
       background.on('pointerdown', () => this.selectUnit(kind));
 
-      this.rows.push({ kind, background, icon, name, role, price });
+      this.rows.push({ kind, container, background, portrait, name, price });
+    });
+
+    scene.input.on('wheel', this.onWheel, this);
+    scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      scene.input.off('wheel', this.onWheel, this);
     });
 
     this.portraitFrame = this.register(
@@ -410,31 +426,21 @@ export class RecruitDialog {
         .setStrokeStyle(1, this.theme.divider, 1),
     );
 
-    this.portraitGraphics = this.register(
-      scene.add
-        .graphics()
-        // Obrys żołnierza ma środek sylwetki przesunięty względem (0, 0).
-        .setPosition(portraitX + portraitWidth / 2 - 6, portraitY + portraitHeight / 2 - 51)
-        .setScrollFactor(0)
-        .setDepth(DEPTH + 2),
-    );
-
     this.portraitImage = this.register(
       scene.add
         .image(
           portraitX + portraitWidth / 2,
           portraitY + portraitHeight / 2,
-          unitTexture(scene, 'infantry', 'blue').key,
+          recruitPortraitKey('infantry'),
         )
-        .setScale(4.5)
+        .setDisplaySize(portraitWidth - 20, portraitWidth - 20)
         .setScrollFactor(0)
-        .setDepth(DEPTH + 2)
-        .setVisible(false),
+        .setDepth(DEPTH + 2),
     );
 
     this.nameText = this.register(
       scene.add
-        .text(infoX, panelY + 72, '', {
+        .text(infoX, portraitY + 8, '', {
           fontFamily: 'monospace',
           fontSize: '18px',
           color: '#f2f5f7',
@@ -445,7 +451,7 @@ export class RecruitDialog {
 
     this.roleText = this.register(
       scene.add
-        .text(infoX, panelY + 100, '', {
+        .text(infoX, portraitY + 38, '', {
           fontFamily: 'monospace',
           fontSize: '10px',
           color: '#9fb0a5',
@@ -456,11 +462,11 @@ export class RecruitDialog {
 
     this.statsText = this.register(
       scene.add
-        .text(infoX, panelY + 128, '', {
+        .text(infoX, portraitY + 64, '', {
           fontFamily: 'monospace',
           fontSize: '10px',
           color: '#d8e2dc',
-          wordWrap: { width: 270 },
+          wordWrap: { width: infoWidth },
           lineSpacing: 2,
         })
         .setScrollFactor(0)
@@ -469,7 +475,7 @@ export class RecruitDialog {
 
     this.equipmentTitle = this.register(
       scene.add
-        .text(infoX, panelY + 176, 'WYPOSAŻENIE', {
+        .text(infoX, portraitY + 150, 'WYPOSAŻENIE', {
           fontFamily: 'monospace',
           fontSize: '10px',
           color: this.theme.accentSoft,
@@ -478,7 +484,7 @@ export class RecruitDialog {
         .setDepth(DEPTH + 2),
     );
 
-    const loadoutBaseY = panelY + 204;
+    const loadoutBaseY = portraitY + 178;
 
     for (const kind of UNIT_KINDS) {
       LOADOUTS[kind].forEach((slot, slotIndex) => {
@@ -527,11 +533,11 @@ export class RecruitDialog {
       });
     }
 
-    const buttonY = panelY + PANEL_HEIGHT - 34;
+    const buttonY = panelY + panelHeight - 32;
 
     this.recruitNotice = this.register(
       scene.add
-        .text(centerX, buttonY - 24, '', {
+        .text(buttonCenterX, buttonY - 24, '', {
           fontFamily: 'monospace',
           fontSize: '10px',
           color: '#ffb347',
@@ -543,7 +549,7 @@ export class RecruitDialog {
 
     this.recruitButton = this.register(
       scene.add
-        .rectangle(centerX - 84, buttonY, 160, 32, this.theme.accentDark, 1)
+        .rectangle(buttonCenterX - 84, buttonY, 160, 32, this.theme.accentDark, 1)
         .setScrollFactor(0)
         .setDepth(DEPTH + 2)
         .setStrokeStyle(1, this.theme.accentBright, 0.8)
@@ -552,7 +558,7 @@ export class RecruitDialog {
 
     this.recruitLabel = this.register(
       scene.add
-        .text(centerX - 84, buttonY, 'KUP JEDNOSTKĘ', {
+        .text(buttonCenterX - 84, buttonY, 'KUP JEDNOSTKĘ', {
           fontFamily: 'monospace',
           fontSize: '13px',
           color: '#ffffff',
@@ -564,7 +570,7 @@ export class RecruitDialog {
 
     this.closeButton = this.register(
       scene.add
-        .rectangle(centerX + 84, buttonY, 140, 32, this.theme.accentDark, 1)
+        .rectangle(buttonCenterX + 84, buttonY, 140, 32, this.theme.accentDark, 1)
         .setScrollFactor(0)
         .setDepth(DEPTH + 2)
         .setStrokeStyle(1, this.theme.accentBright, 0.8)
@@ -573,7 +579,7 @@ export class RecruitDialog {
 
     this.register(
       scene.add
-        .text(centerX + 84, buttonY, 'ZAMKNIJ', {
+        .text(buttonCenterX + 84, buttonY, 'ZAMKNIJ', {
           fontFamily: 'monospace',
           fontSize: '13px',
           color: '#ffffff',
@@ -615,6 +621,7 @@ export class RecruitDialog {
     this.faction = faction;
     this.recruitment = recruitment;
     this.recruitNotice.setText('');
+    this.scrollY = 0;
     this.selectedKind = recruitment.allowedKinds.includes(this.selectedKind)
       ? this.selectedKind
       : (recruitment.allowedKinds[0] ?? this.selectedKind);
@@ -682,26 +689,66 @@ export class RecruitDialog {
   }
 
   private renderRows(): void {
-    for (const row of this.rows) {
+    const step = CARD_HEIGHT + CARD_GAP;
+    const totalHeight = this.rows.length * step - CARD_GAP;
+
+    this.scrollMax = Math.max(0, totalHeight - this.listHeight);
+    this.scrollY = Math.min(this.scrollY, this.scrollMax);
+
+    this.rows.forEach((row, index) => {
       const selected = row.kind === this.selectedKind;
       const remaining = this.recruitment
         ? remainingPurchases(this.recruitment, row.kind)
         : undefined;
       const available = this.isAllowed(row.kind) && !(remaining !== undefined && remaining <= 0);
 
+      row.container.setY(this.listY + index * step - this.scrollY);
       row.background.setFillStyle(selected ? this.theme.accentDark : 0x0f1114, selected ? 1 : 0.5);
       row.background.setStrokeStyle(
         1,
         selected ? this.theme.accentBright : this.theme.divider,
         1,
       );
-      row.icon.setTexture(unitTexture(this.scene, row.kind, this.faction).key);
-      row.icon.setAlpha(available ? 1 : 0.35);
+      row.portrait.setAlpha(available ? 1 : 0.35);
       row.name.setColor(available ? (selected ? '#f2f5f7' : '#d8e2dc') : '#5a6a60');
-      row.role.setColor(available ? (selected ? this.theme.accentSoft : '#6c7d72') : '#4a574f');
       row.price.setText(this.rowPriceLabel(row.kind, remaining));
       row.price.setColor(available ? '#f2d35c' : '#7a6a3a');
+    });
+
+    const barHeight =
+      this.scrollMax <= 0 ? 0 : Math.max(32, (this.listHeight * this.listHeight) / totalHeight);
+    const barY =
+      this.scrollMax <= 0
+        ? this.listY
+        : this.listY + (this.scrollY / this.scrollMax) * (this.listHeight - barHeight);
+
+    this.scrollBar
+      .setVisible(this.scrollMax > 0)
+      .setPosition(this.listX + this.listWidth - 6, barY)
+      .setSize(4, barHeight);
+  }
+
+  private onWheel(
+    pointer: Phaser.Input.Pointer,
+    _objects: Phaser.GameObjects.GameObject[],
+    _deltaX: number,
+    deltaY: number,
+  ): void {
+    if (!this.open || this.scrollMax <= 0) {
+      return;
     }
+
+    if (
+      pointer.x < this.listX ||
+      pointer.x > this.listX + this.listWidth ||
+      pointer.y < this.listY ||
+      pointer.y > this.listY + this.listHeight
+    ) {
+      return;
+    }
+
+    this.scrollY = Phaser.Math.Clamp(this.scrollY + deltaY, 0, this.scrollMax);
+    this.renderRows();
   }
 
   private rowPriceLabel(kind: UnitKind, remaining: number | undefined): string {
@@ -755,23 +802,10 @@ export class RecruitDialog {
   private renderPortrait(): void {
     const slots = LOADOUTS[this.selectedKind];
     const selection = this.selection[this.selectedKind] ?? [];
+    const accent = slots[1]?.options[selection[1] ?? 0]?.color ?? this.theme.divider;
 
-    if (this.selectedKind === 'infantry') {
-      drawInfantryPortrait(this.portraitGraphics, {
-        helmet: selectedColor(slots, selection, 0),
-        uniform: selectedColor(slots, selection, 1),
-        weapon: selectedColor(slots, selection, 2),
-        pack: selectedColor(slots, selection, 3),
-      });
-      this.portraitGraphics.setVisible(true);
-      this.portraitImage.setVisible(false);
-      return;
-    }
-
-    this.portraitImage
-      .setTexture(unitTexture(this.scene, this.selectedKind, this.faction).key)
-      .setVisible(true);
-    this.portraitGraphics.setVisible(false);
+    this.portraitImage.setTexture(recruitPortraitKey(this.selectedKind));
+    this.portraitFrame.setStrokeStyle(2, accent, 1);
   }
 
   private renderLoadout(): void {

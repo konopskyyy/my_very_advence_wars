@@ -213,8 +213,13 @@
   ataku); dymki znikają po pierwszym wykonanym ataku. Jednostki wychodzą
   z bazy na heksie `(2, 5)`, która sama ma zasięg wzroku 3. Zabicie
   ostatniego wroga kończy misję i pokazuje ekran wyniku.
-- Pozostałe kafelki są zapowiedziami — kliknięcie pokazuje komunikat
-  „wkrótce”; nie mają jeszcze scenariusza ani uruchomienia.
+- Druga misja (plik `ruch-jednostek.ts`) uczy ruchu: mapa 16×10 ma drogę,
+  las, bagno i wodę, gracz dostaje dwóch piechurów i zwiadowcę wokół bazy,
+  a rekrutacja jest wyłączona. Czerwony piechur po drugiej stronie jest
+  celem; dymki tłumaczą punkty ruchu, koszt terenu i zatwierdzanie trasy.
+- Kafelki „Walka”, „Mgła wojny”, „Amunicja” i „Artyleria” są zapowiedziami —
+  kliknięcie pokazuje komunikat „wkrótce”; nie mają jeszcze scenariusza ani
+  uruchomienia.
 - „Kampania 1” i „Kampania 2” nie mają kafelków do czasu dodania misji.
 
 ## ZAL-012: SI wroga

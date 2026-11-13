@@ -149,7 +149,7 @@ tylko w dev/test.
 - `JWT_SECRET_KEY`, `JWT_PUBLIC_KEY`, `JWT_PASSPHRASE` — w `server/.env`
   (ignorowany plik lokalny).
 - `CORS_ALLOW_ORIGIN` — wyrażenie regularne originów klienta (domyślnie
-  localhost/127.0.0.1 na dowolnym porcie, m.in. Vite `18573`).
+  localhost/127.0.0.1 na dowolnym porcie oraz `app://bundle` z Electrona).
 - Firewall `api`: bezstanowy, `^/api`, jwt; publiczne są `GET /api` (status), `register` i `login`.
 
 ### Testy

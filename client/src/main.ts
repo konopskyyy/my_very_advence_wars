@@ -5,6 +5,7 @@ import { MapMenuScene } from './scenes/MapMenuScene';
 import { MenuScene } from './scenes/MenuScene';
 import { ScenarioMenuScene } from './scenes/ScenarioMenuScene';
 import { ScenarioScene } from './scenes/ScenarioScene';
+import { mountAccountOverlay } from './view/accountOverlay';
 import { mountAuthScreen } from './view/authScreen';
 import { preloadCombatAudio } from './view/combatAudio';
 import { isGameEntry } from './view/gameEntry';
@@ -30,6 +31,7 @@ function startGame(): void {
   }
 
   revealGame();
+  mountAccountOverlay();
 
   game = new Phaser.Game({
     type: Phaser.AUTO,

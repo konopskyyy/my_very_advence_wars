@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { toggleAccountOverlay } from '../view/accountOverlay';
 import { installButtonClickSound } from '../view/buttonAudio';
 import { drawEmblem, drawMenuBackdrop } from '../view/menuBackdrop';
 import { createMenuButton } from '../view/menuButton';
@@ -50,6 +51,23 @@ export class MenuScene extends Phaser.Scene {
       })
       .setOrigin(0.5)
       .setLetterSpacing(6);
+
+    this.add
+      .text(width - 24, 24, 'KONTO', {
+        fontFamily: 'Trebuchet MS, Verdana, sans-serif',
+        fontSize: '13px',
+        color: '#8fa3b8',
+      })
+      .setOrigin(1, 0)
+      .setLetterSpacing(2)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerover', function (this: Phaser.GameObjects.Text) {
+        this.setColor('#a6f4c5');
+      })
+      .on('pointerout', function (this: Phaser.GameObjects.Text) {
+        this.setColor('#8fa3b8');
+      })
+      .on('pointerdown', () => toggleAccountOverlay());
 
     const items: [string, 'blue' | 'red' | 'neutral', () => void][] = [
       ['Kampanie', 'blue', () => this.scene.start('campaign-menu')],
