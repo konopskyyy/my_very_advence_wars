@@ -106,3 +106,38 @@ describe('widoczność jednostek przy mgle wojny', () => {
     expect(visibleUnitAt(state, { col: 3, row: 0 }, 'red')?.kind).toBe('tank');
   });
 });
+
+describe('wzrok punktu startowego', () => {
+  const sight = { pos: { col: 2, row: 5 }, range: 3 };
+
+  it('odsłania wroga w zasięgu bazy bez własnych jednostek', () => {
+    let state = createInitialState(createMap(16, 10));
+    state = { ...state, map: { ...state.map, fogOfWar: true } };
+    state = placeUnit(state, 'infantry', { col: 4, row: 5 }, 'red');
+
+    expect(isUnitVisible(state, state.units[0]!, 'blue', sight)).toBe(true);
+    expect(visibleUnits(state, 'blue', sight)).toHaveLength(1);
+    expect(visibleUnitAt(state, { col: 4, row: 5 }, 'blue', sight)).toBeDefined();
+  });
+
+  it('ukrywa wroga poza zasięgiem bazy', () => {
+    let state = createInitialState(createMap(16, 10));
+    state = { ...state, map: { ...state.map, fogOfWar: true } };
+    state = placeUnit(state, 'infantry', { col: 13, row: 5 }, 'red');
+
+    expect(isUnitVisible(state, state.units[0]!, 'blue', sight)).toBe(false);
+    expect(visibleUnits(state, 'blue', sight)).toHaveLength(0);
+  });
+
+  it('dołącza heks bazy i kafle w promieniu wzroku', () => {
+    const state = {
+      ...createInitialState(createMap(16, 10)),
+      map: { ...createMap(16, 10), fogOfWar: true },
+    };
+    const keys = visibleTileKeys(state, 'blue', sight);
+
+    expect(keys.has(cellKey(sight.pos))).toBe(true);
+    expect(keys.has(cellKey({ col: 2, row: 8 }))).toBe(true);
+    expect(keys.has(cellKey({ col: 2, row: 9 }))).toBe(false);
+  });
+});

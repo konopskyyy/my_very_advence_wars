@@ -12,7 +12,7 @@ import { countUnits, type GameState } from '../core/state';
 import { TERRAIN_DEFS } from '../core/map/terrain';
 import type { TurnState } from '../core/turn';
 import { FACTION_DEFS, shotsLeft, UNIT_DEFS, type FactionId, type Unit, type UnitKind } from '../core/units';
-import { visibleUnitAt } from '../core/vision';
+import { visibleUnitAt, type VisionPoint } from '../core/vision';
 import { FACTION_THEMES, type FactionTheme } from './factionTheme';
 import { formatPoints, formatRange } from './format';
 import { unitTexture } from './unitLayer';
@@ -27,6 +27,7 @@ export interface ScenarioBarState {
   readonly hover: HexCoord | null;
   readonly funds?: number;
   readonly recruitKind?: UnitKind;
+  readonly vision?: VisionPoint;
 }
 
 export interface ScenarioUnitState {
@@ -347,7 +348,7 @@ export class ScenarioCommandBar {
     return this.objects;
   }
 
-  refreshScenario({ scenario, state, turn, hover, funds, recruitKind }: ScenarioBarState): void {
+  refreshScenario({ scenario, state, turn, hover, funds, recruitKind, vision }: ScenarioBarState): void {
     this.applyTheme(turn.faction);
 
     if (recruitKind) {
@@ -376,7 +377,7 @@ export class ScenarioCommandBar {
     if (hover) {
       const terrain = terrainAt(state.map, hover);
       const doubled = toDoubled(hover);
-      const unit = visibleUnitAt(state, hover, turn.faction);
+      const unit = visibleUnitAt(state, hover, turn.faction, vision);
       const terrainLabel = terrain ? TERRAIN_DEFS[terrain].label : 'pusto';
       const moveCost = terrain ? TERRAIN_DEFS[terrain].moveCost : 1;
       const moveCostLabel = moveCost >= 99 ? 'ruch: blokada' : `ruch: ${moveCost}`;

@@ -1,4 +1,5 @@
 import {
+  cellCoord,
   cellKey,
   generateMap,
   mapBounds,
@@ -7,6 +8,7 @@ import {
   type GameMap,
   type HexCoord,
 } from './map';
+import { hexDistance } from './map/layout';
 import {
   createInitialState,
   deployUnits,
@@ -16,7 +18,14 @@ import {
 } from './state';
 import { IMPASSABLE, TERRAIN_DEFS } from './map/terrain';
 import type { RecruitmentRules } from './recruitment';
+import type { TutorialScript } from './tutorial';
 import type { FactionId, UnitKind } from './units';
+
+export interface SpawnPoint {
+  readonly col: number;
+  readonly row: number;
+  readonly vision: number;
+}
 
 export interface ScenarioDefinition {
   readonly id: string;
@@ -24,6 +33,9 @@ export interface ScenarioDefinition {
   readonly description: string;
   readonly state: GameState;
   readonly recruitment?: RecruitmentRules;
+  readonly tutorial?: TutorialScript;
+  readonly spawn?: SpawnPoint;
+  readonly autoDeploy?: boolean;
   readonly withFogOfWar?: (state: GameState) => GameState;
 }
 
@@ -71,7 +83,11 @@ const AUTO_DEPLOYMENT: readonly UnitKind[] = [
 
 const AUTO_FACTIONS: readonly FactionId[] = ['blue', 'red'];
 
-export function ensureScenarioArmies(state: GameState): GameState {
+export function ensureScenarioArmies(state: GameState, autoDeploy = true): GameState {
+  if (!autoDeploy) {
+    return state;
+  }
+
   let next = state;
 
   for (const faction of AUTO_FACTIONS) {
@@ -96,7 +112,12 @@ function deploymentSlots(
   state: GameState,
   faction: FactionId,
   limit: number = AUTO_DEPLOYMENT.length,
+  origin?: HexCoord,
 ): HexCoord[] {
+  if (origin) {
+    return nearestSlots(state, origin, limit);
+  }
+
   const bounds = mapBounds(state.map);
 
   if (!bounds) {
@@ -136,8 +157,31 @@ function deploymentSlots(
   return slots;
 }
 
-export function findRecruitSlot(state: GameState, faction: FactionId): HexCoord | undefined {
-  return deploymentSlots(state, faction, 1)[0];
+export function findRecruitSlot(
+  state: GameState,
+  faction: FactionId,
+  origin?: HexCoord,
+): HexCoord | undefined {
+  return deploymentSlots(state, faction, 1, origin)[0];
+}
+
+function nearestSlots(state: GameState, origin: HexCoord, limit: number): HexCoord[] {
+  const occupied = new Set(state.units.map((unit) => cellKey(unit.pos)));
+
+  return Object.keys(state.map.cells)
+    .map(cellCoord)
+    .filter(
+      (coord) =>
+        (coord.col !== origin.col || coord.row !== origin.row) &&
+        isFreeDeployment(state, occupied, coord),
+    )
+    .sort(
+      (left, right) =>
+        hexDistance(origin, left) - hexDistance(origin, right) ||
+        left.row - right.row ||
+        left.col - right.col,
+    )
+    .slice(0, limit);
 }
 
 export interface RecruitResult {
@@ -150,8 +194,9 @@ export function recruitUnit(
   state: GameState,
   faction: FactionId,
   kind: UnitKind,
+  origin?: HexCoord,
 ): RecruitResult | undefined {
-  const coord = findRecruitSlot(state, faction);
+  const coord = findRecruitSlot(state, faction, origin);
 
   if (!coord) {
     return undefined;

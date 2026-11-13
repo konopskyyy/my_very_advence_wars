@@ -350,11 +350,11 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
 
 ## GRA-042: Menu kampanii z wstążkami i kafelkami samouczka
 - **Kontekst:** Menu główne prowadziło tylko do scenariuszy i edytora map, więc nie było wejścia do kampanii ani samouczka. Potrzebny jest osobny ekran z zakładkami w stylu wstążki Worda, który pomieści misje samouczka i przyszłe kampanie.
-- **Opis:** Menu główne dostaje jako pierwszą pozycję „Kampanie”, która otwiera nową scenę `CampaignMenuScene`. Scena rysuje pasek trzech wstążek (`Samouczek`, `Kampania 1`, `Kampania 2`) i panel treści pod nim. Samouczek pokazuje sześć kafelków w siatce 3×2; pierwszy to „Pierwsze kroki”, a kolejne to „Ruch jednostek”, „Walka”, „Mgła wojny”, „Amunicja” i „Artyleria”. Kafelki są zapowiedziami: mają numer, tytuł, opis i status „WKRÓTCE”, a kliknięcie pokazuje komunikat o planowanej misji. Kampanie 1 i 2 pokazują pusty panel do czasu dodania misji. Dane kampanii są czystym modułem `core/campaign.ts`, a rysowanie wstążek i kafelków trafia do `view/`.
+- **Opis:** Menu główne dostaje jako pierwszą pozycję „Kampanie”, która otwiera nową scenę `CampaignMenuScene`. Scena rysuje pasek trzech wstążek (`Samouczek`, `Kampania 1`, `Kampania 2`) i panel treści pod nim. Samouczek pokazuje sześć kafelków w siatce 3×2; pierwszy to „To był zwykły spacer na grzyby” (pierwotnie „Pierwsze kroki”), a kolejne to „Ruch jednostek”, „Walka”, „Mgła wojny”, „Amunicja” i „Artyleria”. Kafelki są zapowiedziami: mają numer, tytuł, opis i status „WKRÓTCE”, a kliknięcie pokazuje komunikat o planowanej misji. Kampanie 1 i 2 pokazują pusty panel do czasu dodania misji. Dane kampanii są czystym modułem `core/campaign.ts`, a rysowanie wstążek i kafelków trafia do `view/`.
 - **Kryteria:**
   - **Menu główne:** „Kampanie” jest pierwszą pozycją i otwiera `CampaignMenuScene`.
   - **Wstążki:** trzy zakładki w kolejności „Samouczek”, „Kampania 1”, „Kampania 2”; aktywna jest wyróżniona, przełączanie podmienia zawartość bez zmiany sceny.
-  - **Samouczek:** sześć kafelków w siatce 3×2, pierwszy zatytułowany „Pierwsze kroki”.
+  - **Samouczek:** sześć kafelków w siatce 3×2, pierwszy zatytułowany „To był zwykły spacer na grzyby” (pierwotnie „Pierwsze kroki”).
   - **Kafelki:** każdy ma numer, tytuł, krótki opis i status „WKRÓTCE”; kliknięcie zaznacza kafelek i pokazuje komunikat o planowanej misji.
   - **Pozostałe kampanie:** panel pokazuje brak misji, a wstążki nadal działają.
   - **Sterowanie:** LPM wybiera wstążkę lub kafelek, `ESC` i „MENU GŁÓWNE” wracają do menu głównego.
@@ -363,14 +363,14 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
 
 ## GRA-043: Pierwsza misja samouczka — Pierwsze kroki
 - **Kontekst:** Kafelki samouczka były tylko zapowiedziami, więc nie dało się sprawdzić kampanii w grze. Potrzebna jest pierwsza grywalna misja i podział danych na osobne pliki, żeby kolejne misje i kampanie nie rosły w jednym module.
-- **Opis:** Dane kampanii przechodzą do katalogu `client/src/core/campaign/`: `types.ts` trzyma typy, `tutorial.ts`, `kampania-1.ts` i `kampania-2.ts` opisują kampanie, a `missions/` zawiera po jednym pliku na misję. Pierwsza misja „Pierwsze kroki” dostaje własny `missions/pierwsze-kroki.ts` z prostą mapą 16×10, trzema niebieskimi piechurami i jednym czerwonym piechurom ustawionym poza zasięgiem wzroku. Mapa ma włączoną mgłę wojny, więc wróg jest niewidoczny do czasu zbliżenia jednostki. Kafelek z gotową misją pokazuje status „GRAJ” i uruchamia `ScenarioScene`; dolny pasek prowadzi z powrotem do „MENU KAMPANII”. Pozostałe kafelki i kampanie pozostają zapowiedziami.
+- **Opis:** Dane kampanii przechodzą do katalogu `client/src/core/campaign/`: `types.ts` trzyma typy, `tutorial.ts`, `kampania-1.ts` i `kampania-2.ts` opisują kampanie, a `missions/` zawiera po jednym pliku na misję. Pierwsza misja dostaje własny `missions/pierwsze-kroki.ts` z prostą mapą 16×10 i jednym czerwonym piechurom ustawionym poza zasięgiem wzroku. Mapa ma włączoną mgłę wojny, więc wróg jest niewidoczny do czasu zbliżenia jednostki. Kafelek z gotową misją pokazuje status „GRAJ” i uruchamia `ScenarioScene`; dolny pasek prowadzi z powrotem do „MENU KAMPANII”. Od GRA-074 misja nosi nazwę „To był zwykły spacer na grzyby”, startuje bez niebieskich jednostek i prowadzi gracza dymkami przez zakup zwiadowcy i trzech piechurów. Pozostałe kafelki i kampanie pozostają zapowiedziami.
 - **Kryteria:**
   - **Struktura:** każda kampania ma osobny plik, a każda misja osobny plik w `core/campaign/missions/`; `index.ts` tylko scala dane.
   - **Mapa:** prosta mapa 16×10 z kilkoma kaflami terenu, bez przeszkód blokujących start jednostek.
   - **Mgła:** mapa ma włączoną mgłę wojny, a `visibleUnits` dla niebieskich nie zwraca czerwonego piechura na starcie.
-  - **Uruchomienie:** kliknięcie „Pierwsze kroki” otwiera scenariusz z tą mapą i armią; pozostałe kafelki nadal pokazują „WKRÓTCE”.
+  - **Uruchomienie:** kliknięcie pierwszego kafelka otwiera scenariusz z tą mapą; od GRA-074 armia startowa jest pusta, a jednostki dochodzą przez rekrutację. Pozostałe kafelki nadal pokazują „WKRÓTCE”.
   - **Powrót:** dolny pasek misji prowadzi do „MENU KAMPANII”, a nie do listy scenariuszy.
-  - **Testy:** `tests/core/campaign/` sprawdza kolejność kampanii, kafelki samouczka, skład armii i ukrycie wroga w mgle.
+  - **Testy:** `tests/core/campaign/` sprawdza kolejność kampanii, kafelki samouczka, skład armii (brak niebieskich jednostek na starcie od GRA-074) i ukrycie wroga w mgle.
   - **Dokumentacja:** ZAL-011, INTERF-007 i GRA-043 opisują strukturę plików, mapę i uruchomienie misji.
 
 ## GRA-044: Zasięg strzału zgodny z akcją jednostki
@@ -647,3 +647,29 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
   - **Muzyka:** cicha (gain ~0,045), startuje z menu, cichnie przy wyjściu ze sceny.
   - **Wyjście:** komunikat o ręcznym zamknięciu okna nadal działa.
   - **Dokumentacja:** INTERF-001 opisuje nowy wygląd.
+
+## GRA-074: Pierwszy akt samouczka z podpowiedziami
+- **Kontekst:** Pierwsza misja zaczynała się z trzema piechunami, więc grant po zwiadowcy nie miał sensu fabularnego, a gracz nie wiedział, że jednostki kupuje się na dolnym pasku ani jak korzystać z planera i ataku. Samouczek ma poprowadzić gracza przez pierwsze zakupy i pierwsze akcje bez blokowania mapy.
+- **Opis:** Misja `pierwsze-kroki.ts` dostaje tytuł „To był zwykły spacer na grzyby”, startuje bez niebieskich jednostek (czerwony piechur nadal stoi od początku ukryty w mgle) i wyłącza automatyczne uzupełnianie armii (`autoDeploy: false`). Gracz ma 150 kredytów i może kupić tylko zwiadowcę. Po jego zakupie grant daje 300 kredytów i odblokowuje trzech piechurów, a dymek informuje, że zwiadowca odsłonił wroga. `ScenarioDefinition.tutorial` niesie cztery kroki: rekrutację zwiadowcy, nagrodę na trzech piechurów, pierwszy wykonany ruch i pierwszy wykonany atak. `core/tutorial.ts` wybiera pierwszy niespełniony krok na podstawie liczników zakupów w `RecruitmentState` oraz liczników akcji aktualizowanych po wykonaniu tury, a `view/tutorialTip.ts` rysuje po prawej stronie nieblokujący dymek. Dymek ataku pojawia się dopiero po turze z ruchem i przypomina, że po ataku można jeszcze zaplanować ruch; po pierwszym wykonanym ataku dymek znika i misja toczy się normalnie.
+- **Kryteria:**
+  - **Start:** misja otwiera się bez niebieskich jednostek, z jednym czerwonym piechurom ukrytym w mgle i mapą 16×10 bez zmian.
+  - **Auto-deploy:** `ensureScenarioArmies()` respektuje `autoDeploy: false` i nie dokłada armii; pozostałe scenariusze zachowują dotychczasowe uzupełnianie.
+  - **Pierwszy dymek:** po wejściu widać nieblokujący dymek o przycisku `KUP` na dolnym pasku i o tym, że można kupić tylko zwiadowcę.
+  - **Drugi dymek:** po zakupie zwiadowcy pierwszy dymek zastępuje komunikat o widocznym wrogu i 300 kredytach na trzech piechurów.
+  - **Trzeci dymek:** po zakupie trzech piechurów pojawia się opis planowania ruchu (wybór jednostki, klik heksa, oś czasu) z przypomnieniem, że zwinięty panel rozwija przycisk `PLANUJ`.
+  - **Czwarty dymek:** dymek ataku pojawia się po turze, w której wykonano pierwszy ruch; opisuje atak, potwierdzenie kliknięciem, panel `PLANUJ` i informuje, że po ataku można jeszcze zaplanować ruch. Po pierwszym wykonanym ataku dymek znika, a gra działa jak zwykły scenariusz. Dymek nie przechwytuje kliknięć.
+  - **Pamięć postępu:** liczniki ruchów i ataków rosną po wykonaniu tury i nie zerują się, więc podpowiedzi nie wracają.
+  - **Testy:** `tests/core/tutorial.test.ts` sprawdza kolejność kroków i liczenie akcji planu, a `tests/core/campaign/missions.test.ts` — pustą armię, ukrytego wroga i skrypt misji.
+  - **Dokumentacja:** ZAL-011, INTERF-005, INTERF-007 i ADR-047 opisują pierwszy akt, dymki i flagę `autoDeploy`.
+
+## GRA-075: Punkt startowy, wzrok bazy i koniec misji
+- **Kontekst:** Po opróżnieniu armii pierwszą rekrutację trzeba było kupować „gdzieś na krawędzi mapy”, a po pokonaniu jedynego wroga gra toczyła kolejne tury bez żadnego zakończenia. Gracz nie widział też, skąd wychodzą jego jednostki ani że baza obserwuje okolicę.
+- **Opis:** `ScenarioDefinition` dostaje `spawn` (`col`, `row`, `vision`). Misja ustawia bazę na heksie `(2, 5)` z zasięgiem wzroku 3. `recruitUnit()` stawia zakupione jednostki na najbliższych wolnych przechodnich heksach wokół bazy (z pominięciem samego heksu bazy), a nie na krawędzi mapy. `core/vision.ts` przyjmuje dodatkowe źródło wzroku, więc mgła odkrywa okolicę bazy także wtedy, gdy gracz nie ma jeszcze żadnej jednostki. `view/spawnPoint.ts` rysuje w kodzie prosty znacznik bazy: wypełniony heks, obrys, maszt i flagę w kolorze frakcji. Po turze, w której ginie ostatnia jednostka przeciwnika, `finishTurn()` nie oddaje ruchu drugiej stronie, tylko kończy misję i pokazuje `view/missionResult.ts`: nakładkę „MISJA UKOŃCZONA” z przyciskami powrotu do menu kampanii/scenariuszy i menu głównego.
+- **Kryteria:**
+  - **Baza:** misja ma widoczny znacznik na heksie `(2, 5)`, narysowany w kodzie i widoczny pod jednostkami.
+  - **Wzrok:** bez własnych jednostek gracz widzi heksy w promieniu 3 od bazy; reszta mapy pozostaje we mgle. Wróg poza tym promieniem nadal jest ukryty.
+  - **Rekrutacja:** kupione jednostki pojawiają się na najbliższych wolnych heksach wokół bazy, nie na krawędzi mapy; heks bazy zostaje wolny.
+  - **Koniec misji:** zabicie ostatniej czerwonej jednostki zatrzymuje turę i pokazuje nakładkę z wynikiem; nie startuje tura przeciwnika ani kolejna tura gracza.
+  - **Powrót:** przycisk w nakładce prowadzi do `returnScene` przekazanego przy starcie (`campaign-menu` dla samouczka), a drugi do menu głównego.
+  - **Testy:** `tests/core/scenario.test.ts` sprawdza rekrutację wokół bazy, a `tests/core/vision.test.ts` — widoczność z bazy bez jednostek.
+  - **Dokumentacja:** ZAL-011, INTERF-005, INTERF-007 i ADR-048 opisują bazę, wzrok i zakończenie misji.

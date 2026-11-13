@@ -20,6 +20,7 @@ import {
 import { countUnits, createInitialState, deployUnits, placeUnit } from '../../src/core/state';
 import { TERRAIN_DEFS, TERRAIN_IDS } from '../../src/core/map/terrain';
 import type { TerrainId } from '../../src/core/map/terrain';
+import { hexDistance } from '../../src/core/map/layout';
 import { UNIT_DEFS, type FactionId, type UnitKind } from '../../src/core/units';
 
 const AUTO_KINDS: readonly UnitKind[] = [
@@ -198,6 +199,46 @@ describe('rekrutacja', () => {
 
     expect(findRecruitSlot(state, 'blue')).toBeUndefined();
     expect(recruitUnit(state, 'blue', 'tank')).toBeUndefined();
+  });
+
+  it('stawia jednostki na najbliższych wolnych heksach wokół bazy', () => {
+    const origin = { col: 5, row: 4 };
+    let state = createInitialState(createMap(12, 8));
+    const positions = [];
+
+    for (let index = 0; index < 3; index += 1) {
+      const result = recruitUnit(state, 'blue', 'infantry', origin);
+
+      expect(result).toBeDefined();
+      if (!result) {
+        return;
+      }
+
+      positions.push(result.coord);
+      state = result.state;
+    }
+
+    for (const position of positions) {
+      expect(hexDistance(origin, position)).toBe(1);
+      expect(position.col === origin.col && position.row === origin.row).toBe(false);
+    }
+
+    expect(new Set(positions.map((position) => cellKey(position))).size).toBe(3);
+  });
+
+  it('nie zastawia heksu bazy przy rekrutacji', () => {
+    const origin = { col: 0, row: 0 };
+    const state = placeUnit(
+      createInitialState(createMap(4, 4)),
+      'infantry',
+      origin,
+      'red',
+    );
+    const result = recruitUnit(state, 'blue', 'scout', origin);
+
+    expect(result).toBeDefined();
+    expect(result?.coord).not.toEqual(origin);
+    expect(hexDistance(origin, result?.coord ?? origin)).toBe(1);
   });
 });
 

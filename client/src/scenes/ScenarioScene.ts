@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { canAttackThisTurn } from '../core/combat';
 import type { HexCoord } from '../core/map';
-import { mapTileCount, moveTargets } from '../core/map';
+import { mapBounds, mapTileCount, moveTargets } from '../core/map';
 import {
   BUILT_IN_SCENARIOS,
   ensureScenarioArmies,
@@ -45,12 +45,15 @@ import {
   type Unit,
   type UnitKind,
 } from '../core/units';
-import { visibleTileKeys, visibleUnitAt, visibleUnits } from '../core/vision';
+import { visibleTileKeys, visibleUnitAt, visibleUnits, type VisionPoint } from '../core/vision';
+import { activeTutorialHint, tutorialProgress, type TutorialScript } from '../core/tutorial';
 import { HexMapView, HEX_SIZE, outlineHex } from '../view/hexGrid';
 import { MapViewport } from '../view/mapViewport';
+import { MissionResult } from '../view/missionResult';
 import { PlanTimeline } from '../view/planTimeline';
 import { RecruitDialog } from '../view/recruitDialog';
 import { BAR_HEIGHT, ScenarioCommandBar } from '../view/scenarioCommandBar';
+import { SpawnPointView } from '../view/spawnPoint';
 import { installButtonClickSound } from '../view/buttonAudio';
 import {
   playDeathSound,
@@ -60,6 +63,7 @@ import {
 import { preloadFogTile } from '../view/fogTile';
 import { playShotEffect } from '../view/shotEffect';
 import { preloadTerrainTiles } from '../view/terrainTiles';
+import { TutorialTip } from '../view/tutorialTip';
 import { UnitLayer, unitTexture } from '../view/unitLayer';
 import { VisionFog } from '../view/visionFog';
 import { createReplayId, recordTurnPlan, startReplay } from '../storage/replays';
@@ -77,6 +81,8 @@ const PLAN_COLORS = [0xf2d35c, 0x6fd08c, 0x5aa9e6, 0xe0a15a, 0xc77dff, 0x7bdff2]
 interface ScenarioData {
   readonly definition?: ScenarioDefinition;
   readonly playerFaction?: FactionId;
+  readonly returnScene?: string;
+  readonly returnLabel?: string;
 }
 
 export class ScenarioScene extends Phaser.Scene {
@@ -113,11 +119,20 @@ export class ScenarioScene extends Phaser.Scene {
   private spawns: SiSpawns = new Map();
   private recruitment: RecruitmentState = createRecruitment();
   private recruitKind: UnitKind = 'infantry';
+  private tutorialScript?: TutorialScript;
+  private tutorialMoves = 0;
+  private tutorialAttacks = 0;
+  private returnScene = 'scenario-menu';
+  private returnLabel = 'MENU SCENARIUSZY';
+  private finished = false;
 
   private viewport!: MapViewport;
   private mapView!: HexMapView;
+  private spawnView?: SpawnPointView;
   private unitLayer!: UnitLayer;
   private visionFog!: VisionFog;
+  private tutorialTip!: TutorialTip;
+  private missionResult!: MissionResult;
   private uiCamera?: Phaser.Cameras.Scene2D.Camera;
   private commandBar!: ScenarioCommandBar;
   private planner!: PlanTimeline;
@@ -143,7 +158,10 @@ export class ScenarioScene extends Phaser.Scene {
     this.scenario = data?.definition ?? BUILT_IN_SCENARIOS[0]!;
     this.playerFaction = data?.playerFaction ?? 'blue';
     this.turn = createTurnState(this.playerFaction);
-    this.state = beginTurn(ensureScenarioArmies(this.scenario.state), this.turn.faction);
+    this.state = beginTurn(
+      ensureScenarioArmies(this.scenario.state, this.scenario.autoDeploy !== false),
+      this.turn.faction,
+    );
     this.spawns = new Map(
       this.state.units.map((unit) => [unit.id, { col: unit.pos.col, row: unit.pos.row }]),
     );
@@ -156,6 +174,12 @@ export class ScenarioScene extends Phaser.Scene {
     this.playback = null;
     this.recruitment = createRecruitment(this.scenario.recruitment);
     this.recruitKind = this.recruitment.allowedKinds[0] ?? 'infantry';
+    this.tutorialScript = this.scenario.tutorial;
+    this.tutorialMoves = 0;
+    this.tutorialAttacks = 0;
+    this.returnScene = data?.returnScene ?? 'scenario-menu';
+    this.returnLabel = data?.returnLabel ?? 'MENU SCENARIUSZY';
+    this.finished = false;
     this.exploredByFaction.clear();
     this.shotFx.clear();
   }
@@ -174,7 +198,8 @@ export class ScenarioScene extends Phaser.Scene {
     });
 
     this.mapView = new HexMapView(this, this.state.map);
-    this.unitLayer = new UnitLayer(this, visibleUnits(this.state, this.turn.faction));
+    this.spawnView = this.createSpawnView();
+    this.unitLayer = new UnitLayer(this, visibleUnits(this.state, this.turn.faction, this.visionFor(this.turn.faction)));
     this.visionFog = new VisionFog(this, this.state.map);
 
     this.selection = this.add.graphics();
@@ -185,6 +210,8 @@ export class ScenarioScene extends Phaser.Scene {
     this.pathHints.setDepth(6);
     this.cursor = this.add.graphics();
     this.cursor.setDepth(5);
+
+    this.tutorialTip = new TutorialTip(this);
 
     this.commandBar = new ScenarioCommandBar(this, {
       onEndTurn: () => this.playTurn(),
@@ -212,6 +239,10 @@ export class ScenarioScene extends Phaser.Scene {
         this.refreshHud();
       },
     });
+    this.missionResult = new MissionResult(this, {
+      onReturn: () => this.scene.start(this.returnScene),
+      onMainMenu: () => this.scene.start('menu'),
+    });
 
     this.setupUiCamera();
 
@@ -229,16 +260,24 @@ export class ScenarioScene extends Phaser.Scene {
       keyboard.on('keydown', this.onKeyDown, this);
     }
 
-    const start =
-      this.state.units.find((unit) => unit.faction === this.playerFaction)?.pos ??
-      this.state.units.find((unit) => unit.faction === 'blue')?.pos ??
-      { col: 5, row: 13 };
+    const bounds = mapBounds(this.state.map);
+    const start = this.scenario.spawn
+      ? { col: this.scenario.spawn.col, row: this.scenario.spawn.row }
+      : this.state.units.find((unit) => unit.faction === this.playerFaction)?.pos ??
+        this.state.units.find((unit) => unit.faction === 'blue')?.pos ??
+        (bounds
+          ? {
+              col: Math.floor((bounds.minCol + bounds.maxCol) / 2),
+              row: Math.floor((bounds.minRow + bounds.maxRow) / 2),
+            }
+          : { col: 0, row: 0 });
 
     this.viewport.centerOn(start);
     this.refreshHud();
     this.refreshUnitPreview();
     this.refreshFog();
     this.refreshPlan();
+    this.refreshTutorial();
     this.replayReady = this.beginReplay();
 
     (globalThis as { __mvawScene?: ScenarioScene }).__mvawScene = this;
@@ -246,6 +285,10 @@ export class ScenarioScene extends Phaser.Scene {
 
   update(_time: number, delta: number): void {
     this.unitLayer.update(delta);
+
+    if (this.finished) {
+      return;
+    }
 
     if (this.playback) {
       this.advancePlayback(delta);
@@ -274,12 +317,15 @@ export class ScenarioScene extends Phaser.Scene {
       ...this.commandBar.uiObjects,
       ...this.planner.uiObjects,
       ...this.recruitDialog.uiObjects,
+      ...this.tutorialTip.uiObjects,
+      ...this.missionResult.uiObjects,
     ]);
     uiCamera.ignore([
       this.cursor,
       this.selection,
       this.rangeHints,
       this.pathHints,
+      ...(this.spawnView?.objects ?? []),
       ...this.mapView.objects(),
       ...this.unitLayer.objects(),
       ...this.visionFog.objects,
@@ -288,8 +334,35 @@ export class ScenarioScene extends Phaser.Scene {
     this.uiCamera = uiCamera;
   }
 
+  private createSpawnView(): SpawnPointView | undefined {
+    const spawn = this.scenario.spawn;
+
+    if (!spawn) {
+      return undefined;
+    }
+
+    return new SpawnPointView(
+      this,
+      this.mapView.center({ col: spawn.col, row: spawn.row }),
+      HEX_SIZE,
+      this.playerFaction,
+    );
+  }
+
+  private visionFor(faction: FactionId): VisionPoint | undefined {
+    const spawn = this.scenario.spawn;
+
+    if (!spawn || faction !== this.playerFaction) {
+      return undefined;
+    }
+
+    return { pos: { col: spawn.col, row: spawn.row }, range: spawn.vision };
+  }
+
   private refreshUnits(): void {
-    this.unitLayer.setUnits(visibleUnits(this.state, this.playerFaction));
+    this.unitLayer.setUnits(
+      visibleUnits(this.state, this.playerFaction, this.visionFor(this.playerFaction)),
+    );
     this.uiCamera?.ignore(this.unitLayer.objects());
     this.refreshFog();
   }
@@ -300,7 +373,11 @@ export class ScenarioScene extends Phaser.Scene {
       return;
     }
 
-    const visible = visibleTileKeys(this.state, this.playerFaction);
+    const visible = visibleTileKeys(
+      this.state,
+      this.playerFaction,
+      this.visionFor(this.playerFaction),
+    );
     const explored =
       this.exploredByFaction.get(this.playerFaction) ?? new Set<string>();
 
@@ -330,7 +407,7 @@ export class ScenarioScene extends Phaser.Scene {
   }
 
   private onPointerDown(pointer: Phaser.Input.Pointer): void {
-    if (this.playing) {
+    if (this.playing || this.finished) {
       return;
     }
 
@@ -351,7 +428,12 @@ export class ScenarioScene extends Phaser.Scene {
 
   private handleMapClick(coord: HexCoord): void {
     const unit = this.selectedUnit();
-    const target = visibleUnitAt(this.state, coord, this.turn.faction);
+    const target = visibleUnitAt(
+      this.state,
+      coord,
+      this.turn.faction,
+      this.visionFor(this.turn.faction),
+    );
 
     if (unit && unit.faction === this.turn.faction) {
       if (target && target.faction !== unit.faction) {
@@ -459,7 +541,14 @@ export class ScenarioScene extends Phaser.Scene {
       return null;
     }
 
-    return visibleUnitAt(this.state, this.hover, this.playerFaction) ?? null;
+    return (
+      visibleUnitAt(
+        this.state,
+        this.hover,
+        this.playerFaction,
+        this.visionFor(this.playerFaction),
+      ) ?? null
+    );
   }
 
   private applyPlan(plan: TurnPlan): void {
@@ -474,10 +563,11 @@ export class ScenarioScene extends Phaser.Scene {
     this.drawPath();
     this.refreshHud();
     this.refreshUnitPreview();
+    this.refreshTutorial();
   }
 
   private recruit(kind: UnitKind): boolean {
-    if (this.playing || this.turn.faction !== this.playerFaction) {
+    if (this.finished || this.playing || this.turn.faction !== this.playerFaction) {
       return false;
     }
 
@@ -487,7 +577,14 @@ export class ScenarioScene extends Phaser.Scene {
       return false;
     }
 
-    const result = recruitUnit(this.state, this.turn.faction, kind);
+    const result = recruitUnit(
+      this.state,
+      this.turn.faction,
+      kind,
+      this.scenario.spawn
+        ? { col: this.scenario.spawn.col, row: this.scenario.spawn.row }
+        : undefined,
+    );
 
     if (!result) {
       return false;
@@ -501,6 +598,7 @@ export class ScenarioScene extends Phaser.Scene {
     this.refreshHud();
     this.refreshUnitPreview();
     this.refreshPlan();
+    this.refreshTutorial();
     this.drawPath();
     this.planner.notice(`${UNIT_DEFS[kind].label} dołącza do armii`);
     return true;
@@ -560,7 +658,7 @@ export class ScenarioScene extends Phaser.Scene {
   }
 
   private playTurn(): void {
-    if (this.playing) {
+    if (this.playing || this.finished) {
       return;
     }
 
@@ -641,11 +739,19 @@ export class ScenarioScene extends Phaser.Scene {
   private finishTurn(): void {
     const committed = commitPlan(this.state, this.plan);
     const finishedPlan = this.plan;
+    const wasPlayerTurn = this.turn.faction === this.playerFaction;
     const fallen = committed.killed
       .map((id) => this.state.units.find((unit) => unit.id === id))
       .filter((unit): unit is Unit => unit !== undefined);
 
     void this.saveTurn(finishedPlan, committed.state);
+
+    if (wasPlayerTurn) {
+      const executed = tutorialProgress(this.recruitment, finishedPlan);
+
+      this.tutorialMoves += executed.moves;
+      this.tutorialAttacks += executed.attacks;
+    }
 
     this.state = committed.state;
     this.playing = false;
@@ -662,11 +768,6 @@ export class ScenarioScene extends Phaser.Scene {
       playDeathSound(UNIT_DEFS[unit.kind].deathSound);
     }
 
-    this.turn = nextTurn(this.turn);
-    this.state = beginTurn(this.state, this.turn.faction);
-    this.plan = createTurnPlan(this.turn);
-    this.timeline = { durationMs: 0, clips: [] };
-
     this.selection.clear();
     this.rangeHints.clear();
     this.pathHints.clear();
@@ -675,14 +776,46 @@ export class ScenarioScene extends Phaser.Scene {
     this.planner.setPlaying(false);
     this.planner.setPlayhead(0);
 
+    const enemyLeft = this.state.units.some((unit) => unit.faction !== this.playerFaction);
+
+    if (wasPlayerTurn && !enemyLeft) {
+      this.finishMission();
+      return;
+    }
+
+    this.turn = nextTurn(this.turn);
+    this.state = beginTurn(this.state, this.turn.faction);
+    this.plan = createTurnPlan(this.turn);
+    this.timeline = { durationMs: 0, clips: [] };
+
+    this.refreshUnits();
+    this.refreshHud();
+    this.refreshUnitPreview();
+    this.refreshPlan();
+    this.refreshTutorial();
+
+    if (this.turn.faction !== this.playerFaction) {
+      this.beginSiTurn();
+    }
+  }
+
+  private finishMission(): void {
+    this.finished = true;
+    this.plan = createTurnPlan(this.turn);
+    this.timeline = { durationMs: 0, clips: [] };
+    this.recruitDialog.hide();
+    this.tutorialTip.hide();
+
     this.refreshUnits();
     this.refreshHud();
     this.refreshUnitPreview();
     this.refreshPlan();
 
-    if (this.turn.faction !== this.playerFaction) {
-      this.beginSiTurn();
-    }
+    this.time.delayedCall(420, () => {
+      if (this.finished) {
+        this.missionResult.show(this.scenario.name, this.returnLabel);
+      }
+    });
   }
 
   private clearShotFx(): void {
@@ -732,7 +865,7 @@ export class ScenarioScene extends Phaser.Scene {
   }
 
   private onPointerMove(pointer: Phaser.Input.Pointer): void {
-    if (this.playing) {
+    if (this.playing || this.finished) {
       return;
     }
 
@@ -800,7 +933,7 @@ export class ScenarioScene extends Phaser.Scene {
       return;
     }
 
-    if (this.playing) {
+    if (this.playing || this.finished) {
       return;
     }
 
@@ -828,7 +961,13 @@ export class ScenarioScene extends Phaser.Scene {
   }
 
   private selectAt(coord: HexCoord): void {
-    this.selected = visibleUnitAt(this.state, coord, this.turn.faction) ?? null;
+    this.selected =
+      visibleUnitAt(
+        this.state,
+        coord,
+        this.turn.faction,
+        this.visionFor(this.turn.faction),
+      ) ?? null;
     this.pendingMove = null;
     this.pendingAttack = null;
     this.clearPreview();
@@ -899,7 +1038,11 @@ export class ScenarioScene extends Phaser.Scene {
         );
       }
     } else if (canStrike) {
-      for (const target of visibleUnits(this.state, this.turn.faction)) {
+      for (const target of visibleUnits(
+        this.state,
+        this.turn.faction,
+        this.visionFor(this.turn.faction),
+      )) {
         if (target.faction === planned.faction) {
           continue;
         }
@@ -1239,7 +1382,22 @@ export class ScenarioScene extends Phaser.Scene {
       hover: this.hover,
       funds: this.recruitment.funds,
       recruitKind: this.recruitKind,
+      vision: this.visionFor(this.turn.faction),
     });
+  }
+
+  private refreshTutorial(): void {
+    const hint = activeTutorialHint(this.tutorialScript, {
+      purchased: this.recruitment.purchased,
+      moves: this.tutorialMoves,
+      attacks: this.tutorialAttacks,
+    });
+
+    if (hint) {
+      this.tutorialTip.show(hint);
+    } else {
+      this.tutorialTip.hide();
+    }
   }
 }
 

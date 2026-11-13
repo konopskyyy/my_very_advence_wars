@@ -91,3 +91,5 @@ zadań do wykonania.
 | [[Zadania-opisy#GRA-071: Kolorowe strzałki ruchu i koniec na zwolnionym heksie\|GRA-071]] | Kolorowe strzałki ruchu i koniec na zwolnionym heksie | ✅ | GRA-057, GRA-064, ADR-001, ADR-039, ADR-045, ZAL-004, INTERF-005 |
 | [[Zadania-opisy#GRA-072: Płatna rekrutacja z saldem i limitami misji\|GRA-072]] | Płatna rekrutacja z saldem i limitami misji | ✅ | GRA-046, GRA-070, ADR-001, ADR-044, ADR-046, ZAL-004, ZAL-009, INTERF-005 |
 | [[Zadania-opisy#GRA-073: Nowe menu główne z grafiką\|GRA-073]] | Nowe menu główne z grafiką | ✅ | INTERF-001, GRA-067 |
+| [[Zadania-opisy#GRA-074: Pierwszy akt samouczka z podpowiedziami\|GRA-074]] | Pierwszy akt samouczka z podpowiedziami | ✅ | GRA-043, GRA-072, ADR-001, ADR-046, ADR-047, ZAL-011, INTERF-005, INTERF-007 |
+| [[Zadania-opisy#GRA-075: Punkt startowy, wzrok bazy i koniec misji\|GRA-075]] | Punkt startowy, wzrok bazy i koniec misji | ✅ | GRA-074, ADR-001, ADR-047, ADR-048, ZAL-011, INTERF-005, INTERF-007 |
