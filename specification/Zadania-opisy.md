@@ -673,3 +673,76 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
   - **Powrót:** przycisk w nakładce prowadzi do `returnScene` przekazanego przy starcie (`campaign-menu` dla samouczka), a drugi do menu głównego.
   - **Testy:** `tests/core/scenario.test.ts` sprawdza rekrutację wokół bazy, a `tests/core/vision.test.ts` — widoczność z bazy bez jednostek.
   - **Dokumentacja:** ZAL-011, INTERF-005, INTERF-007 i ADR-048 opisują bazę, wzrok i zakończenie misji.
+
+## GRA-076: Druga misja samouczka — Ruch jednostek
+- **Kontekst:** Drugi kafelek samouczka od GRA-042 był zapowiedzią „WKRÓTCE”, choć gracz po pierwszej misji nadal nie rozumiał kosztu terenu i planowania trasy. Bez tej lekcji trudno było świadomie korzystać z planera i oszczędzać punkty ruchu.
+- **Opis:** `missions/ruch-jednostek.ts` dostaje pełny `ScenarioDefinition`: mapa 16×10 z drogą przez całą szerokość, lasem, bagnem, wodą i miastem, baza gracza na `(2, 5)` oraz `autoDeploy: false`. Gracz zaczyna z dwoma piechunami i zwiadowcą, a po drugiej stronie stoi czerwony piechur jako jedyny cel. Rekrutacja jest wyłączona (`funds: 0`, `allowedKinds: []`). Skrypt samouczka ma cztery kroki: punkty ruchu, koszt terenu, zatwierdzanie trasy oraz dotarcie do wroga i atak; warunki to kolejne zaplanowane ruchy i pierwszy atak. Kafelek w menu kampanii pokazuje „GRAJ” i uruchamia misję.
+- **Kryteria:**
+  - **Mapa:** plansza ma drogę, las, bagno i wodę, więc koszt terenu jest widoczny w podglądzie trasy.
+  - **Start:** gracz ma dwóch piechurów i zwiadowcę wokół bazy, a `autoDeploy: false` nie dokłada kolejnych jednostek.
+  - **Cel:** czerwony piechur stoi po drugiej stronie mapy; zabicie go kończy misję ekranem wyniku.
+  - **Samouczek:** cztery dymki pojawiają się po kolei i znikają po spełnieniu warunku; nie blokują kliknięć.
+  - **Rekrutacja:** przycisk `KUP` nie pozwala kupić jednostek w tej misji.
+  - **Testy:** `tests/core/campaign/missions.test.ts` sprawdza stan misji, skład armii, wyłączoną rekrutację i skrypt.
+  - **Dokumentacja:** INTERF-007 i ZAL-011 opisują drugą misję i jej dymki.
+
+## GRA-077: Karty jednostek z portretami w oknie KUP
+- **Kontekst:** Okno `KUP` miało wąską listę z tokenem, nazwą i opisem roli, a resztę panelu zajmował duży podgląd. Przy czterech jednostkach lista była czytelna, ale nie pokazywała „bohaterów” i nie miała miejsca na rozwój. Graczowi trudno było kojarzyć rodzaj jednostki z jej wyglądem.
+- **Opis:** `RecruitDialog` dostaje panel niemal na cały ekran: lewa połowa to przewijana lista kart jednostek, prawa zachowuje portret, statystyki i wyposażenie. Karta ma rastrowy portret bohatera (generowany w kodzie przez `CanvasTexture`), nazwę, cenę i pozostały limit; opis roli znika z karty. Lista reaguje na kółko myszy w granicach panelu, ma maskę przycinającą i pasek pozycji. Motyw frakcji nadal zmienia kolory panelu, a wybrane wyposażenie podkreśla ramkę portretu.
+- **Kryteria:**
+  - **Układ:** panel zajmuje większość ekranu, lewa połowa to lista, prawa — szczegóły; na 1280×720 nic nie wychodzi poza ekran.
+  - **Karty:** każda karta pokazuje portret, nazwę, cenę i limit; nie ma opisu roli.
+  - **Portrety:** cztery rodzaje mają własny rastrowy portret bohatera; brak portretu nie wywraca sceny.
+  - **Przewijanie:** kółko myszy nad listą przewija karty, pasek pozycji pokazuje zakres, a maska ucina karty poza obszarem.
+  - **Wybór:** kliknięcie karty wybiera jednostkę i odświeża prawą połowę; niedostępne jednostki są przygaszone i oznaczone.
+  - **Testy:** `make verify` przechodzi; portrety są tworzone w kodzie bez nowych plików binarnych.
+  - **Dokumentacja:** INTERF-005 opisuje nowy układ okna `KUP`.
+
+## GRA-078: Logowanie i rejestracja klienta przez API
+- **Kontekst:** Strona główna (GRA-067) miała formularz demo, który po wysłaniu tylko informował, że logowanie zostanie podłączone później. Backend od SRV-002 wystawia rejestrację, logowanie i `GET /api/auth/me`, więc demo blokowało realne korzystanie z konta.
+- **Opis:** Powstaje moduł `client/src/auth/`: `api.ts` woła `POST /api/auth/register`, `POST /api/auth/login` i `GET /api/auth/me`, a `store.ts` trzyma sesję w `localStorage` i powiadamia subskrybentów. Adres API to ten sam origin (`/api`); w Electronie pod schematem `app:` klient używa `http://localhost:18080/api`, bo `app://` nie ma backendu. `authScreen.ts` podłącza formularz: waliduje e-mail, hasło 8–72 znaki i powtórzenie hasła, pokazuje stan ładowania, mapuje błędy `401`/`409`/`422` i brak sieci na polskie komunikaty oraz odtwarza sesję przez `me` przy starcie. Po zalogowaniu panel konta pokazuje e-mail i przycisk wylogowania zamiast formularza. Vite proxuje `/api` do usługi `nginx` w Compose.
+- **Kryteria:**
+  - **Rejestracja:** poprawne dane tworzą konto, zapisują token i pokazują e-mail w panelu konta.
+  - **Logowanie:** poprawne dane wznawiają sesję; złe hasło daje „Nieprawidłowy e-mail lub hasło.”.
+  - **Walidacja:** puste pole, zły e-mail, hasło poza zakresem i niezgodne powtórzenie są łapane przed żądaniem.
+  - **Sesja:** token przetrwa odświeżenie strony; `me` uzupełnia dane, a `401` czyści sesję bez błędu w konsoli.
+  - **Wylogowanie:** usuwa token i wraca do formularza.
+  - **Sieć:** brak backendu pokazuje komunikat o połączeniu, a nie wyjątek.
+  - **Testy:** testy jednostkowe z mockiem `fetch` sprawdzają żądania, zapis sesji i mapowanie błędów.
+  - **Dokumentacja:** INTERF-008 i API-001 opisują realne podłączenie formularza.
+
+## GRA-079: Panel konta w grze
+- **Kontekst:** Po wejściu pod `/game/` strona główna znika, a gracz nie miał wglądu w konto ani sposobu wylogowania się bez powrotu do niej. Elektron w ogóle pomija stronę startową.
+- **Opis:** `view/accountOverlay.ts` montuje w grze nakładkę DOM z przyciskiem w prawym górnym rogu. Panel pokazuje e-mail i datę utworzenia konta oraz „Wyloguj się”, a bez sesji — kompaktowy formularz logowania i rejestracji korzystający z tego samego modułu `auth/`. Panel otwiera się z przycisku nakładki i z pozycji „KONTO” w menu głównym, zamyka klawiszem Escape i kliknięciem tła, a jego stan odświeża się po zalogowaniu i wylogowaniu. Nakładka działa nad kanwą Phasera i nie przechwytuje kliknięć, gdy jest zamknięta.
+- **Kryteria:**
+  - **Widoczność:** przycisk konta jest widoczny w menu i w scenariuszach, nad kanwą.
+  - **Zalogowany:** panel pokazuje e-mail, datę utworzenia i przycisk wylogowania.
+  - **Gość:** panel pozwala zalogować się lub zarejestrować bez opuszczania gry.
+  - **Sterowanie:** Escape i kliknięcie tła zamykają panel; zamknięty panel nie blokuje gry.
+  - **Spójność:** komunikaty błędów są takie same jak na stronie głównej.
+  - **Testy:** `make verify` przechodzi, a logika sesji jest pokryta testami GRA-078.
+  - **Dokumentacja:** INTERF-009 opisuje nakładkę i wejście z menu.
+
+## GRA-080: Panel administratora Sonata
+- **Kontekst:** Backend miał konta i role (`app_user.roles`), ale żadnego miejsca do ich przeglądania. Panel `/admin` był tylko zarezerwowanym prefiksem w nginx, bez logowania i funkcji.
+- **Opis:** `composer require` instaluje `sonata-project/admin-bundle` 4.43 i `sonata-project/doctrine-orm-admin-bundle` 4.21 (zgodne z Symfony 8.1). `UserAdmin` w `App\Auth\Presentation\Admin` mapuje encję `User` w trybie `orm` jako lista i podgląd (`email`, `roles`, `createdAt`), bez tworzenia i edycji kont; trasa to `/admin/auth/user/*`. Firewall `admin` korzysta z formularza logowania `/admin/login` i wymaga `ROLE_ADMIN`, a `/admin/logout` kończy sesję. Fixtury nadają `admin@example.com` rolę `ROLE_ADMIN`, więc po `make fixtures` panel jest od razu dostępny.
+- **Kryteria:**
+  - **Dostęp:** `/admin` bez sesji przekierowuje na `/admin/login`; konto z `ROLE_USER` dostaje odmowę, a `ROLE_ADMIN` widzi dashboard.
+  - **Lista:** panel pokazuje konta z e-mailem, rolami i datą utworzenia oraz pozwala filtrować po e-mailu i oglądać szczegóły.
+  - **Bezpieczeństwo:** tworzenie i edycja kont są wyłączone; hasła nie są pokazywane ani edytowalne.
+  - **Wylogowanie:** `/admin/logout` kończy sesję i wraca na ekran logowania.
+  - **Zgodność:** `composer require --dry-run` i `bin/console lint:container` przechodzą na Symfony 8.1.
+  - **Testy:** `make test-server` obejmuje dostęp do panelu i logowanie administratora.
+  - **Dokumentacja:** INTERF-010 i `Infrastruktura.md` opisują panel, konto i trasy.
+
+## GRA-081: Dziennik tur i replay całej gry na ekranie wyniku
+- **Kontekst:** `turn_plans` zapisuje plany tur, ale ekran „WYNIK MISJI” nie pozwalał odtworzyć rozgrywki, a zapis nie zawierał dziennika obrażeń. Bez tego gracz nie mógł sprawdzić, co działo się w minionych turach ani zobaczyć bitwy od początku.
+- **Opis:** Baza klienta dostaje tabelę `turn_logs` (`replay_id`, `turn`, `faction`, `log`, `created_at`), tworzoną przez `CREATE TABLE IF NOT EXISTS`, więc starsze bazy działają bez migracji. `core/plan/log.ts` buduje dziennik z planu, stanu przed i po turze: ruchy jednostek (skąd, dokąd), ataki z obrażeniami i informacją o zabiciu oraz sumę obrażeń. `recordTurnPlan()` zapisuje log razem z planem, a `readReplay()` dokłada go do wpisu tury. `MissionResult` zyskuje przycisk „OBEJRZYJ REPLAY” (tylko gdy zapis istnieje) i pokazuje sumę zadanych obrażeń. Kliknięcie uruchamia ponownie scenę w trybie replay: `ScenarioScene` ładuje zapis, odtwarza tury po kolei tym samym playbackiem i `buildTimeline()`, pokazuje banner „REPLAY CAŁEJ GRY — TURA x/y”, nie pozwala planować ani dopisywać tur, odsłania całą mapę i wszystkie jednostki, a po ostatniej turze pokazuje „REPLAY ZAKOŃCZONY” z powrotem do menu. Uszkodzony lub pusty zapis kończy się komunikatem zamiast wywrócenia sceny.
+- **Kryteria:**
+  - **Dziennik:** każda wykonana tura zapisuje ruchy, ataki, obrażenia per cel i zabitych; suma obrażeń zgadza się z `commitPlan()`.
+  - **Zapis:** `turn_logs` powstaje przy istniejących bazach, a usunięcie scenariusza kasuje też logi razem z planami.
+  - **Ekran wyniku:** po misji widać sumę obrażeń i przycisk replayu, gdy zapis jest gotowy; bez zapisu przycisk się nie pojawia.
+  - **Replay:** cała rozgrywka odtwarza się od `initial_state` przez wszystkie tury i kończy na stanie ostatniej; mgła i sterowanie planowaniem są wyłączone.
+  - **Odporność:** uszkodzony wpis nie wywraca sceny, a tryb replay nie tworzy nowego zapisu ani nie zapisuje tur.
+  - **Testy:** testy jednostkowe pokrywają budowę dziennika i zapis/odczyt `turn_logs`; `make verify` przechodzi.
+  - **Dokumentacja:** INTERF-002 i INTERF-006 opisują przycisk replayu, banner i tabelę logów.

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PIERWSZE_KROKI } from '../../../src/core/campaign/missions/pierwsze-kroki';
+import { RUCH_JEDNOSTEK } from '../../../src/core/campaign/missions/ruch-jednostek';
 import { isUnitVisible } from '../../../src/core/vision';
 
 describe('misje kampanii', () => {
@@ -30,5 +31,28 @@ describe('misje kampanii', () => {
     ).toBe(false);
     expect(mission.spawn).toEqual({ col: 2, row: 5, vision: 3 });
     expect(mission.tutorial?.steps).toHaveLength(4);
+  });
+
+  it('ruch jednostek daje trzech graczy, jednego wroga i wyłącza rekrutację', () => {
+    const mission = RUCH_JEDNOSTEK.mission;
+
+    expect(mission).toBeDefined();
+    if (!mission) {
+      return;
+    }
+
+    const blueUnits = mission.state.units.filter((unit) => unit.faction === 'blue');
+    const redUnits = mission.state.units.filter((unit) => unit.faction === 'red');
+    const terrains = new Set(Object.values(mission.state.map.cells));
+
+    expect(mission.autoDeploy).toBe(false);
+    expect(mission.spawn).toEqual({ col: 2, row: 5, vision: 3 });
+    expect(blueUnits.map((unit) => unit.kind).sort()).toEqual(['infantry', 'infantry', 'scout']);
+    expect(redUnits).toHaveLength(1);
+    expect(redUnits[0]?.kind).toBe('infantry');
+    expect(mission.recruitment?.funds).toBe(0);
+    expect(mission.recruitment?.allowedKinds).toEqual([]);
+    expect(mission.tutorial?.steps).toHaveLength(4);
+    expect([...terrains]).toEqual(expect.arrayContaining(['plain', 'road', 'forest', 'swamp', 'water']));
   });
 });

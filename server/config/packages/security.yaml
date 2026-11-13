@@ -15,11 +15,24 @@ security:
             stateless: true
             provider: app_user_provider
             jwt: ~
+        admin:
+            pattern: ^/admin
+            provider: app_user_provider
+            form_login:
+                login_path: admin_login
+                check_path: admin_login
+                default_target_path: /admin/dashboard
+                enable_csrf: false
+            logout:
+                path: admin_logout
+                target: /admin/login
         main:
             lazy: true
             provider: app_user_provider
 
     access_control:
+        - { path: ^/admin/login$, roles: PUBLIC_ACCESS }
+        - { path: ^/admin, roles: ROLE_ADMIN }
         - { path: ^/api$, roles: PUBLIC_ACCESS }
         - { path: ^/api/auth/(register|login)$, roles: PUBLIC_ACCESS }
         - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }

@@ -70,8 +70,8 @@
           <div class="account__intro">
             <h2 id="auth-title" class="section-title">Konto gracza</h2>
             <p class="account__lead">
-              Zaloguj się lub załóż konto. Funkcje sieciowe są w przygotowaniu — na razie
-              możesz zagrać bez logowania.
+              Zaloguj się lub załóż konto, żeby zachować sesję. Możesz też zagrać bez
+              logowania.
             </p>
             <button type="button" class="auth__button auth__button--ghost account__guest" data-play-game>
               Graj bez logowania
@@ -79,7 +79,7 @@
           </div>
 
           <div class="auth__panel">
-            <div class="auth__tabs" role="tablist" aria-label="Logowanie i rejestracja">
+            <div id="auth-tabs" class="auth__tabs" role="tablist" aria-label="Logowanie i rejestracja">
               <button
                 type="button"
                 class="auth__tab is-active"
@@ -108,6 +108,7 @@
               <label class="auth__field">
                 <span class="auth__label">E-mail</span>
                 <input
+                  id="auth-email"
                   class="auth__input"
                   name="email"
                   type="email"
@@ -119,6 +120,7 @@
               <label class="auth__field">
                 <span class="auth__label">Hasło</span>
                 <input
+                  id="auth-password"
                   class="auth__input"
                   name="password"
                   type="password"
@@ -146,7 +148,16 @@
               </button>
             </form>
 
-            <p class="auth__note">Wersja demo — formularze nie łączą się jeszcze z serwerem.</p>
+            <div id="auth-account" class="auth__account" hidden>
+              <p class="auth__account-label">Zalogowano jako</p>
+              <p id="auth-account-email" class="auth__account-email"></p>
+              <p id="auth-account-since" class="auth__account-since"></p>
+              <button type="button" id="auth-logout" class="auth__button auth__button--ghost">
+                Wyloguj się
+              </button>
+            </div>
+
+            <p id="auth-note" class="auth__note">Sesja zapisuje się w tej przeglądarce.</p>
           </div>
         </div>
       </section>

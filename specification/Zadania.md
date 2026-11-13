@@ -93,3 +93,9 @@ zadań do wykonania.
 | [[Zadania-opisy#GRA-073: Nowe menu główne z grafiką\|GRA-073]] | Nowe menu główne z grafiką | ✅ | INTERF-001, GRA-067 |
 | [[Zadania-opisy#GRA-074: Pierwszy akt samouczka z podpowiedziami\|GRA-074]] | Pierwszy akt samouczka z podpowiedziami | ✅ | GRA-043, GRA-072, ADR-001, ADR-046, ADR-047, ZAL-011, INTERF-005, INTERF-007 |
 | [[Zadania-opisy#GRA-075: Punkt startowy, wzrok bazy i koniec misji\|GRA-075]] | Punkt startowy, wzrok bazy i koniec misji | ✅ | GRA-074, ADR-001, ADR-047, ADR-048, ZAL-011, INTERF-005, INTERF-007 |
+| [[Zadania-opisy#GRA-076: Druga misja samouczka — Ruch jednostek\|GRA-076]] | Druga misja samouczka — Ruch jednostek | ✅ | GRA-043, GRA-075, ZAL-011, INTERF-007 |
+| [[Zadania-opisy#GRA-077: Karty jednostek z portretami w oknie KUP\|GRA-077]] | Karty jednostek z portretami w oknie KUP | ✅ | GRA-046, GRA-070, GRA-072, INTERF-005 |
+| [[Zadania-opisy#GRA-078: Logowanie i rejestracja klienta przez API\|GRA-078]] | Logowanie i rejestracja klienta przez API | ✅ | GRA-066, GRA-067, SRV-002, API-001, INTERF-008 |
+| [[Zadania-opisy#GRA-079: Panel konta w grze\|GRA-079]] | Panel konta w grze | ✅ | GRA-078, INTERF-009 |
+| [[Zadania-opisy#GRA-080: Panel administratora Sonata\|GRA-080]] | Panel administratora Sonata | ✅ | SRV-001, SRV-002, INTERF-010, Infrastruktura |
+| [[Zadania-opisy#GRA-081: Dziennik tur i replay całej gry na ekranie wyniku\|GRA-081]] | Dziennik tur i replay całej gry na ekranie wyniku | 🚧 | GRA-060, GRA-061, GRA-075, INTERF-002, INTERF-006 |
