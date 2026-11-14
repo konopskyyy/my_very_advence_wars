@@ -3,13 +3,15 @@ import { FACTION_THEMES } from './factionTheme';
 
 const DEPTH = 60;
 const PANEL_WIDTH = 460;
-const PANEL_HEIGHT = 286;
+const PANEL_HEIGHT = 326;
 const BUTTON_WIDTH = 194;
 const BUTTON_HEIGHT = 46;
+const WIDE_BUTTON_WIDTH = 396;
 
 export interface MissionResultHandlers {
   readonly onReturn: () => void;
   readonly onMainMenu: () => void;
+  readonly onReplay: () => void;
 }
 
 interface ResultButton {
@@ -26,7 +28,9 @@ export class MissionResult {
   private readonly tag: Phaser.GameObjects.Text;
   private readonly title: Phaser.GameObjects.Text;
   private readonly mission: Phaser.GameObjects.Text;
+  private readonly damage: Phaser.GameObjects.Text;
   private readonly note: Phaser.GameObjects.Text;
+  private readonly replayButton: ResultButton;
   private readonly returnButton: ResultButton;
   private readonly mainMenuButton: ResultButton;
 
@@ -80,6 +84,17 @@ export class MissionResult {
       .setScrollFactor(0)
       .setDepth(DEPTH + 2);
 
+    this.damage = scene.add
+      .text(0, 0, '', {
+        fontFamily: 'monospace',
+        fontSize: '13px',
+        color: '#f2d35c',
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(DEPTH + 2);
+
+    this.replayButton = this.makeButton('OBEJRZYJ REPLAY', handlers.onReplay);
     this.returnButton = this.makeButton('WRÓĆ', handlers.onReturn);
     this.mainMenuButton = this.makeButton('MENU GŁÓWNE', handlers.onMainMenu);
 
@@ -89,7 +104,10 @@ export class MissionResult {
       this.tag,
       this.title,
       this.mission,
+      this.damage,
       this.note,
+      this.replayButton.box,
+      this.replayButton.label,
       this.returnButton.box,
       this.returnButton.label,
       this.mainMenuButton.box,
@@ -102,7 +120,7 @@ export class MissionResult {
     return this.objects;
   }
 
-  show(missionName: string, returnLabel: string): void {
+  show(missionName: string, returnLabel: string, damage: number, replayAvailable: boolean): void {
     const width = this.scene.scale.width;
     const height = this.scene.scale.height;
     const left = Math.round((width - PANEL_WIDTH) / 2);
@@ -121,13 +139,20 @@ export class MissionResult {
     this.panel.lineStyle(1, FACTION_THEMES.blue.accent, 0.8);
     this.panel.strokeRoundedRect(left, top, PANEL_WIDTH, PANEL_HEIGHT, 14);
 
-    this.tag.setPosition(centerX, top + 34);
-    this.title.setPosition(centerX, top + 62);
-    this.mission.setText(missionName).setPosition(centerX, top + 112);
-    this.note.setPosition(centerX, top + 168);
+    this.tag.setPosition(centerX, top + 28);
+    this.title.setPosition(centerX, top + 52);
+    this.mission.setText(missionName).setPosition(centerX, top + 98);
+    this.damage.setText(`Zadane obrażenia: ${damage}`).setPosition(centerX, top + 132);
+    this.note.setPosition(centerX, top + 162);
     this.returnButton.label.setText(returnLabel);
 
-    const buttonY = top + 204;
+    const replayY = top + 194;
+
+    this.replayButton.box.setPosition(centerX - WIDE_BUTTON_WIDTH / 2, replayY);
+    this.replayButton.box.setSize(WIDE_BUTTON_WIDTH, BUTTON_HEIGHT);
+    this.replayButton.label.setPosition(centerX, replayY + BUTTON_HEIGHT / 2);
+
+    const buttonY = top + 252;
     const buttonLeft = centerX - BUTTON_WIDTH - 8;
 
     this.returnButton.box.setPosition(buttonLeft, buttonY);
@@ -139,6 +164,8 @@ export class MissionResult {
     );
 
     this.setVisible(true);
+    this.replayButton.box.setVisible(replayAvailable);
+    this.replayButton.label.setVisible(replayAvailable);
   }
 
   hide(): void {

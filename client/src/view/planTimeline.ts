@@ -8,10 +8,7 @@ import type { GameState } from '../core/state';
 import type { TurnState } from '../core/turn';
 import { FACTION_DEFS, UNIT_DEFS } from '../core/units';
 import { FACTION_THEMES, type FactionTheme } from './factionTheme';
-import { BAR_HEIGHT, TURN_COLUMN_X } from './scenarioCommandBar';
-
-export const PLANNER_EXPANDED = 168;
-export const PLANNER_COLLAPSED = 36;
+import { BAR_HEIGHT, PLANNER_COLLAPSED, PLANNER_EXPANDED, TURN_COLUMN_X } from './hudLayout';
 
 const HEADER_HEIGHT = 34;
 const LABEL_WIDTH = 150;
@@ -106,7 +103,7 @@ export class PlanTimeline {
 
     this.background = this.register(
       this.scene.add
-        .rectangle(0, 0, width, PLANNER_EXPANDED, this.theme.barBackground, 0.96)
+        .rectangle(0, 0, width, PLANNER_EXPANDED, this.theme.barBackground, 0.82)
         .setOrigin(0, 0)
         .setScrollFactor(0)
         .setDepth(18),
@@ -335,6 +332,24 @@ export class PlanTimeline {
     this.drawTimeline();
   }
 
+  setCollapsed(collapsed: boolean): void {
+    if (this.collapsed === collapsed) {
+      return;
+    }
+
+    this.collapsed = collapsed;
+    this.layout();
+    this.drawTimeline();
+  }
+
+  setVisible(visible: boolean): void {
+    for (const object of this.uiObjects) {
+      if ('setVisible' in object) {
+        (object as Phaser.GameObjects.GameObject & { setVisible: (value: boolean) => void }).setVisible(visible);
+      }
+    }
+  }
+
   cancelScrub(): void {
     this.scrubbing = false;
   }
@@ -543,7 +558,7 @@ export class PlanTimeline {
     }
 
     this.theme = theme;
-    this.background.setFillStyle(theme.barBackground, 0.96);
+    this.background.setFillStyle(theme.barBackground, 0.82);
     this.background.setStrokeStyle(1, theme.accent, 1);
     this.stripe.setFillStyle(theme.accent, 1);
     this.toggleButton

@@ -737,12 +737,37 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
 
 ## GRA-081: Dziennik tur i replay całej gry na ekranie wyniku
 - **Kontekst:** `turn_plans` zapisuje plany tur, ale ekran „WYNIK MISJI” nie pozwalał odtworzyć rozgrywki, a zapis nie zawierał dziennika obrażeń. Bez tego gracz nie mógł sprawdzić, co działo się w minionych turach ani zobaczyć bitwy od początku.
-- **Opis:** Baza klienta dostaje tabelę `turn_logs` (`replay_id`, `turn`, `faction`, `log`, `created_at`), tworzoną przez `CREATE TABLE IF NOT EXISTS`, więc starsze bazy działają bez migracji. `core/plan/log.ts` buduje dziennik z planu, stanu przed i po turze: ruchy jednostek (skąd, dokąd), ataki z obrażeniami i informacją o zabiciu oraz sumę obrażeń. `recordTurnPlan()` zapisuje log razem z planem, a `readReplay()` dokłada go do wpisu tury. `MissionResult` zyskuje przycisk „OBEJRZYJ REPLAY” (tylko gdy zapis istnieje) i pokazuje sumę zadanych obrażeń. Kliknięcie uruchamia ponownie scenę w trybie replay: `ScenarioScene` ładuje zapis, odtwarza tury po kolei tym samym playbackiem i `buildTimeline()`, pokazuje banner „REPLAY CAŁEJ GRY — TURA x/y”, nie pozwala planować ani dopisywać tur, odsłania całą mapę i wszystkie jednostki, a po ostatniej turze pokazuje „REPLAY ZAKOŃCZONY” z powrotem do menu. Uszkodzony lub pusty zapis kończy się komunikatem zamiast wywrócenia sceny.
+- **Opis:** Baza klienta dostaje tabelę `turn_logs` (`replay_id`, `turn`, `faction`, `log`, `created_at`), tworzoną przez `CREATE TABLE IF NOT EXISTS`, więc starsze bazy działają bez migracji. `core/plan/log.ts` buduje dziennik z planu, stanu przed i po turze: ruchy jednostek (skąd, dokąd), ataki z obrażeniami i informacją o zabiciu oraz sumę obrażeń. `recordTurnPlan()` zapisuje log razem z planem, a `readReplay()` dokłada go do wpisu tury. Przycisk `DZIENNIK` w pasku dowodzenia otwiera panel z wpisami wszystkich dotychczasowych tur i przyciskiem „ODTWÓRZ OD POCZĄTKU”; jest dostępny po każdej wykonanej turze, także przed końcem misji. `MissionResult` zyskuje przycisk „OBEJRZYJ REPLAY” (tylko gdy zapis istnieje) i pokazuje sumę zadanych obrażeń. Kliknięcie uruchamia ponownie scenę w trybie replay: `ScenarioScene` ładuje zapis, odtwarza tury po kolei tym samym playbackiem i `buildTimeline()`, pokazuje banner „REPLAY CAŁEJ GRY — TURA x/y”, nie pozwala planować ani dopisywać tur, odsłania całą mapę i wszystkie jednostki, a po ostatniej turze pokazuje „REPLAY ZAKOŃCZONY” z powrotem do menu. Uszkodzony lub pusty zapis kończy się komunikatem zamiast wywrócenia sceny.
 - **Kryteria:**
   - **Dziennik:** każda wykonana tura zapisuje ruchy, ataki, obrażenia per cel i zabitych; suma obrażeń zgadza się z `commitPlan()`.
   - **Zapis:** `turn_logs` powstaje przy istniejących bazach, a usunięcie scenariusza kasuje też logi razem z planami.
+  - **Dziennik w grze:** po każdej turze przycisk `DZIENNIK` pokazuje wpisy wszystkich tur i pozwala odtworzyć rozgrywkę od początku; bez zapisanych tur jest przygaszony lub pokazuje komunikat.
   - **Ekran wyniku:** po misji widać sumę obrażeń i przycisk replayu, gdy zapis jest gotowy; bez zapisu przycisk się nie pojawia.
   - **Replay:** cała rozgrywka odtwarza się od `initial_state` przez wszystkie tury i kończy na stanie ostatniej; mgła i sterowanie planowaniem są wyłączone.
   - **Odporność:** uszkodzony wpis nie wywraca sceny, a tryb replay nie tworzy nowego zapisu ani nie zapisuje tur.
   - **Testy:** testy jednostkowe pokrywają budowę dziennika i zapis/odczyt `turn_logs`; `make verify` przechodzi.
-  - **Dokumentacja:** INTERF-002 i INTERF-006 opisują przycisk replayu, banner i tabelę logów.
+  - **Dokumentacja:** INTERF-002, INTERF-005 i INTERF-006 opisują panel dziennika, przycisk replayu, banner i tabelę logów.
+
+## GRA-082: Kompaktowy HUD pola bitwy
+- **Kontekst:** Dolny pasek dowodzenia ma 116 px, a rozwinięty planer dokłada 168 px, więc na ekranie 1280×720 interfejs zajmuje 284 px wysokości. Statystyki jednostki, nazwa scenariusza i skróty konkurują o miejsce z mapą, a dymek samouczka zabiera dodatkowe 340 px szerokości.
+- **Opis:** Pasek dowodzenia zmienia się w kompaktowy pas 64 px z numerem tury, aktywną stroną, kredytami, nazwą scenariusza oraz przyciskami `DZIENNIK`, `KUP` i `WYKONAJ TURĘ`; skróty menu trafiają do lewego górnego rogu. Statystyki, portret, zasięgi i pociski wybranej jednostki przenoszą się do pływającej karty `view/unitCard.ts`, pokazywanej przy zaznaczeniu i ukrywanej po odznaczeniu. Planer pozostaje rozwijany, ale leży nad mapą jako półprzezroczysty panel i nie rezerwuje już miejsca w układzie; zwija się po wykonaniu tury i po `ESC`. Wspólne stałe układu trafiają do `view/hudLayout.ts`, a obsługa kursora i przewijania krawędzią uwzględnia tylko faktycznie widoczne elementy. Dymek samouczka jest węższy i nie nachodzi na kartę jednostki.
+- **Kryteria:**
+  - **Miejsce:** na 1280×720 dolny pas ma najwyżej 64 px, a mapa zyskuje co najmniej 120 px wysokości względem obecnego układu z otwartym planerem.
+  - **Jednostka:** portret, HP, atak, obrona, pozycja, teren, pociski i zasięgi są w karcie przy zaznaczeniu; bez wyboru karta znika, a pasek nie rośnie.
+  - **Planer:** rozwinięty panel jest nakładką nad mapą, zwija się po turze i `ESC`, a kliknięcia poza nim nadal obsługują mapę; kółko myszy nad panelem nie zoomuje mapy.
+  - **Czytelność:** przyciski `DZIENNIK`, `KUP` i `WYKONAJ TURĘ` są zawsze widoczne i nie nachodzą na siebie na 1280×720 i 1920×1080.
+  - **Samouczek:** dymek nie zasłania karty jednostki ani przycisków paska.
+  - **Testy:** `make verify` przechodzi, a czysta logika układu ma testy jednostkowe, jeśli zostanie wydzielona.
+  - **Dokumentacja:** INTERF-005 opisuje kompaktowy pasek, kartę jednostki i planer jako nakładkę.
+
+## GRA-083: Odblokowywanie misji kampanii
+- **Kontekst:** Druga misja samouczka „Ruch jednostek” była dostępna od razu po wejściu do kampanii. Gracz mógł pominąć pierwszą lekcję, a menu nie pokazywało, które misje są już ukończone.
+- **Opis:** `CampaignTile` dostaje opcjonalne pole `requiresMission`, a `RUCH_JEDNOSTEK` wymaga ukończenia `tutorial-pierwsze-kroki`. Po zakończeniu misji `ScenarioScene` zapisuje jej `scenario.id` w `localStorage` pod kluczem `mvaw:completed-missions` przez `storage/progress.ts`. `core/campaign/progress.ts` trzyma czystą logikę dostępności i ukończenia, a `CampaignMenuScene` czyta postęp przed pokazaniem kafelków. `CampaignTiles` rozróżnia statusy `GRAJ`, `UKOŃCZONA`, `ZABLOKOWANA` i `WKRÓTCE`; zablokowany kafelek jest przygaszony, nie uruchamia scenariusza i pokazuje, którą misję trzeba najpierw ukończyć. Powrót do menu po zwycięstwie odświeża kafelki, a postęp przetrwa ponowne uruchomienie gry.
+- **Kryteria:**
+  - **Blokada:** drugi kafelek samouczka jest zablokowany, dopóki pierwsza misja nie zostanie ukończona.
+  - **Odblokowanie:** po zabiciu ostatniego wroga w pierwszej misji i powrocie do menu kampanii drugi kafelek ma status `GRAJ` i uruchamia misję.
+  - **Trwałość:** zamknięcie i ponowne otwarcie gry zachowuje ukończenie misji.
+  - **Komunikaty:** kliknięcie zablokowanego kafelka nie startuje scenariusza i wskazuje wymaganą misję.
+  - **Dane:** brak `requiresMission` oznacza misję dostępną od razu; kafelki zapowiedzi pozostają `WKRÓTCE`.
+  - **Testy:** testy jednostkowe sprawdzają logikę dostępności oraz zapis i odczyt postępu.
+  - **Dokumentacja:** INTERF-007 i ZAL-011 opisują blokadę, statusy kafelków i trwały postęp.

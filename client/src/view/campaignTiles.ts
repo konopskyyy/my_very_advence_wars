@@ -1,5 +1,11 @@
 import Phaser from 'phaser';
-import type { Campaign, CampaignTile } from '../core/campaign';
+import {
+  isMissionCompleted,
+  isTileUnlocked,
+  prerequisiteTile,
+  type Campaign,
+  type CampaignTile,
+} from '../core/campaign';
 import type { ScenarioDefinition } from '../core/scenario';
 
 export interface CampaignTilesOptions {
@@ -19,8 +25,33 @@ const GAP = 16;
 const TILE_FILL = 0x101820;
 const TILE_HOVER = 0x17252f;
 const TILE_SELECTED = 0x162b21;
+const TILE_LOCKED = 0x0c1116;
 const TILE_STROKE = 0x2c4437;
 const TILE_STROKE_SELECTED = 0x6fd08c;
+
+function statusLabel(preview: boolean, completed: boolean, blocked: boolean): string {
+  if (preview) {
+    return 'WKRÓTCE';
+  }
+
+  if (completed) {
+    return 'UKOŃCZONA';
+  }
+
+  return blocked ? 'ZABLOKOWANA' : 'GRAJ';
+}
+
+function statusColor(preview: boolean, completed: boolean, blocked: boolean): string {
+  if (preview) {
+    return '#c4a85f';
+  }
+
+  if (completed) {
+    return '#5fb3d4';
+  }
+
+  return blocked ? '#c47b7b' : '#6fd08c';
+}
 
 interface TileBackground {
   readonly id: string;
@@ -32,6 +63,8 @@ export class CampaignTiles {
   private backgrounds: TileBackground[] = [];
   private status: Phaser.GameObjects.Text | null = null;
   private selected: string | null = null;
+  private campaign?: Campaign;
+  private completed: ReadonlySet<string> = new Set();
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -40,11 +73,13 @@ export class CampaignTiles {
     this.container = scene.add.container(0, 0);
   }
 
-  show(campaign: Campaign): void {
+  show(campaign: Campaign, completed: ReadonlySet<string> = new Set()): void {
     this.container.removeAll(true);
     this.backgrounds = [];
     this.status = null;
     this.selected = null;
+    this.campaign = campaign;
+    this.completed = completed;
 
     const { x, y, width, height } = this.options;
 
@@ -130,39 +165,56 @@ export class CampaignTiles {
       color: '#9fb0a5',
       wordWrap: { width: width - PADDING * 2 },
     });
-    const ready = tile.mission !== undefined;
+    const preview = tile.mission === undefined;
+    const completedMission = isMissionCompleted(tile, this.completed);
+    const blocked = !preview && !isTileUnlocked(tile, this.completed);
     const badge = this.scene.add.text(
       x + PADDING,
       y + height - 30,
-      ready ? 'GRAJ' : 'WKRÓTCE',
+      statusLabel(preview, completedMission, blocked),
       {
         fontFamily: 'monospace',
         fontSize: '11px',
-        color: ready ? '#6fd08c' : '#c4a85f',
+        color: statusColor(preview, completedMission, blocked),
       },
     );
 
+    if (blocked) {
+      for (const object of [background, number, title, description, badge]) {
+        object.setAlpha(0.55);
+      }
+
+      background.setFillStyle(TILE_LOCKED, 1);
+    }
+
     background.on('pointerover', () => {
-      if (this.selected === tile.id) {
+      if (this.selected === tile.id || blocked) {
         return;
       }
 
       background.setFillStyle(TILE_HOVER, 1);
     });
     background.on('pointerout', () => {
-      if (this.selected === tile.id) {
+      if (this.selected === tile.id || blocked) {
         return;
       }
 
       background.setFillStyle(TILE_FILL, 1);
     });
     background.on('pointerdown', () => {
-      if (tile.mission) {
-        this.options.onLaunch(tile.mission);
+      if (preview) {
+        this.select(tile);
         return;
       }
 
-      this.select(tile);
+      if (blocked) {
+        this.reportBlocked(tile);
+        return;
+      }
+
+      if (tile.mission) {
+        this.options.onLaunch(tile.mission);
+      }
     });
 
     this.backgrounds.push({ id: tile.id, background });
@@ -180,5 +232,14 @@ export class CampaignTiles {
     }
 
     this.status?.setText(`Misja „${tile.title}” jest w przygotowaniu.`);
+  }
+
+  private reportBlocked(tile: CampaignTile): void {
+    const requirement = this.campaign ? prerequisiteTile(this.campaign, tile) : undefined;
+    const title = requirement?.title ?? tile.requiresMission ?? 'wcześniejszą misję';
+
+    this.status?.setText(
+      `Misja „${tile.title}” odblokuje się po ukończeniu „${title}”.`,
+    );
   }
 }

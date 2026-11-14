@@ -1,5 +1,5 @@
 import type { Database } from 'sql.js';
-import { commitPlan, type TurnPlan } from '../core/plan';
+import { commitPlan, type TurnLog, type TurnPlan } from '../core/plan';
 import type { GameState } from '../core/state';
 import { beginTurn } from '../core/turn';
 import type { FactionId } from '../core/units';
@@ -24,6 +24,15 @@ export const REPLAYS_SCHEMA = `
     faction TEXT NOT NULL,
     plan TEXT NOT NULL,
     state_after TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (replay_id, turn)
+  );
+
+  CREATE TABLE IF NOT EXISTS turn_logs (
+    replay_id TEXT NOT NULL,
+    turn INTEGER NOT NULL,
+    faction TEXT NOT NULL,
+    log TEXT NOT NULL,
     created_at TEXT NOT NULL,
     PRIMARY KEY (replay_id, turn)
   );
@@ -52,6 +61,7 @@ export interface StoredTurnPlan {
   readonly faction: FactionId;
   readonly plan: TurnPlan;
   readonly stateAfter: GameState;
+  readonly log?: TurnLog;
 }
 
 export interface StoredReplay extends ReplaySummary {
@@ -110,6 +120,41 @@ export function appendTurnPlan(
     ],
   );
   db.run('UPDATE replays SET updated_at = ? WHERE id = ?', [createdAt, replayId]);
+}
+
+export function appendTurnLog(
+  db: Database,
+  replayId: string,
+  log: TurnLog,
+  createdAt = new Date().toISOString(),
+): void {
+  db.run(
+    `INSERT INTO turn_logs (replay_id, turn, faction, log, created_at)
+     VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT(replay_id, turn) DO UPDATE SET
+       faction = excluded.faction,
+       log = excluded.log,
+       created_at = excluded.created_at`,
+    [replayId, log.turn, log.faction, JSON.stringify(log), createdAt],
+  );
+  db.run('UPDATE replays SET updated_at = ? WHERE id = ?', [createdAt, replayId]);
+}
+
+function deserializeTurnLog(raw: string): TurnLog {
+  const value: unknown = JSON.parse(raw);
+
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    typeof (value as TurnLog).turn !== 'number' ||
+    typeof (value as TurnLog).damageTotal !== 'number' ||
+    !Array.isArray((value as TurnLog).moves) ||
+    !Array.isArray((value as TurnLog).attacks)
+  ) {
+    throw new Error('Nieprawidłowy dziennik tury');
+  }
+
+  return value as TurnLog;
 }
 
 export function listReplays(db: Database): ReplaySummary[] {
@@ -198,6 +243,31 @@ export function readReplay(db: Database, id: string): StoredReplay | undefined {
     planStatement.free();
   }
 
+  const logs = new Map<number, TurnLog>();
+  const logStatement = db.prepare(
+    `SELECT turn, log
+     FROM turn_logs
+     WHERE replay_id = ?
+     ORDER BY turn ASC`,
+  );
+
+  try {
+    logStatement.bind([id]);
+
+    while (logStatement.step()) {
+      const row = logStatement.getAsObject();
+
+      try {
+        logs.set(Number(row.turn), deserializeTurnLog(String(row.log)));
+      } catch {
+        truncated = true;
+        break;
+      }
+    }
+  } finally {
+    logStatement.free();
+  }
+
   return {
     id: String(header.id),
     scenarioId: String(header.scenario_id),
@@ -207,7 +277,11 @@ export function readReplay(db: Database, id: string): StoredReplay | undefined {
     createdAt: String(header.created_at),
     updatedAt: String(header.updated_at),
     initialState: deserializeGameState(String(header.initial_state)),
-    plans,
+    plans: plans.map((entry) => {
+      const log = logs.get(entry.turn);
+
+      return log ? { ...entry, log } : entry;
+    }),
     truncated,
   };
 }
@@ -228,6 +302,11 @@ export function deleteReplaysForScenario(db: Database, scenarioId: string): numb
 
   db.run(
     `DELETE FROM turn_plans
+     WHERE replay_id IN (SELECT id FROM replays WHERE scenario_id = ?)`,
+    [scenarioId],
+  );
+  db.run(
+    `DELETE FROM turn_logs
      WHERE replay_id IN (SELECT id FROM replays WHERE scenario_id = ?)`,
     [scenarioId],
   );
@@ -264,11 +343,17 @@ export async function recordTurnPlan(
   replayId: string,
   plan: TurnPlan,
   stateAfter: GameState,
+  log?: TurnLog,
   createdAt?: string,
 ): Promise<void> {
   const db = await openReplayDatabase();
 
   appendTurnPlan(db, replayId, plan, stateAfter, createdAt);
+
+  if (log) {
+    appendTurnLog(db, replayId, log, createdAt);
+  }
+
   persistDatabase(db);
 }
 

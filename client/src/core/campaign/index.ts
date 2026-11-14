@@ -4,6 +4,7 @@ import { TUTORIAL } from './tutorial';
 import type { Campaign, CampaignId } from './types';
 
 export * from './types';
+export * from './progress';
 
 export const CAMPAIGNS: readonly Campaign[] = [TUTORIAL, KAMPANIA_1, KAMPANIA_2];
 
