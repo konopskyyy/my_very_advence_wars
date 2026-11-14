@@ -771,3 +771,50 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
   - **Dane:** brak `requiresMission` oznacza misję dostępną od razu; kafelki zapowiedzi pozostają `WKRÓTCE`.
   - **Testy:** testy jednostkowe sprawdzają logikę dostępności oraz zapis i odczyt postępu.
   - **Dokumentacja:** INTERF-007 i ZAL-011 opisują blokadę, statusy kafelków i trwały postęp.
+
+## GRA-084: Druga misja samouczka — teren i odblokowanie czołgu
+- **Kontekst:** Druga misja kończyła się walką z jednym czerwonym piechurem, więc lekcja kosztu terenu była tylko pretekstem do starcia. Gracz nie widział różnicy między górą, bagnem i miastem, a rekrutacja była wyłączona na stałe.
+- **Opis:** `missions/ruch-jednostek.ts` traci przeciwnika i dostaje poligon: góry, bagno, miasto, las, drogę i wodę w zasięgu pierwszych ruchów. `ScenarioDefinition` dostaje `sandbox`, więc brak wroga nie kończy misji po turze. `TutorialStep` dostaje `reward` (kredyty, dozwolone rodzaje, limity), a scena przyznaje nagrodę raz, po spełnieniu warunku kroku. Po czterech ruchach gracz dostaje 300 kredytów i odblokowany czołg, a piąty dymek prowadzi do zakupu. `tutorialComplete()` kończy misję sandbox po ostatnim kroku. Skrypt tłumaczy punkty ruchu, koszt góry i bagna, zatwierdzanie trasy, miasto jako tani teren oraz zakup czołgu.
+- **Kryteria:**
+  - **Bez wroga:** na mapie nie ma jednostek czerwonej strony, a tura gracza nie kończy misji od razu.
+  - **Teren:** trasa obok bazy prowadzi przez górę, bagno i miasto, a podgląd pokazuje różny koszt tych pól.
+  - **Nagroda:** przed wykonaniem czterech ruchów `KUP` nie pozwala nic kupić; po nich pojawia się 300 kredytów i czołg.
+  - **Zakończenie:** zakup czołgu lub spełnienie ostatniego kroku pokazuje ekran „MISJA UKOŃCZONA”.
+  - **Testy:** `tests/core/campaign/missions.test.ts` sprawdza brak wroga, teren, nagrodę i skrypt, a `tests/core/tutorial.test.ts` — przyznawanie nagród i zakończenie kroków.
+  - **Dokumentacja:** ZAL-011 i INTERF-005 opisują poligon, nagrodę i zakończenie misji.
+
+## GRA-085: Wsiadanie piechoty do pojazdów
+- **Kontekst:** Czołg i zwiadowca jeździły samotnie, a piechota nie mogła skorzystać z transportu. Gracz nie widział też, że pojazd może kogoś zabrać, ani gdzie podział się pasażer.
+- **Opis:** `UnitStats` dostaje `capacity` i `carries`, a `UnitBase` — `cargo` z pełnymi jednostkami. Czołg i zwiadowca mają miejsce dla jednej piechoty. `core/transport.ts` liczy trasę do pojazdu (`getMovePath()` z dozwolonym occupantsem), ładuje pasażera i wyładowuje go na pierwszy wolny sąsiedni heks. Plan dostaje akcję `board` z trasą i `targetId`; `setBoard()` wymaga pojazdu osiągalnego w pozostałym ruchu, a wsiadanie kończy turę pasażera. `planningState()` i `commitPlan()` przenoszą pasażera do `cargo`, a `beginTurn()` wyładowuje go na początku następnej tury właściciela. Scena pokazuje na hoverze obrys pojazdu i podpowiedź, pierwszy klik podgląda trasę, drugi zatwierdza; karta jednostki i token pokazują ładunek. Plan, replay i zapis mapy serializują `board` oraz `cargo`.
+- **Kryteria:**
+  - **Dostępność:** tylko piechota może wsiąść, tylko do czołgu lub zwiadowcy z wolnym miejscem.
+  - **Zasięg:** pojazd musi być osiągalny w pozostałym budżecie ruchu; trasa jest widoczna przed potwierdzeniem.
+  - **Hover:** najechanie na pojazd pokazuje obrys i komunikat o możliwości wsiadania.
+  - **Plan:** wsiadanie dodaje akcję do planera i kończy turę pasażera; nie można go połączyć z atakiem.
+  - **Wyładunek:** na początku następnej tury właściciela pasażer pojawia się na pierwszym wolnym sąsiednim heksie; bez miejsca zostaje w pojeździe.
+  - **Widok:** token pojazdu i karta jednostki pokazują liczbę pasażerów; wsiadający znikają z mapy.
+  - **Zapis:** plan z akcją `board` i stan z `cargo` przechodzą przez replay i SQLite.
+  - **Testy:** testy jednostkowe pokrywają wsiadanie, odmowy, wyładunek, plan, commit i serializację; `make verify` przechodzi.
+  - **Dokumentacja:** ZAL-004, ZAL-005, INTERF-005 i `Mapy.md` opisują transport.
+
+## GRA-086: Replay odtwarzający wszystkie tury
+- **Kontekst:** Replay dwuturownej rozgrywki pokazywał tylko jedną turę. Zapis mógł wyprzedzić odczyt, a scena odtwarzania nie pilnowała kolejności i indeksu wpisów, więc część planów ginęła.
+- **Opis:** `ScenarioScene` serializuje zapisy przez łańcuch `pendingSave = pendingSave.then(...)`, dzięki czemu `recordTurnPlan()` nie wyprzedza wcześniejszej tury, a `openReplayFromStart()` czeka na cały łańcuch przed `loadReplay()`. Odtwarzanie ustawia `replayIndex` na wejściu, zaczyna każdą turę od `beginTurn()` na stanie po poprzedniej i kończy dopiero po ostatnim wpisie. Stan po turze jest liczony przez `commitPlan()`, a zapisany `stateAfter` pozostaje punktem odniesienia dla magazynu; uszkodzony wpis nadal przerywa odczyt bez wywracania sceny.
+- **Kryteria:**
+  - **Kompletność:** dwie i więcej tur odtwarzają się po kolei, a banner pokazuje `TURA x/y` zgodne z liczbą planów.
+  - **Kolejność:** każda tura startuje ze stanu po poprzedniej, bez podwójnego `beginTurn()` i bez pomijania wpisów.
+  - **Zapis:** kolejne tury nie nadpisują się nawzajem; replay otwarty po zakończeniu misji zawiera wszystkie zapisane plany.
+  - **Odporność:** brak zapisu i uszkodzony wpis kończą się komunikatem, nie wyjątkiem.
+  - **Testy:** testy magazynu i scenariusza pokrywają wiele tur, a `make verify` przechodzi.
+  - **Dokumentacja:** INTERF-005 i `Mapy.md` opisują kolejność zapisu, odczytu i odtwarzania.
+
+## GRA-087: Przewijanie mapy nad planerem
+- **Kontekst:** Po dodaniu kompaktowego HUD planer leży nad mapą, ale cały jego obszar był traktowany jak interfejs. Środkowy przycisk myszy i przewijanie krawędzią nie działały nad panelem, więc dolna część mapy była praktycznie niedostępna.
+- **Opis:** `ScenarioScene` rozdziela strefy: modal (`KUP`, dziennik) blokuje wszystko, pasek dowodzenia blokuje kliknięcia i przewijanie, a planer tylko kliknięcia mapy i zoom. `viewport.startPan()` jest wywoływany przed sprawdzeniem planera, więc środkowy przycisk chwyta mapę także nad panelem. `edgePanBlocked` obejmuje wyłącznie modal i pasek dowodzenia, a `MapViewport` przewija krawędź również nad planerem. Kliknięcia poza panelem nadal planują ruch, a kółko nad panelem nie zoomuje mapy.
+- **Kryteria:**
+  - **Panel:** środkowy przycisk myszy przesuwa mapę zaczynając nad planerem.
+  - **Krawędź:** kursor przy krawędzi ekranu przewija mapę także wtedy, gdy planer jest otwarty.
+  - **Blokady:** pasek dowodzenia i modal nadal nie przepuszczają kliknięć ani przewijania; kółko nad planerem nie zmienia zoomu.
+  - **Mapa:** kliknięcie heksa poza panelem planuje ruch tak jak wcześniej.
+  - **Testy:** `make verify` przechodzi; logika stref ma testy jednostkowe, jeśli zostanie wydzielona.
+  - **Dokumentacja:** INTERF-002 i INTERF-005 opisują strefy przewijania i planer jako nakładkę.

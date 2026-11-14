@@ -108,7 +108,19 @@ function parseUnit(value: unknown): Unit {
     hasActed,
   };
 
-  return { ...base, kind: kind as UnitKind };
+  if (value.cargo === undefined) {
+    return { ...base, kind: kind as UnitKind };
+  }
+
+  if (!Array.isArray(value.cargo)) {
+    throw new Error('Nieprawidłowa jednostka: ładunek');
+  }
+
+  return {
+    ...base,
+    kind: kind as UnitKind,
+    cargo: value.cargo.map(parseUnit),
+  };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -25,6 +25,12 @@ export interface RecruitmentState {
   readonly appliedGrants: readonly number[];
 }
 
+export interface RecruitmentReward {
+  readonly funds?: number;
+  readonly allowedKinds?: readonly UnitKind[];
+  readonly limits?: Partial<Record<UnitKind, number>>;
+}
+
 export type RecruitmentDenial = 'forbidden' | 'limit' | 'funds';
 
 export function createRecruitment(rules?: RecruitmentRules): RecruitmentState {
@@ -35,6 +41,20 @@ export function createRecruitment(rules?: RecruitmentRules): RecruitmentState {
     grants: rules?.grants ?? [],
     purchased: {},
     appliedGrants: [],
+  };
+}
+
+export function applyRecruitmentReward(
+  state: RecruitmentState,
+  reward: RecruitmentReward,
+): RecruitmentState {
+  const unlocked = new Set<UnitKind>([...state.allowedKinds, ...(reward.allowedKinds ?? [])]);
+
+  return {
+    ...state,
+    funds: state.funds + (reward.funds ?? 0),
+    allowedKinds: [...unlocked],
+    limits: { ...state.limits, ...(reward.limits ?? {}) },
   };
 }
 

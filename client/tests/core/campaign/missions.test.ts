@@ -33,7 +33,7 @@ describe('misje kampanii', () => {
     expect(mission.tutorial?.steps).toHaveLength(4);
   });
 
-  it('ruch jednostek daje trzech graczy, jednego wroga i wyłącza rekrutację', () => {
+  it('ruch jednostek to poligon bez wroga z górami, bagnem i nagrodą', () => {
     const mission = RUCH_JEDNOSTEK.mission;
 
     expect(mission).toBeDefined();
@@ -44,16 +44,22 @@ describe('misje kampanii', () => {
     const blueUnits = mission.state.units.filter((unit) => unit.faction === 'blue');
     const redUnits = mission.state.units.filter((unit) => unit.faction === 'red');
     const terrains = new Set(Object.values(mission.state.map.cells));
+    const steps = mission.tutorial?.steps ?? [];
+    const reward = steps[3]?.reward;
 
     expect(mission.autoDeploy).toBe(false);
+    expect(mission.sandbox).toBe(true);
     expect(RUCH_JEDNOSTEK.requiresMission).toBe('tutorial-pierwsze-kroki');
     expect(mission.spawn).toEqual({ col: 2, row: 5, vision: 3 });
     expect(blueUnits.map((unit) => unit.kind).sort()).toEqual(['infantry', 'infantry', 'scout']);
-    expect(redUnits).toHaveLength(1);
-    expect(redUnits[0]?.kind).toBe('infantry');
+    expect(redUnits).toHaveLength(0);
     expect(mission.recruitment?.funds).toBe(0);
     expect(mission.recruitment?.allowedKinds).toEqual([]);
-    expect(mission.tutorial?.steps).toHaveLength(4);
-    expect([...terrains]).toEqual(expect.arrayContaining(['plain', 'road', 'forest', 'swamp', 'water']));
+    expect(steps).toHaveLength(5);
+    expect(reward).toEqual({ funds: 300, allowedKinds: ['tank'] });
+    expect(steps[4]?.until).toEqual({ purchased: 'tank', count: 1 });
+    expect([...terrains]).toEqual(
+      expect.arrayContaining(['plain', 'road', 'forest', 'swamp', 'water', 'mountain', 'city']),
+    );
   });
 });

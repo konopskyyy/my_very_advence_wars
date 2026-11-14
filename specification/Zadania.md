@@ -101,3 +101,7 @@ zadań do wykonania.
 | [[Zadania-opisy#GRA-081: Dziennik tur i replay całej gry na ekranie wyniku\|GRA-081]] | Dziennik tur i replay całej gry na ekranie wyniku | ✅ | GRA-060, GRA-061, GRA-075, INTERF-002, INTERF-006 |
 | [[Zadania-opisy#GRA-082: Kompaktowy HUD pola bitwy\|GRA-082]] | Kompaktowy HUD pola bitwy | ✅ | GRA-061, GRA-081, ADR-001, INTERF-002, INTERF-005 |
 | [[Zadania-opisy#GRA-083: Odblokowywanie misji kampanii\|GRA-083]] | Odblokowywanie misji kampanii | ✅ | GRA-042, GRA-075, GRA-076, ZAL-011, INTERF-007 |
+| [[Zadania-opisy#GRA-084: Druga misja samouczka — teren i odblokowanie czołgu\|GRA-084]] | Druga misja samouczka — teren i odblokowanie czołgu | ✅ | GRA-076, GRA-083, ZAL-011, INTERF-005 |
+| [[Zadania-opisy#GRA-085: Wsiadanie piechoty do pojazdów\|GRA-085]] | Wsiadanie piechoty do pojazdów | ✅ | GRA-049, GRA-057, ADR-001, ADR-039, ZAL-004, ZAL-005, INTERF-005 |
+| [[Zadania-opisy#GRA-086: Replay odtwarzający wszystkie tury\|GRA-086]] | Replay odtwarzający wszystkie tury | ✅ | GRA-060, GRA-081, ADR-041, INTERF-005, `specification/Mapy.md` |
+| [[Zadania-opisy#GRA-087: Przewijanie mapy nad planerem\|GRA-087]] | Przewijanie mapy nad planerem | ✅ | GRA-024, GRA-082, ADR-023, INTERF-002, INTERF-005 |

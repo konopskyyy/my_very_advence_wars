@@ -83,6 +83,22 @@ function parseAction(value: unknown): PlanAction {
     return { kind: 'attack', targetId: value.targetId };
   }
 
+  if (value.kind === 'board') {
+    if (typeof value.targetId !== 'string') {
+      throw new Error('Nieprawidłowa akcja planu: brak pojazdu');
+    }
+
+    if (!Array.isArray(value.path) || value.path.length === 0) {
+      throw new Error('Nieprawidłowa akcja planu: pusta trasa wsiadania');
+    }
+
+    return {
+      kind: 'board',
+      targetId: value.targetId,
+      path: value.path.map(parseCoord),
+    };
+  }
+
   throw new Error(`Nieprawidłowa akcja planu: ${value.kind}`);
 }
 

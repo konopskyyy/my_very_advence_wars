@@ -11,25 +11,25 @@ const PLAYER_DEPLOYMENT = [
   { kind: 'scout', col: 2, row: 6 },
 ] as const;
 
-const OPPONENT_DEPLOYMENT = [{ kind: 'infantry', col: 13, row: 5 }] as const;
-
 function buildMap(): GameMap {
   let map = generateMap({ cols: MAP_COLS, rows: MAP_ROWS, fill: 'plain' });
 
-  map = paintRect(map, 5, 1, 2, 2, 'forest');
-  map = paintRect(map, 7, 7, 3, 2, 'forest');
-  map = paintRect(map, 10, 2, 2, 2, 'swamp');
-  map = paintRect(map, 11, 0, 1, 3, 'water');
   map = paintRect(map, 0, 5, MAP_COLS, 1, 'road');
-  map = paintRect(map, 14, 4, 1, 1, 'city');
+  map = paintRect(map, 4, 1, 3, 2, 'forest');
+  map = paintRect(map, 5, 3, 2, 2, 'city');
+  map = paintRect(map, 5, 6, 2, 2, 'mountain');
+  map = paintRect(map, 8, 2, 2, 2, 'swamp');
+  map = paintRect(map, 8, 6, 3, 2, 'forest');
+  map = paintRect(map, 11, 3, 1, 5, 'mountain');
+  map = paintRect(map, 12, 0, 1, 3, 'water');
+  map = paintRect(map, 12, 6, 1, 4, 'swamp');
+  map = paintRect(map, 13, 3, 2, 2, 'city');
 
   return setFogOfWar(map, true);
 }
 
 function buildState(): GameState {
-  const initial = createInitialState(buildMap());
-
-  return deployUnits(deployUnits(initial, 'blue', PLAYER_DEPLOYMENT), 'red', OPPONENT_DEPLOYMENT);
+  return deployUnits(createInitialState(buildMap()), 'blue', PLAYER_DEPLOYMENT);
 }
 
 export const RUCH_JEDNOSTEK: CampaignTile = {
@@ -41,9 +41,10 @@ export const RUCH_JEDNOSTEK: CampaignTile = {
     id: 'tutorial-ruch-jednostek',
     name: 'Ruch jednostek',
     description:
-      'Trasa przez las, bagno i drogę. Naucz się planować ruch, zanim wróg podejdzie.',
+      'Poligon bez wroga: góry, bagno i miasto pokazują, ile ruchu kosztuje teren.',
     state: buildState(),
     autoDeploy: false,
+    sandbox: true,
     spawn: { col: 2, row: 5, vision: 3 },
     recruitment: { funds: 0, allowedKinds: [] },
     tutorial: {
@@ -58,7 +59,7 @@ export const RUCH_JEDNOSTEK: CampaignTile = {
         {
           hint: {
             title: 'KOSZT TERENU',
-            text: 'Droga kosztuje 0,5 punktu ruchu, las i bagno po 2, góra 3. Podgląd trasy przed zatwierdzeniem pokazuje jej koszt i pozostałe punkty.',
+            text: 'Droga kosztuje 0,5 punktu ruchu, miasto 1, bagno 2, a góry 3. Podgląd trasy przed zatwierdzeniem pokazuje jej koszt i pozostałe punkty.',
           },
           until: { moves: 2 },
         },
@@ -71,10 +72,18 @@ export const RUCH_JEDNOSTEK: CampaignTile = {
         },
         {
           hint: {
-            title: 'CEL',
-            text: 'Czerwony piechur stoi po drugiej stronie mapy. Dotrzyj do niego i zaatakuj — wróg ruszy się po Twojej turze.',
+            title: 'MIASTO I NAGRODA',
+            text: 'Miasto kosztuje tylko 1 punkt ruchu. Dojdź do miasta albo wykonaj czwarty ruch, żeby odebrać 300 kredytów na czołg.',
           },
-          until: { attacks: 1 },
+          until: { moves: 4 },
+          reward: { funds: 300, allowedKinds: ['tank'] },
+        },
+        {
+          hint: {
+            title: 'CZOŁG',
+            text: 'KUP jest odblokowany. Otwórz KUP i postaw czołg obok bazy — to kończy lekcję ruchu.',
+          },
+          until: { purchased: 'tank', count: 1 },
         },
       ],
     },

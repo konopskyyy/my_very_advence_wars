@@ -19,6 +19,8 @@ export const TANK_STATS: UnitStats = {
   visionRange: 3,
   attackRange: 1,
   ammo: TANK_AMMO,
+  capacity: 1,
+  carries: ['infantry'],
 };
 
 export function createTank(id: string, faction: FactionId, pos: HexCoord): TankUnit {

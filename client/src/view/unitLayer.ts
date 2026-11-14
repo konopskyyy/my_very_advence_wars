@@ -242,6 +242,7 @@ export function createUnitToken(
 
 export class UnitLayer {
   private readonly tokens = new Map<string, Phaser.GameObjects.Image>();
+  private readonly badges = new Map<string, Phaser.GameObjects.Text>();
   private readonly positions = new Map<string, HexCoord>();
   private readonly motions = new Map<string, TokenMotion>();
 
@@ -290,6 +291,7 @@ export class UnitLayer {
       );
       this.motions.delete(frame.unitId);
       this.positions.set(frame.unitId, frame.progress >= 1 ? frame.to : frame.from);
+      this.placeBadge(frame.unitId, token.x, token.y);
     }
   }
 
@@ -307,6 +309,7 @@ export class UnitLayer {
 
       token.setPosition(center.x, center.y);
       this.positions.set(unit.id, unit.pos);
+      this.placeBadge(unit.id, center.x, center.y);
     }
   }
 
@@ -323,7 +326,10 @@ export class UnitLayer {
 
       if (motion.elapsed >= UNIT_MOVE_MS) {
         motion.token.setPosition(motion.toX, motion.toY);
+        this.placeBadge(id, motion.toX, motion.toY);
         this.motions.delete(id);
+      } else {
+        this.placeBadge(id, motion.token.x, motion.token.y);
       }
     }
   }
@@ -337,7 +343,12 @@ export class UnitLayer {
       token.destroy();
     }
 
+    for (const badge of this.badges.values()) {
+      badge.destroy();
+    }
+
     this.tokens.clear();
+    this.badges.clear();
     this.positions.clear();
     this.motions.clear();
   }
@@ -358,6 +369,8 @@ export class UnitLayer {
 
       token.destroy();
       this.tokens.delete(id);
+      this.badges.get(id)?.destroy();
+      this.badges.delete(id);
       this.positions.delete(id);
       this.motions.delete(id);
     }
@@ -373,6 +386,7 @@ export class UnitLayer {
         this.motions.delete(unit.id);
         const center = this.center(unit.pos);
         token.setPosition(center.x, center.y);
+        this.syncBadge(unit, center.x, center.y);
         continue;
       }
 
@@ -384,6 +398,7 @@ export class UnitLayer {
           token.setPosition(center.x, center.y);
         }
 
+        this.syncBadge(unit, token.x, token.y);
         continue;
       }
 
@@ -392,6 +407,7 @@ export class UnitLayer {
       if (!animate) {
         this.motions.delete(unit.id);
         token.setPosition(center.x, center.y);
+        this.syncBadge(unit, center.x, center.y);
         continue;
       }
 
@@ -403,6 +419,42 @@ export class UnitLayer {
         toY: center.y,
         elapsed: 0,
       });
+      this.syncBadge(unit, token.x, token.y);
     }
+  }
+
+  private syncBadge(unit: Unit, x: number, y: number): void {
+    const count = unit.cargo?.length ?? 0;
+    let badge = this.badges.get(unit.id);
+
+    if (count <= 0) {
+      badge?.destroy();
+      this.badges.delete(unit.id);
+      return;
+    }
+
+    if (!badge) {
+      badge = this.scene.add
+        .text(0, 0, '', {
+          fontFamily: 'monospace',
+          fontSize: '12px',
+          fontStyle: 'bold',
+          color: '#f2d35c',
+          stroke: '#0b0f14',
+          strokeThickness: 3,
+        })
+        .setOrigin(1, 1)
+        .setDepth(3);
+      this.badges.set(unit.id, badge);
+    }
+
+    badge.setText(`+${count}`);
+    this.placeBadge(unit.id, x, y);
+  }
+
+  private placeBadge(unitId: string, x: number, y: number): void {
+    this.badges
+      .get(unitId)
+      ?.setPosition(x + UNIT_TOKEN_SIZE / 2 - 1, y + UNIT_TOKEN_SIZE / 2 - 1);
   }
 }

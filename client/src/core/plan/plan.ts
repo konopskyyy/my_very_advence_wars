@@ -3,6 +3,7 @@ import { hexDistance, type HexCoord } from '../map/layout';
 import { getMovePath } from '../map/movement';
 import { cellKey } from '../map/model';
 import type { GameState } from '../state';
+import { cargoCount } from '../transport';
 import type { TurnState } from '../turn';
 import { UNIT_DEFS, type Unit } from '../units';
 import { planningState } from './simulate';
@@ -120,6 +121,69 @@ export function setMove(
   }
 
   const next = withActions(plan, unitId, [...baseActions, { kind: 'move', path }]);
+
+  return uniqueFinalPositions(next, state) ? { ok: true, plan: next } : fail('occupied-target');
+}
+
+export function setBoard(
+  plan: TurnPlan,
+  state: GameState,
+  unitId: string,
+  vehicleId: string,
+): PlanEditResult {
+  const unit = state.units.find((candidate) => candidate.id === unitId);
+
+  if (!unit) {
+    return fail('unknown-unit');
+  }
+
+  if (unit.faction !== plan.faction) {
+    return fail('wrong-faction');
+  }
+
+  const actions = unitActions(plan, unitId);
+  const trailingBoard = actions[actions.length - 1]?.kind === 'board';
+  const baseActions = trailingBoard ? actions.slice(0, -1) : actions;
+  const baseState = planningState(state, withActions(plan, unitId, baseActions));
+  const passenger = baseState.units.find((candidate) => candidate.id === unitId);
+  const vehicle = baseState.units.find((candidate) => candidate.id === vehicleId);
+
+  if (!passenger || !vehicle) {
+    return fail('no-target');
+  }
+
+  const stats = UNIT_DEFS[vehicle.kind];
+
+  if (
+    vehicle.id === passenger.id ||
+    vehicle.faction !== passenger.faction ||
+    (stats.capacity ?? 0) <= 0
+  ) {
+    return fail('not-carrier');
+  }
+
+  if (!(stats.carries ?? []).includes(passenger.kind)) {
+    return fail('not-carried');
+  }
+
+  if (cargoCount(vehicle) >= (stats.capacity ?? 0)) {
+    return fail('cargo-full');
+  }
+
+  if (passenger.hasActed || passenger.movesLeft <= 0) {
+    return fail('invalid-action');
+  }
+
+  const path = getMovePath(baseState, passenger, vehicle.pos, vehicle.id);
+
+  if (!path) {
+    return fail('unreachable');
+  }
+
+  const next = withActions(plan, unitId, [
+    ...baseActions,
+    { kind: 'board', targetId: vehicleId, path },
+  ]);
 
   return uniqueFinalPositions(next, state) ? { ok: true, plan: next } : fail('occupied-target');
 }

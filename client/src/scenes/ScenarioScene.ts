@@ -26,6 +26,7 @@ import {
   removeActionFrom,
   removeLastAction,
   sampleTimeline,
+  setBoard,
   setMove,
   unitActions,
   type PlanError,
@@ -48,7 +49,14 @@ import {
   type UnitKind,
 } from '../core/units';
 import { visibleTileKeys, visibleUnitAt, visibleUnits, type VisionPoint } from '../core/vision';
-import { activeTutorialHint, tutorialProgress, type TutorialScript } from '../core/tutorial';
+import {
+  activeTutorialHint,
+  applyTutorialRewards,
+  tutorialComplete,
+  tutorialProgress,
+  type TutorialScript,
+} from '../core/tutorial';
+import { boardingPath, canBoard } from '../core/transport';
 import { HexMapView, HEX_SIZE, outlineHex } from '../view/hexGrid';
 import { MapViewport } from '../view/mapViewport';
 import { MissionResult } from '../view/missionResult';
@@ -86,6 +94,7 @@ const EDGE_PAN_MARGIN = 24;
 const MOVE_HINT_COLOR = 0x6fd08c;
 const ATTACK_HINT_COLOR = 0xe0563f;
 const PENDING_ATTACK_COLOR = 0xffb347;
+const BOARD_HINT_COLOR = 0x5aa9e6;
 const ATTACK_HINT_SIZE = HEX_SIZE - 8;
 const SHOT_LINE_DASH = 8;
 const SHOT_LINE_GAP = 5;
@@ -119,6 +128,11 @@ export class ScenarioScene extends Phaser.Scene {
     readonly unitId: string;
     readonly targetId: string;
   } | null = null;
+  private pendingBoard: {
+    readonly unitId: string;
+    readonly vehicleId: string;
+    readonly plan: TurnPlan;
+  } | null = null;
   private timeline: TurnTimeline = { durationMs: 0, clips: [] };
   private previewMs: number | null = null;
   private playing = false;
@@ -136,6 +150,7 @@ export class ScenarioScene extends Phaser.Scene {
   private tutorialScript?: TutorialScript;
   private tutorialMoves = 0;
   private tutorialAttacks = 0;
+  private tutorialRewards = new Set<number>();
   private returnScene = 'scenario-menu';
   private returnLabel = 'MENU SCENARIUSZY';
   private finished = false;
@@ -213,11 +228,13 @@ export class ScenarioScene extends Phaser.Scene {
     this.previewMs = null;
     this.playing = false;
     this.playback = null;
+    this.pendingBoard = null;
     this.recruitment = createRecruitment(this.scenario.recruitment);
     this.recruitKind = this.recruitment.allowedKinds[0] ?? 'infantry';
     this.tutorialScript = this.scenario.tutorial;
     this.tutorialMoves = 0;
     this.tutorialAttacks = 0;
+    this.tutorialRewards = new Set();
     this.returnScene = data?.returnScene ?? 'scenario-menu';
     this.returnLabel = data?.returnLabel ?? 'MENU SCENARIUSZY';
     this.finished = false;
@@ -235,7 +252,8 @@ export class ScenarioScene extends Phaser.Scene {
       zoomMax: 2.5,
       startZoom: 0.9,
       edgePanMargin: EDGE_PAN_MARGIN,
-      edgePanBlocked: (pointer) => this.pointerOverUi(pointer) && !this.pointerOverBarEdge(pointer),
+      edgePanBlocked: (pointer) =>
+        this.pointerOverModal() || this.pointerOverCommandBar(pointer),
     });
 
     this.mapView = new HexMapView(this, this.state.map);
@@ -472,11 +490,15 @@ export class ScenarioScene extends Phaser.Scene {
       return;
     }
 
-    if (this.pointerOverUi(pointer)) {
+    if (this.pointerOverModal() || this.pointerOverCommandBar(pointer)) {
       return;
     }
 
     if (this.viewport.startPan(pointer)) {
+      return;
+    }
+
+    if (this.pointerOverPlanner(pointer)) {
       return;
     }
 
@@ -502,6 +524,7 @@ export class ScenarioScene extends Phaser.Scene {
           this.applyPlan(this.pendingMove.plan);
         }
 
+        this.pendingBoard = null;
         const result = addAttack(this.plan, this.state, unit.id, target.id);
 
         if (!result.ok) {
@@ -527,6 +550,36 @@ export class ScenarioScene extends Phaser.Scene {
 
       const ontoOwnUnit = target !== undefined && target.id !== unit.id;
 
+      if (ontoOwnUnit) {
+        const boarded = setBoard(this.plan, this.state, unit.id, target.id);
+
+        if (boarded.ok) {
+          if (
+            this.pendingBoard?.unitId === unit.id &&
+            this.pendingBoard.vehicleId === target.id
+          ) {
+            this.applyPlan(boarded.plan);
+            return;
+          }
+
+          this.pendingMove = null;
+          this.pendingAttack = null;
+          this.pendingBoard = { unitId: unit.id, vehicleId: target.id, plan: boarded.plan };
+          this.drawPath();
+          this.planner.notice('Kliknij pojazd ponownie, aby potwierdzić wsiadanie');
+          return;
+        }
+
+        if (boarded.reason !== 'not-carrier' && boarded.reason !== 'not-carried') {
+          this.pendingMove = null;
+          this.pendingAttack = null;
+          this.pendingBoard = null;
+          this.drawPath();
+          this.planner.notice(describePlanError(boarded.reason));
+          return;
+        }
+      }
+
       if (!target || ontoOwnUnit) {
         const result = setMove(this.plan, this.state, unit.id, coord);
 
@@ -538,6 +591,7 @@ export class ScenarioScene extends Phaser.Scene {
 
           this.pendingMove = null;
           this.pendingAttack = null;
+          this.pendingBoard = null;
           this.drawPath();
           this.planner.notice(describePlanError(result.reason));
           return;
@@ -553,6 +607,7 @@ export class ScenarioScene extends Phaser.Scene {
         }
 
         this.pendingAttack = null;
+        this.pendingBoard = null;
         this.pendingMove = { unitId: unit.id, coord, plan: result.plan };
         this.drawPath();
         this.planner.notice('Kliknij ten heks ponownie, aby potwierdzić ruch');
@@ -612,10 +667,46 @@ export class ScenarioScene extends Phaser.Scene {
     );
   }
 
+  private boardingCandidate(): { passenger: Unit; vehicle: Unit; path: HexCoord[] } | null {
+    const hovered = this.hoveredUnit();
+    const selected = this.selectedUnit();
+
+    if (!hovered || !selected || hovered.id === selected.id) {
+      return null;
+    }
+
+    const base = planningState(this.state, this.plan);
+    const passenger = base.units.find((candidate) => candidate.id === selected.id);
+    const vehicle = base.units.find((candidate) => candidate.id === hovered.id);
+
+    if (!passenger || !vehicle || !canBoard(vehicle, passenger)) {
+      return null;
+    }
+
+    const path = boardingPath(base, passenger, vehicle);
+
+    return path ? { passenger, vehicle, path } : null;
+  }
+
+  private refreshBoardingHint(): void {
+    const candidate = this.boardingCandidate();
+
+    if (!candidate) {
+      return;
+    }
+
+    this.planner.notice(
+      `${UNIT_DEFS[candidate.vehicle.kind].label} może zabrać ${UNIT_DEFS[
+        candidate.passenger.kind
+      ].label.toLowerCase()} — kliknij pojazd, aby zaplanować`,
+    );
+  }
+
   private applyPlan(plan: TurnPlan): void {
     this.plan = plan;
     this.pendingMove = null;
     this.pendingAttack = null;
+    this.pendingBoard = null;
     this.timeline = buildTimeline(this.plan, this.state);
     this.clearPreview();
     this.refreshPlan();
@@ -660,6 +751,11 @@ export class ScenarioScene extends Phaser.Scene {
     this.refreshUnitPreview();
     this.refreshPlan();
     this.refreshTutorial();
+
+    if (this.finished) {
+      return true;
+    }
+
     this.drawPath();
     this.planner.notice(`${UNIT_DEFS[kind].label} dołącza do armii`);
     return true;
@@ -676,9 +772,10 @@ export class ScenarioScene extends Phaser.Scene {
       return;
     }
 
-    if (this.pendingMove || this.pendingAttack) {
+    if (this.pendingMove || this.pendingAttack || this.pendingBoard) {
       this.pendingMove = null;
       this.pendingAttack = null;
+      this.pendingBoard = null;
       this.drawPath();
     }
 
@@ -726,6 +823,7 @@ export class ScenarioScene extends Phaser.Scene {
     this.timeline = buildTimeline(this.plan, this.state);
     this.pendingMove = null;
     this.pendingAttack = null;
+    this.pendingBoard = null;
     this.clearPreview();
     this.selected = null;
     this.selection.clear();
@@ -816,7 +914,11 @@ export class ScenarioScene extends Phaser.Scene {
       this.missionDamage += log.damageTotal;
     }
 
-    this.pendingSave = this.saveTurn(finishedPlan, committed.state, log);
+    this.pendingSave = this.pendingSave
+      .then(() => this.saveTurn(finishedPlan, committed.state, log))
+      .catch((error) => {
+        console.warn('Nie udało się zapisać planu tury', error);
+      });
 
     if (wasPlayerTurn) {
       const executed = tutorialProgress(this.recruitment, finishedPlan);
@@ -831,6 +933,7 @@ export class ScenarioScene extends Phaser.Scene {
     this.previewMs = null;
     this.pendingMove = null;
     this.pendingAttack = null;
+    this.pendingBoard = null;
     this.selected = null;
     this.hover = null;
     this.hoverUnitId = null;
@@ -852,12 +955,15 @@ export class ScenarioScene extends Phaser.Scene {
 
     const enemyLeft = this.state.units.some((unit) => unit.faction !== this.playerFaction);
 
-    if (wasPlayerTurn && !enemyLeft) {
+    if (wasPlayerTurn && !enemyLeft && !this.scenario.sandbox) {
       this.finishMission();
       return;
     }
 
-    this.turn = nextTurn(this.turn);
+    this.turn =
+      this.scenario.sandbox && wasPlayerTurn
+        ? { faction: this.turn.faction, turn: this.turn.turn + 1 }
+        : nextTurn(this.turn);
     this.state = beginTurn(this.state, this.turn.faction);
     this.plan = createTurnPlan(this.turn);
     this.timeline = { durationMs: 0, clips: [] };
@@ -956,6 +1062,7 @@ export class ScenarioScene extends Phaser.Scene {
   }
 
   private async openReplayFromStart(): Promise<void> {
+    await this.pendingSave;
     const replay = this.replay ?? (await this.loadReplayForRestart());
 
     if (!replay || replay.plans.length === 0) {
@@ -1014,6 +1121,7 @@ export class ScenarioScene extends Phaser.Scene {
       return;
     }
 
+    this.replayIndex = index;
     this.state = beginTurn(index === 0 ? replay.initialState : this.state, entry.faction);
     this.turn = { faction: entry.faction, turn: entry.turn };
     this.plan = entry.plan;
@@ -1085,7 +1193,7 @@ export class ScenarioScene extends Phaser.Scene {
   }
 
   private onPointerMove(pointer: Phaser.Input.Pointer): void {
-    if (this.playing || this.finished || this.replayMode || this.turnLogPanel.isOpen) {
+    if (this.playing || this.finished || this.replayMode || this.pointerOverModal()) {
       return;
     }
 
@@ -1124,6 +1232,8 @@ export class ScenarioScene extends Phaser.Scene {
       this.hoverUnitId = hoveredId;
       this.drawRangeHints();
     }
+
+    this.refreshBoardingHint();
   }
 
   private onPointerUp(): void {
@@ -1206,6 +1316,7 @@ export class ScenarioScene extends Phaser.Scene {
       ) ?? null;
     this.pendingMove = null;
     this.pendingAttack = null;
+    this.pendingBoard = null;
     this.clearPreview();
     this.refreshSelection();
   }
@@ -1256,6 +1367,19 @@ export class ScenarioScene extends Phaser.Scene {
       ? canAttackThisTurn(planned)
       : UNIT_DEFS[planned.kind].attackRange > 0;
     const canMove = own && !planned.hasActed && planned.movesLeft > 0;
+
+    const board = this.boardingCandidate();
+
+    if (board) {
+      this.drawDashedLine(
+        this.mapView.center(board.passenger.pos),
+        this.mapView.center(board.vehicle.pos),
+        2,
+        0.75,
+        BOARD_HINT_COLOR,
+      );
+      outlineHex(this.rangeHints, this.mapView.center(board.vehicle.pos), BOARD_HINT_COLOR, 4);
+    }
 
     if (canMove) {
       for (const target of moveTargets(rangeState, planned)) {
@@ -1317,7 +1441,7 @@ export class ScenarioScene extends Phaser.Scene {
       let from = unit.pos;
 
       for (const action of unitPlan.actions) {
-        if (action.kind === 'move') {
+        if (action.kind === 'move' || action.kind === 'board') {
           for (const coord of action.path) {
             outlineHex(this.pathHints, this.mapView.center(coord), color, lineWidth);
           }
@@ -1329,6 +1453,21 @@ export class ScenarioScene extends Phaser.Scene {
           if (end) {
             outlineHex(this.pathHints, this.mapView.center(end), color, 4);
             from = end;
+          }
+
+          if (action.kind === 'board') {
+            const vehicle = planningState(this.state, this.plan).units.find(
+              (candidate) => candidate.id === action.targetId,
+            );
+
+            if (vehicle) {
+              outlineHex(
+                this.pathHints,
+                this.mapView.center(vehicle.pos),
+                BOARD_HINT_COLOR,
+                selected ? 5 : 4,
+              );
+            }
           }
 
           continue;
@@ -1368,6 +1507,40 @@ export class ScenarioScene extends Phaser.Scene {
     this.drawShotLines(selectedId);
     this.drawPendingMove();
     this.drawPendingAttack();
+    this.drawPendingBoard();
+  }
+
+  private drawPendingBoard(): void {
+    const pending = this.pendingBoard;
+
+    if (!pending) {
+      return;
+    }
+
+    const unit = this.state.units.find((candidate) => candidate.id === pending.unitId);
+    const vehicle = planningState(this.state, pending.plan).units.find(
+      (candidate) => candidate.id === pending.vehicleId,
+    );
+
+    if (!unit || !vehicle) {
+      return;
+    }
+
+    const action = unitActions(pending.plan, pending.unitId).find(
+      (candidate) => candidate.kind === 'board',
+    );
+
+    if (!action || action.kind !== 'board') {
+      return;
+    }
+
+    for (const coord of action.path) {
+      outlineHex(this.pathHints, this.mapView.center(coord), BOARD_HINT_COLOR, 2);
+    }
+
+    this.drawMovementArrows(unit.pos, action.path, BOARD_HINT_COLOR, 2);
+    outlineHex(this.pathHints, this.mapView.center(vehicle.pos), BOARD_HINT_COLOR, 5);
+    outlineHex(this.pathHints, this.mapView.center(vehicle.pos), 0xffffff, 2);
   }
 
   private drawPendingMove(): void {
@@ -1599,20 +1772,28 @@ export class ScenarioScene extends Phaser.Scene {
     outlineHex(this.cursor, this.mapView.center(this.hover), 0xffffff, 2);
   }
 
-  private pointerOverBarEdge(pointer: Phaser.Input.Pointer): boolean {
-    return pointer.y >= this.scale.height - EDGE_PAN_MARGIN;
+  private pointerOverModal(): boolean {
+    return (this.turnLogPanel?.isOpen ?? false) || (this.recruitDialog?.isOpen ?? false);
+  }
+
+  private pointerOverCommandBar(pointer: Phaser.Input.Pointer): boolean {
+    return !this.replayMode && pointer.y >= this.scale.height - BAR_HEIGHT;
+  }
+
+  private pointerOverPlanner(pointer: Phaser.Input.Pointer): boolean {
+    return (
+      !this.replayMode &&
+      !this.pointerOverCommandBar(pointer) &&
+      pointer.y >= this.scale.height - BAR_HEIGHT - (this.planner?.height ?? 0)
+    );
   }
 
   private pointerOverUi(pointer: Phaser.Input.Pointer): boolean {
-    if ((this.turnLogPanel?.isOpen ?? false) || (this.recruitDialog?.isOpen ?? false)) {
-      return true;
-    }
-
-    if (this.replayMode) {
-      return false;
-    }
-
-    return pointer.y >= this.scale.height - BAR_HEIGHT - (this.planner?.height ?? 0);
+    return (
+      this.pointerOverModal() ||
+      this.pointerOverCommandBar(pointer) ||
+      this.pointerOverPlanner(pointer)
+    );
   }
 
   private refreshHud(): void {
@@ -1628,16 +1809,43 @@ export class ScenarioScene extends Phaser.Scene {
   }
 
   private refreshTutorial(): void {
-    const hint = activeTutorialHint(this.tutorialScript, {
+    const progress = {
       purchased: this.recruitment.purchased,
       moves: this.tutorialMoves,
       attacks: this.tutorialAttacks,
-    });
+    };
+
+    const rewarded = applyTutorialRewards(
+      this.recruitment,
+      this.tutorialScript,
+      progress,
+      this.tutorialRewards,
+    );
+
+    if (rewarded.applied.length !== this.tutorialRewards.size) {
+      this.tutorialRewards = new Set(rewarded.applied);
+      this.recruitment = rewarded.recruitment;
+      this.syncRecruitKind();
+      this.refreshHud();
+      this.refreshUnitPreview();
+      this.planner.notice('Nagroda samouczka przyznana');
+    }
+
+    const hint = activeTutorialHint(this.tutorialScript, progress);
 
     if (hint) {
       this.tutorialTip.show(hint);
     } else {
       this.tutorialTip.hide();
+    }
+
+    if (
+      !this.replayMode &&
+      !this.finished &&
+      this.scenario.sandbox &&
+      tutorialComplete(this.tutorialScript, progress)
+    ) {
+      this.finishMission();
     }
   }
 }
@@ -1658,6 +1866,12 @@ function describePlanError(reason: PlanError): string {
       return 'Brak celu';
     case 'invalid-action':
       return 'Jednostka nie może już działać w tej turze';
+    case 'not-carrier':
+      return 'Ten pojazd nie może zabrać pasażera';
+    case 'cargo-full':
+      return 'Pojazd jest już pełny';
+    case 'not-carried':
+      return 'Ten rodzaj jednostki nie wsiada do pojazdu';
     default:
       return 'Nie można zaplanować tej akcji';
   }

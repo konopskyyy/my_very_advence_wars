@@ -15,6 +15,8 @@ export const SCOUT_STATS: UnitStats = {
   defense: 2,
   visionRange: FULL_MAP_RANGE,
   attackRange: 1,
+  capacity: 1,
+  carries: ['infantry'],
 };
 
 export function createScout(id: string, faction: FactionId, pos: HexCoord): ScoutUnit {

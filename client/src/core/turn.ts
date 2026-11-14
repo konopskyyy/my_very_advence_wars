@@ -1,4 +1,5 @@
 import type { GameState } from './state';
+import { unloadCargo } from './transport';
 import { UNIT_DEFS, type FactionId } from './units';
 
 export const TURN_ORDER: readonly FactionId[] = ['blue', 'red'];
@@ -23,7 +24,8 @@ export function nextTurn(turn: TurnState): TurnState {
 
 export function beginTurn(state: GameState, faction: FactionId): GameState {
   let changed = false;
-  const units = state.units.map((unit) => {
+  const unloaded = unloadCargo(state, faction);
+  const units = unloaded.units.map((unit) => {
     if (unit.faction !== faction) {
       return unit;
     }
@@ -40,7 +42,7 @@ export function beginTurn(state: GameState, faction: FactionId): GameState {
     return { ...unit, movesLeft, hasActed: false };
   });
 
-  return changed ? { ...state, units } : state;
+  return changed || unloaded !== state ? { ...unloaded, units } : state;
 }
 
 export function isActiveFaction(turn: TurnState, faction: FactionId): boolean {

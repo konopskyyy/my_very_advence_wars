@@ -11,7 +11,13 @@ export interface PlanAttack {
   readonly targetId: string;
 }
 
-export type PlanAction = PlanMove | PlanAttack;
+export interface PlanBoard {
+  readonly kind: 'board';
+  readonly targetId: string;
+  readonly path: readonly HexCoord[];
+}
+
+export type PlanAction = PlanMove | PlanAttack | PlanBoard;
 
 export interface UnitPlan {
   readonly unitId: string;
@@ -33,7 +39,10 @@ export type PlanError =
   | 'no-target'
   | 'friendly-target'
   | 'no-shots'
-  | 'out-of-range';
+  | 'out-of-range'
+  | 'not-carrier'
+  | 'cargo-full'
+  | 'not-carried';
 
 export type PlanEditResult =
   | { readonly ok: true; readonly plan: TurnPlan }

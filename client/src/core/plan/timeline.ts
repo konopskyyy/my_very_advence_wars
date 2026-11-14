@@ -1,7 +1,8 @@
 import type { HexCoord } from '../map';
 import type { GameState } from '../state';
+import { loadPassenger } from '../transport';
 import { UNIT_DEFS, type Unit } from '../units';
-import { walkActions } from './simulate';
+import { boardingTarget, walkActions } from './simulate';
 import type { TurnPlan } from './types';
 
 export const MOVE_STEP_MS = 250;
@@ -76,7 +77,7 @@ export function buildTimeline(plan: TurnPlan, state: GameState): TurnTimeline {
       const startMs = cursor;
       const action = step.action;
 
-      if (action.kind === 'move') {
+      if (action.kind === 'move' || action.kind === 'board') {
         cursor += action.path.length * MOVE_STEP_MS;
         clips.push({
           kind: 'move',
@@ -112,6 +113,12 @@ export function buildTimeline(plan: TurnPlan, state: GameState): TurnTimeline {
           candidate.id === simulated.id ? simulated : candidate,
         ),
       };
+
+      const boardTarget = boardingTarget(unitPlan.actions);
+
+      if (boardTarget) {
+        current = loadPassenger(current, unit.id, boardTarget);
+      }
     }
 
     builds.push({ unitId: unit.id, total: cursor, clips });

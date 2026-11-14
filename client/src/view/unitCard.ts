@@ -132,13 +132,17 @@ export class UnitCard {
       stats.ammo !== undefined
         ? ` · POCISKI ${shotsLeft(selected)}/${stats.ammo}`
         : '';
+    const cargo =
+      (stats.capacity ?? 0) > 0
+        ? ` · ŁADUNEK ${selected.cargo?.length ?? 0}/${stats.capacity}`
+        : '';
 
     this.portrait.setTexture(unitTexture(this.scene, selected.kind, selected.faction).key);
     this.name
       .setText(`${stats.label} — ${FACTION_DEFS[selected.faction].label}`)
       .setColor('#f2f5f7');
     this.stats.setText(
-      `HP ${selected.hp}/${stats.maxHp} · ATK ${stats.attack} · DEF ${stats.defense}${ammo}`,
+      `HP ${selected.hp}/${stats.maxHp} · ATK ${stats.attack} · DEF ${stats.defense}${ammo}${cargo}`,
     );
     this.ranges.setText(
       `Ruch ${formatPoints(canMove ? selected.movesLeft : 0)}/${stats.moveRange} · Wzrok ${formatRange(stats.visionRange)} · Strzał ${formatRange(stats.attackRange)}`,
@@ -149,9 +153,10 @@ export class UnitCard {
 
     const plannedMoves = planActions.filter((action) => action.kind === 'move').length;
     const plannedAttacks = planActions.filter((action) => action.kind === 'attack').length;
+    const plannedBoards = planActions.filter((action) => action.kind === 'board').length;
     const planLabel =
       planActions.length > 0
-        ? `Plan: ${plannedMoves}× ruch, ${plannedAttacks}× atak · Del — usuń ostatnią`
+        ? `Plan: ${plannedMoves}× ruch, ${plannedAttacks}× atak${plannedBoards > 0 ? ', wsiadanie' : ''} · Del — usuń ostatnią`
         : null;
 
     this.status

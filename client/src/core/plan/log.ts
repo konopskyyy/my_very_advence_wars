@@ -1,8 +1,9 @@
 import type { HexCoord } from '../map';
 import type { GameState } from '../state';
+import { loadPassenger } from '../transport';
 import type { UnitKind } from '../units';
 import type { PlanCommit } from './commit';
-import { walkActions } from './simulate';
+import { boardingTarget, walkActions } from './simulate';
 import type { TurnPlan } from './types';
 
 export interface TurnLogMove {
@@ -35,16 +36,19 @@ export function buildTurnLog(
   commit: Pick<PlanCommit, 'hits' | 'killed'>,
 ): TurnLog {
   const moves: TurnLogMove[] = [];
+  let current = stateBefore;
 
   for (const unitPlan of plan.units) {
-    const unit = stateBefore.units.find((candidate) => candidate.id === unitPlan.unitId);
+    const unit = current.units.find((candidate) => candidate.id === unitPlan.unitId);
 
     if (!unit) {
       continue;
     }
 
-    walkActions(stateBefore, unit, unitPlan.actions, (step) => {
-      if (step.action.kind !== 'move' || step.action.path.length === 0) {
+    const simulated = walkActions(current, unit, unitPlan.actions, (step) => {
+      const action = step.action;
+
+      if ((action.kind !== 'move' && action.kind !== 'board') || action.path.length === 0) {
         return;
       }
 
@@ -55,6 +59,21 @@ export function buildTurnLog(
         to: step.after.pos,
       });
     });
+
+    if (simulated) {
+      current = {
+        ...current,
+        units: current.units.map((candidate) =>
+          candidate.id === simulated.id ? simulated : candidate,
+        ),
+      };
+
+      const boardTarget = boardingTarget(unitPlan.actions);
+
+      if (boardTarget) {
+        current = loadPassenger(current, unit.id, boardTarget);
+      }
+    }
   }
 
   const killed = new Set(commit.killed);

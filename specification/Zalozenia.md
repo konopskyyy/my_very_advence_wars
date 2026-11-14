@@ -76,6 +76,10 @@
   `ammo` strzałów, a każdy wydany punkt ruchu proporcjonalnie zmniejsza zapas.
   Jednostka nie przechowuje osobnego licznika amunicji.
 - Jednostka zajmuje jeden heks; na jednym heksie stoi najwyżej jedna jednostka.
+- Czołg i zwiadowca mają `capacity: 1` i `carries: ['infantry']` — mogą
+  przewieźć jednego piechura. Załadowany pasażer znika z mapy i jest trzymany
+  w `UnitBase.cargo` jako pełna jednostka; nie zajmuje heksu, nie blokuje
+  ruchu, nie strzela i nie może zostać zaatakowany.
 - Strony jednostek to `blue`, `red` i `neutral`; edytor i rozgrywka używają
   niebieskiej i czerwonej.
 - Piechota ma domyślnie broń `RIFLE` (karabin), której `shotSound` wskazuje
@@ -112,6 +116,12 @@
   kończą się w tym samym momencie.
 - Zaplanowany ruch jest wiążący — jednostka nie zatrzymuje się po odkryciu
   wroga i nie reaguje ogniem w trakcie tury.
+- Piechota może wsiąść do własnego czołgu albo zwiadowcy, jeśli pojazd jest
+  osiągalny w pozostałym budżecie ruchu i ma wolne miejsce. Wsiadanie planuje
+  się jak ruch na heks pojazdu (trasa liczona do jego docelowej pozycji),
+  kończy turę pasażera i jest akcją `board` w planie. Pasażer wraca na mapę
+  na początku następnej tury właściciela, na pierwszy wolny sąsiedni heks
+  przechodni; bez wolnego heksu zostaje w pojeździe do kolejnej tury.
 - Brak stref kontroli i dodatkowych zasad wejścia na heks.
 
 ## ZAL-006: Walka
@@ -213,12 +223,14 @@
   ataku); dymki znikają po pierwszym wykonanym ataku. Jednostki wychodzą
   z bazy na heksie `(2, 5)`, która sama ma zasięg wzroku 3. Zabicie
   ostatniego wroga kończy misję i pokazuje ekran wyniku.
-- Druga misja (plik `ruch-jednostek.ts`) uczy ruchu: mapa 16×10 ma drogę,
-  las, bagno i wodę, gracz dostaje dwóch piechurów i zwiadowcę wokół bazy,
-  a rekrutacja jest wyłączona. Czerwony piechur po drugiej stronie jest
-  celem; dymki tłumaczą punkty ruchu, koszt terenu i zatwierdzanie trasy.
-  Misja odblokowuje się po ukończeniu pierwszej, a postęp jest zapisywany
-  trwale w przeglądarce.
+- Druga misja (plik `ruch-jednostek.ts`) uczy ruchu na poligonie bez
+  przeciwnika: mapa 16×10 ma drogę, las, bagno, góry, miasto i wodę, a gracz
+  dostaje dwóch piechurów i zwiadowcę wokół bazy. Misja ma flagę `sandbox`,
+  więc brak wroga nie kończy jej po turze. Pierwsze cztery dymki tłumaczą
+  punkty ruchu, koszt góry i bagna, zatwierdzanie trasy oraz miasto; po nich
+  gracz dostaje 300 kredytów i odblokowany czołg, a piąty dymek prowadzi do
+  zakupu. Zakup czołgu kończy misję. Misja odblokowuje się po ukończeniu
+  pierwszej, a postęp jest zapisywany trwale w przeglądarce.
 - Kafelki „Walka”, „Mgła wojny”, „Amunicja” i „Artyleria” są zapowiedziami —
   kliknięcie pokazuje komunikat „wkrótce”; nie mają jeszcze scenariusza ani
   uruchomienia.

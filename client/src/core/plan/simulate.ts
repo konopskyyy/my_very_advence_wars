@@ -3,6 +3,7 @@ import { hexDistance, type HexCoord } from '../map/layout';
 import { findUnitAt, getMoveCost } from '../map/movement';
 import { IMPASSABLE } from '../map/terrain';
 import type { GameState } from '../state';
+import { canCarry, loadPassenger } from '../transport';
 import { applyAttackCost, UNIT_DEFS, type Unit } from '../units';
 import type { PlanAction, TurnPlan } from './types';
 
@@ -22,7 +23,12 @@ function replaceUnit(state: GameState, unit: Unit): GameState {
   };
 }
 
-function walkPath(state: GameState, unit: Unit, path: readonly HexCoord[]): Unit | undefined {
+function walkPath(
+  state: GameState,
+  unit: Unit,
+  path: readonly HexCoord[],
+  allowOccupantId?: string,
+): Unit | undefined {
   if (path.length === 0) {
     return undefined;
   }
@@ -41,7 +47,7 @@ function walkPath(state: GameState, unit: Unit, path: readonly HexCoord[]): Unit
 
     const occupant = findUnitAt(pathState, coord);
 
-    if (occupant && occupant.id !== unit.id) {
+    if (occupant && occupant.id !== unit.id && occupant.id !== allowOccupantId) {
       return undefined;
     }
 
@@ -86,6 +92,24 @@ export function walkActions(
       }
 
       current = moved;
+    } else if (action.kind === 'board') {
+      const vehicle = state.units.find((candidate) => candidate.id === action.targetId);
+
+      if (!vehicle || !canCarry(vehicle, current)) {
+        return undefined;
+      }
+
+      const moved = walkPath(state, current, action.path, vehicle.id);
+
+      if (
+        !moved ||
+        moved.pos.col !== vehicle.pos.col ||
+        moved.pos.row !== vehicle.pos.row
+      ) {
+        return undefined;
+      }
+
+      current = { ...moved, movesLeft: 0, hasActed: true };
     } else {
       const target = state.units.find((candidate) => candidate.id === action.targetId);
 
@@ -132,8 +156,20 @@ export function planningState(state: GameState, plan: TurnPlan): GameState {
 
     if (simulated) {
       current = replaceUnit(current, simulated);
+
+      const boardTarget = boardingTarget(unitPlan.actions);
+
+      if (boardTarget) {
+        current = loadPassenger(current, unit.id, boardTarget);
+      }
     }
   }
 
   return current;
+}
+
+export function boardingTarget(actions: readonly PlanAction[]): string | undefined {
+  const last = actions[actions.length - 1];
+
+  return last?.kind === 'board' ? last.targetId : undefined;
 }

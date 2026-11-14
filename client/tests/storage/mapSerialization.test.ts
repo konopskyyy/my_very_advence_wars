@@ -98,4 +98,29 @@ describe('serializacja stanu gry', () => {
     expect('ammo' in tank).toBe(false);
     expect(shotsLeft(tank)).toBe(TANK_AMMO);
   });
+
+  it('zapisuje i przywraca ładunek pojazdu', () => {
+    let state = sampleState();
+
+    state = placeUnit(state, 'infantry', { col: 3, row: 2 }, 'blue');
+    const tank = state.units.find((unit) => unit.kind === 'tank')!;
+    const infantry = state.units.find(
+      (unit) => unit.kind === 'infantry' && unit.pos.col === 3,
+    )!;
+    const loaded = {
+      ...state,
+      units: state.units
+        .filter((unit) => unit.id !== infantry.id)
+        .map((unit) =>
+          unit.id === tank.id
+            ? { ...unit, cargo: [{ ...infantry, pos: unit.pos, movesLeft: 0, hasActed: true }] }
+            : unit,
+        ),
+    };
+    const restored = deserializeGameState(serializeGameState(loaded));
+    const restoredTank = restored.units.find((unit) => unit.id === tank.id)!;
+
+    expect(restoredTank.cargo).toHaveLength(1);
+    expect(restoredTank.cargo?.[0]?.kind).toBe('infantry');
+  });
 });

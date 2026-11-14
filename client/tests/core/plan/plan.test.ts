@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { createMap } from '../../../src/core/map';
 import {
   addAttack,
+  commitPlan,
   createTurnPlan,
   planningState,
   removeActionFrom,
   removeLastAction,
+  setBoard,
   setMove,
   unitActions,
 } from '../../../src/core/plan';
@@ -271,5 +273,61 @@ describe('plan', () => {
 
     expect(unitActions(removedAttack, unit.id)).toHaveLength(1);
     expect(unitActions(removedAttack, unit.id)[0]?.kind).toBe('move');
+  });
+
+  it('planuje wsiadanie piechoty do czołgu i przenosi ją do ładunku', () => {
+    let state = blueInfantryAt(createInitialState(createMap(10, 10)), 2, 3);
+    state = placeUnit(state, 'tank', { col: 4, row: 3 }, 'blue');
+    const [infantry, tank] = state.units;
+    const result = setBoard(createTurnPlan(createTurnState()), state, infantry!.id, tank!.id);
+
+    expect(result.ok).toBe(true);
+
+    if (!result.ok) {
+      return;
+    }
+
+    const action = unitActions(result.plan, infantry!.id)[0];
+
+    expect(action?.kind).toBe('board');
+    expect(action?.kind === 'board' ? action.path.at(-1) : undefined).toEqual(tank!.pos);
+
+    const planned = planningState(state, result.plan);
+
+    expect(planned.units.find((unit) => unit.id === infantry!.id)).toBeUndefined();
+    expect(planned.units.find((unit) => unit.id === tank!.id)?.cargo).toHaveLength(1);
+
+    const committed = commitPlan(state, result.plan).state;
+
+    expect(committed.units.find((unit) => unit.id === infantry!.id)).toBeUndefined();
+    expect(committed.units.find((unit) => unit.id === tank!.id)?.cargo?.[0]?.id).toBe(infantry!.id);
+  });
+
+  it('odmawia wsiadania poza budżetem ruchu i do pełnego pojazdu', () => {
+    let state = blueInfantryAt(createInitialState(createMap(12, 10)), 0, 0);
+    state = placeUnit(state, 'tank', { col: 9, row: 0 }, 'blue');
+    const plan = createTurnPlan(createTurnState());
+
+    expect(setBoard(plan, state, state.units[0]!.id, state.units[1]!.id)).toEqual({
+      ok: false,
+      reason: 'unreachable',
+    });
+
+    let near = blueInfantryAt(createInitialState(createMap(10, 10)), 2, 3);
+    near = placeUnit(near, 'tank', { col: 4, row: 3 }, 'blue');
+    near = placeUnit(near, 'infantry', { col: 3, row: 3 }, 'blue');
+    const [passenger, tank, extra] = near.units;
+    const loaded = setBoard(plan, near, extra!.id, tank!.id);
+
+    expect(loaded.ok).toBe(true);
+
+    if (!loaded.ok) {
+      return;
+    }
+
+    expect(setBoard(loaded.plan, near, passenger!.id, tank!.id)).toEqual({
+      ok: false,
+      reason: 'cargo-full',
+    });
   });
 });

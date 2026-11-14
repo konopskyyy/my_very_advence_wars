@@ -80,4 +80,41 @@ describe('serializacja planu tury', () => {
 
     expect(() => deserializeTurnPlan(JSON.stringify(badCoord))).toThrow(/współrzędne/i);
   });
+
+  it('zapisuje i odczytuje akcję wsiadania do pojazdu', () => {
+    const plan: TurnPlan = {
+      faction: 'blue',
+      turn: 2,
+      units: [
+        {
+          unitId: 'blue-1',
+          actions: [
+            { kind: 'board', targetId: 'blue-2', path: [{ col: 3, row: 3 }, { col: 4, row: 3 }] },
+          ],
+        },
+      ],
+    };
+
+    expect(deserializeTurnPlan(serializeTurnPlan(plan))).toEqual(plan);
+  });
+
+  it('odrzuca wsiadanie bez pojazdu albo bez trasy', () => {
+    const noTarget = {
+      version: 1,
+      faction: 'blue',
+      turn: 1,
+      units: [
+        { unitId: 'unit-1', actions: [{ kind: 'board', path: [{ col: 1, row: 1 }] }] },
+      ],
+    };
+    const noPath = {
+      version: 1,
+      faction: 'blue',
+      turn: 1,
+      units: [{ unitId: 'unit-1', actions: [{ kind: 'board', targetId: 'unit-2' }] }],
+    };
+
+    expect(() => deserializeTurnPlan(JSON.stringify(noTarget))).toThrow(/pojazdu/i);
+    expect(() => deserializeTurnPlan(JSON.stringify(noPath))).toThrow(/wsiadania/i);
+  });
 });
