@@ -18,6 +18,7 @@ import { attackTiles } from '../core/ranges';
 import {
   addAttack,
   buildTimeline,
+  buildTurnLog,
   commitPlan,
   createTurnPlan,
   planningState,
@@ -29,6 +30,7 @@ import {
   unitActions,
   type PlanError,
   type TimelineAttackClip,
+  type TurnLog,
   type TurnPlan,
   type TurnTimeline,
 } from '../core/plan';
@@ -51,8 +53,10 @@ import { HexMapView, HEX_SIZE, outlineHex } from '../view/hexGrid';
 import { MapViewport } from '../view/mapViewport';
 import { MissionResult } from '../view/missionResult';
 import { PlanTimeline } from '../view/planTimeline';
+import { ReplayBanner } from '../view/replayBanner';
 import { RecruitDialog } from '../view/recruitDialog';
-import { BAR_HEIGHT, ScenarioCommandBar } from '../view/scenarioCommandBar';
+import { ScenarioCommandBar } from '../view/scenarioCommandBar';
+import { BAR_HEIGHT } from '../view/hudLayout';
 import { SpawnPointView } from '../view/spawnPoint';
 import { installButtonClickSound } from '../view/buttonAudio';
 import {
@@ -65,9 +69,17 @@ import { preloadRecruitPortraits } from '../view/recruitPortrait';
 import { playShotEffect } from '../view/shotEffect';
 import { preloadTerrainTiles } from '../view/terrainTiles';
 import { TutorialTip } from '../view/tutorialTip';
+import { TurnLogPanel } from '../view/turnLogPanel';
 import { UnitLayer, unitTexture } from '../view/unitLayer';
 import { VisionFog } from '../view/visionFog';
-import { createReplayId, recordTurnPlan, startReplay } from '../storage/replays';
+import {
+  createReplayId,
+  loadReplay,
+  recordTurnPlan,
+  startReplay,
+  type StoredReplay,
+} from '../storage/replays';
+import { markMissionCompleted } from '../storage/progress';
 import { buildSiPlan, type SiSpawns } from '../si';
 
 const EDGE_PAN_MARGIN = 24;
@@ -84,6 +96,7 @@ interface ScenarioData {
   readonly playerFaction?: FactionId;
   readonly returnScene?: string;
   readonly returnLabel?: string;
+  readonly replay?: StoredReplay;
 }
 
 export class ScenarioScene extends Phaser.Scene {
@@ -126,6 +139,12 @@ export class ScenarioScene extends Phaser.Scene {
   private returnScene = 'scenario-menu';
   private returnLabel = 'MENU SCENARIUSZY';
   private finished = false;
+  private replay?: StoredReplay;
+  private replayMode = false;
+  private replayIndex = 0;
+  private missionDamage = 0;
+  private logs: TurnLog[] = [];
+  private pendingSave: Promise<void> = Promise.resolve();
 
   private viewport!: MapViewport;
   private mapView!: HexMapView;
@@ -138,6 +157,8 @@ export class ScenarioScene extends Phaser.Scene {
   private commandBar!: ScenarioCommandBar;
   private planner!: PlanTimeline;
   private recruitDialog!: RecruitDialog;
+  private turnLogPanel!: TurnLogPanel;
+  private replayBanner!: ReplayBanner;
   private readonly planGhosts: Phaser.GameObjects.Image[] = [];
   private pendingGhost?: Phaser.GameObjects.Image;
   private cursor!: Phaser.GameObjects.Graphics;
@@ -159,11 +180,29 @@ export class ScenarioScene extends Phaser.Scene {
   init(data: ScenarioData): void {
     this.scenario = data?.definition ?? BUILT_IN_SCENARIOS[0]!;
     this.playerFaction = data?.playerFaction ?? 'blue';
-    this.turn = createTurnState(this.playerFaction);
-    this.state = beginTurn(
-      ensureScenarioArmies(this.scenario.state, this.scenario.autoDeploy !== false),
-      this.turn.faction,
-    );
+    this.replay = data?.replay;
+    this.replayMode = this.replay !== undefined;
+
+    if (this.replay) {
+      const first = this.replay.plans[0];
+
+      this.state = this.replay.initialState;
+      this.turn = first
+        ? { faction: first.faction, turn: first.turn }
+        : createTurnState(this.playerFaction);
+      this.logs = this.replay.plans.flatMap((entry) => (entry.log ? [entry.log] : []));
+    } else {
+      this.turn = createTurnState(this.playerFaction);
+      this.state = beginTurn(
+        ensureScenarioArmies(this.scenario.state, this.scenario.autoDeploy !== false),
+        this.turn.faction,
+      );
+      this.logs = [];
+    }
+
+    this.replayIndex = 0;
+    this.missionDamage = 0;
+    this.pendingSave = Promise.resolve();
     this.spawns = new Map(
       this.state.units.map((unit) => [unit.id, { col: unit.pos.col, row: unit.pos.row }]),
     );
@@ -222,6 +261,7 @@ export class ScenarioScene extends Phaser.Scene {
           this.recruitDialog.show(this.turn.faction, this.recruitment);
         }
       },
+      onLog: () => this.openLogPanel(),
       onScenarioMenu: () => this.scene.start('scenario-menu'),
       onMainMenu: () => this.scene.start('menu'),
     });
@@ -244,7 +284,17 @@ export class ScenarioScene extends Phaser.Scene {
     this.missionResult = new MissionResult(this, {
       onReturn: () => this.scene.start(this.returnScene),
       onMainMenu: () => this.scene.start('menu'),
+      onReplay: () => {
+        void this.openReplayFromStart();
+      },
     });
+    this.turnLogPanel = new TurnLogPanel(this, {
+      onReplay: () => {
+        void this.openReplayFromStart();
+      },
+      onClose: () => this.turnLogPanel.hide(),
+    });
+    this.replayBanner = new ReplayBanner(this);
 
     this.setupUiCamera();
 
@@ -280,7 +330,12 @@ export class ScenarioScene extends Phaser.Scene {
     this.refreshFog();
     this.refreshPlan();
     this.refreshTutorial();
-    this.replayReady = this.beginReplay();
+    this.commandBar.setLogAvailability(this.logs.length > 0);
+    this.replayReady = this.replayMode ? Promise.resolve(null) : this.beginReplay();
+
+    if (this.replayMode) {
+      this.startReplayPlayback();
+    }
 
     (globalThis as { __mvawScene?: ScenarioScene }).__mvawScene = this;
   }
@@ -297,7 +352,7 @@ export class ScenarioScene extends Phaser.Scene {
       return;
     }
 
-    if (this.recruitDialog?.isOpen || this.playing) {
+    if (this.recruitDialog?.isOpen || this.playing || this.replayMode) {
       return;
     }
 
@@ -321,6 +376,8 @@ export class ScenarioScene extends Phaser.Scene {
       ...this.recruitDialog.uiObjects,
       ...this.tutorialTip.uiObjects,
       ...this.missionResult.uiObjects,
+      ...this.turnLogPanel.uiObjects,
+      ...this.replayBanner.uiObjects,
     ]);
     uiCamera.ignore([
       this.cursor,
@@ -363,14 +420,16 @@ export class ScenarioScene extends Phaser.Scene {
 
   private refreshUnits(): void {
     this.unitLayer.setUnits(
-      visibleUnits(this.state, this.playerFaction, this.visionFor(this.playerFaction)),
+      this.replayMode
+        ? this.state.units
+        : visibleUnits(this.state, this.playerFaction, this.visionFor(this.playerFaction)),
     );
     this.uiCamera?.ignore(this.unitLayer.objects());
     this.refreshFog();
   }
 
   private refreshFog(): void {
-    if (!this.state.map.fogOfWar) {
+    if (this.replayMode || !this.state.map.fogOfWar) {
       this.visionFog.hide();
       return;
     }
@@ -409,7 +468,7 @@ export class ScenarioScene extends Phaser.Scene {
   }
 
   private onPointerDown(pointer: Phaser.Input.Pointer): void {
-    if (this.playing || this.finished) {
+    if (this.playing || this.finished || this.replayMode || this.turnLogPanel.isOpen) {
       return;
     }
 
@@ -660,7 +719,7 @@ export class ScenarioScene extends Phaser.Scene {
   }
 
   private playTurn(): void {
-    if (this.playing || this.finished) {
+    if (this.playing || this.finished || this.replayMode) {
       return;
     }
 
@@ -717,7 +776,11 @@ export class ScenarioScene extends Phaser.Scene {
     this.planner.setPlayhead(playback.elapsed);
 
     if (playback.elapsed >= playback.timeline.durationMs) {
-      this.finishTurn();
+      if (this.replayMode) {
+        this.finishReplayTurn();
+      } else {
+        this.finishTurn();
+      }
     }
   }
 
@@ -741,12 +804,19 @@ export class ScenarioScene extends Phaser.Scene {
   private finishTurn(): void {
     const committed = commitPlan(this.state, this.plan);
     const finishedPlan = this.plan;
+    const log = buildTurnLog(finishedPlan, this.state, committed);
     const wasPlayerTurn = this.turn.faction === this.playerFaction;
     const fallen = committed.killed
       .map((id) => this.state.units.find((unit) => unit.id === id))
       .filter((unit): unit is Unit => unit !== undefined);
 
-    void this.saveTurn(finishedPlan, committed.state);
+    this.logs.push(log);
+
+    if (finishedPlan.faction === this.playerFaction) {
+      this.missionDamage += log.damageTotal;
+    }
+
+    this.pendingSave = this.saveTurn(finishedPlan, committed.state, log);
 
     if (wasPlayerTurn) {
       const executed = tutorialProgress(this.recruitment, finishedPlan);
@@ -777,6 +847,8 @@ export class ScenarioScene extends Phaser.Scene {
     this.clearShotFx();
     this.planner.setPlaying(false);
     this.planner.setPlayhead(0);
+    this.planner.setCollapsed(true);
+    this.commandBar.setLogAvailability(true);
 
     const enemyLeft = this.state.units.some((unit) => unit.faction !== this.playerFaction);
 
@@ -803,6 +875,9 @@ export class ScenarioScene extends Phaser.Scene {
 
   private finishMission(): void {
     this.finished = true;
+    if (!this.replayMode) {
+      markMissionCompleted(this.scenario.id);
+    }
     this.plan = createTurnPlan(this.turn);
     this.timeline = { durationMs: 0, clips: [] };
     this.recruitDialog.hide();
@@ -815,7 +890,12 @@ export class ScenarioScene extends Phaser.Scene {
 
     this.time.delayedCall(420, () => {
       if (this.finished) {
-        this.missionResult.show(this.scenario.name, this.returnLabel);
+        this.missionResult.show(
+          this.scenario.name,
+          this.returnLabel,
+          this.missionDamage,
+          !this.replayMode && this.logs.length > 0,
+        );
       }
     });
   }
@@ -852,7 +932,7 @@ export class ScenarioScene extends Phaser.Scene {
       });
   }
 
-  private async saveTurn(plan: TurnPlan, stateAfter: GameState): Promise<void> {
+  private async saveTurn(plan: TurnPlan, stateAfter: GameState, log: TurnLog): Promise<void> {
     const replayId = await this.replayReady;
 
     if (!replayId) {
@@ -860,14 +940,152 @@ export class ScenarioScene extends Phaser.Scene {
     }
 
     try {
-      await recordTurnPlan(replayId, plan, stateAfter);
+      await recordTurnPlan(replayId, plan, stateAfter, log);
     } catch (error) {
       console.warn('Nie udało się zapisać planu tury', error);
     }
   }
 
+  private openLogPanel(): void {
+    if (this.playing || this.replayMode) {
+      return;
+    }
+
+    this.clearPreview();
+    this.turnLogPanel.show(this.logs, this.logs.length > 0);
+  }
+
+  private async openReplayFromStart(): Promise<void> {
+    const replay = this.replay ?? (await this.loadReplayForRestart());
+
+    if (!replay || replay.plans.length === 0) {
+      this.turnLogPanel.hide();
+      this.replayBanner.show('BRAK ZAPISU REPLAY DO ODTWORZENIA');
+      this.time.delayedCall(2600, () => {
+        if (!this.replayMode) {
+          this.replayBanner.hide();
+        }
+      });
+      return;
+    }
+
+    this.turnLogPanel.hide();
+    this.missionResult.hide();
+    this.scene.restart({
+      definition: this.scenario,
+      playerFaction: this.playerFaction,
+      returnScene: this.returnScene,
+      returnLabel: this.returnLabel,
+      replay,
+    });
+  }
+
+  private async loadReplayForRestart(): Promise<StoredReplay | undefined> {
+    await this.pendingSave;
+    const replayId = await this.replayReady;
+
+    if (!replayId) {
+      return undefined;
+    }
+
+    return loadReplay(replayId);
+  }
+
+  private startReplayPlayback(): void {
+    this.commandBar.setVisible(false);
+    this.planner.setVisible(false);
+    this.tutorialTip.hide();
+
+    if (!this.replay || this.replay.plans.length === 0) {
+      this.replayBanner.show('BRAK ZAPISU REPLAY — ESC: POWRÓT');
+      return;
+    }
+
+    this.replayIndex = 0;
+    this.playReplayEntry(0);
+  }
+
+  private playReplayEntry(index: number): void {
+    const replay = this.replay;
+    const entry = replay?.plans[index];
+
+    if (!replay || !entry) {
+      this.finishReplayPlayback();
+      return;
+    }
+
+    this.state = beginTurn(index === 0 ? replay.initialState : this.state, entry.faction);
+    this.turn = { faction: entry.faction, turn: entry.turn };
+    this.plan = entry.plan;
+    this.timeline = buildTimeline(this.plan, this.state);
+    this.selected = null;
+    this.hover = null;
+    this.hoverUnitId = null;
+    this.previewMs = null;
+    this.cursor.clear();
+    this.selection.clear();
+    this.rangeHints.clear();
+    this.pathHints.clear();
+    this.hideGhosts();
+    this.refreshUnits();
+    this.refreshHud();
+    this.refreshUnitPreview();
+    this.replayBanner.show(`REPLAY CAŁEJ GRY — TURA ${index + 1}/${replay.plans.length}`);
+
+    if (this.timeline.durationMs <= 0) {
+      this.finishReplayTurn();
+      return;
+    }
+
+    this.playing = true;
+    this.playback = {
+      timeline: this.timeline,
+      elapsed: 0,
+      fired: new Set<string>(),
+    };
+  }
+
+  private finishReplayTurn(): void {
+    const replay = this.replay;
+    const entry = replay?.plans[this.replayIndex];
+
+    this.playing = false;
+    this.playback = null;
+    this.unitLayer.resetPositions();
+
+    if (entry) {
+      this.state = commitPlan(this.state, entry.plan).state;
+    }
+
+    this.refreshUnits();
+    this.refreshHud();
+    this.refreshUnitPreview();
+
+    const next = this.replayIndex + 1;
+
+    if (!replay || next >= replay.plans.length) {
+      this.finishReplayPlayback();
+      return;
+    }
+
+    this.replayIndex = next;
+    this.time.delayedCall(600, () => {
+      if (this.replayMode) {
+        this.playReplayEntry(next);
+      }
+    });
+  }
+
+  private finishReplayPlayback(): void {
+    this.playing = false;
+    this.playback = null;
+    this.unitLayer.resetPositions();
+    this.refreshUnits();
+    this.replayBanner.show(`REPLAY ZAKOŃCZONY — ESC: ${this.returnLabel}`);
+  }
+
   private onPointerMove(pointer: Phaser.Input.Pointer): void {
-    if (this.playing || this.finished) {
+    if (this.playing || this.finished || this.replayMode || this.turnLogPanel.isOpen) {
       return;
     }
 
@@ -927,6 +1145,22 @@ export class ScenarioScene extends Phaser.Scene {
   }
 
   private onKeyDown(event: KeyboardEvent): void {
+    if (this.turnLogPanel.isOpen) {
+      if (event.key === 'Escape') {
+        this.turnLogPanel.hide();
+      }
+
+      return;
+    }
+
+    if (this.replayMode) {
+      if (event.key === 'Escape') {
+        this.scene.start(this.returnScene);
+      }
+
+      return;
+    }
+
     if (this.recruitDialog.isOpen) {
       if (event.key === 'Escape') {
         this.recruitDialog.hide();
@@ -1370,10 +1604,15 @@ export class ScenarioScene extends Phaser.Scene {
   }
 
   private pointerOverUi(pointer: Phaser.Input.Pointer): boolean {
-    return (
-      (this.recruitDialog?.isOpen ?? false) ||
-      pointer.y >= this.scale.height - BAR_HEIGHT - (this.planner?.height ?? 0)
-    );
+    if ((this.turnLogPanel?.isOpen ?? false) || (this.recruitDialog?.isOpen ?? false)) {
+      return true;
+    }
+
+    if (this.replayMode) {
+      return false;
+    }
+
+    return pointer.y >= this.scale.height - BAR_HEIGHT - (this.planner?.height ?? 0);
   }
 
   private refreshHud(): void {

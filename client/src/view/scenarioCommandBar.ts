@@ -1,6 +1,5 @@
 import Phaser from 'phaser';
 import {
-  canMoveNow,
   mapTileCount,
   terrainAt,
   toDoubled,
@@ -11,14 +10,25 @@ import type { PlanAction } from '../core/plan';
 import { countUnits, type GameState } from '../core/state';
 import { TERRAIN_DEFS } from '../core/map/terrain';
 import type { TurnState } from '../core/turn';
-import { FACTION_DEFS, shotsLeft, UNIT_DEFS, type FactionId, type Unit, type UnitKind } from '../core/units';
+import {
+  FACTION_DEFS,
+  UNIT_DEFS,
+  type FactionId,
+  type Unit,
+  type UnitKind,
+} from '../core/units';
 import { visibleUnitAt, type VisionPoint } from '../core/vision';
 import { FACTION_THEMES, type FactionTheme } from './factionTheme';
-import { formatPoints, formatRange } from './format';
+import { UnitCard } from './unitCard';
+import { BAR_HEIGHT, TURN_COLUMN_X } from './hudLayout';
 import { unitTexture } from './unitLayer';
 
-export const BAR_HEIGHT = 116;
-export const TURN_COLUMN_X = 1010;
+const LOG_X = 806;
+const LOG_WIDTH = 92;
+const RECRUIT_X = 908;
+const RECRUIT_WIDTH = 92;
+const BUTTON_Y = 10;
+const BUTTON_HEIGHT = 44;
 
 export interface ScenarioBarState {
   readonly scenario: ScenarioDefinition;
@@ -39,6 +49,7 @@ export interface ScenarioUnitState {
 export interface ScenarioCommandBarHandlers {
   readonly onEndTurn: () => void;
   readonly onRecruit: () => void;
+  readonly onLog: () => void;
   readonly onScenarioMenu: () => void;
   readonly onMainMenu: () => void;
 }
@@ -48,25 +59,17 @@ export class ScenarioCommandBar {
   private readonly bar: Phaser.GameObjects.Rectangle;
   private readonly barStripe: Phaser.GameObjects.Rectangle;
   private readonly barSeparators: Phaser.GameObjects.Rectangle[] = [];
+  private readonly logButton: Phaser.GameObjects.Rectangle;
+  private readonly logLabel: Phaser.GameObjects.Text;
   private readonly recruitButton: Phaser.GameObjects.Rectangle;
   private readonly recruitIcon: Phaser.GameObjects.Image;
   private readonly recruitLabel: Phaser.GameObjects.Text;
   private readonly recruitPrice: Phaser.GameObjects.Text;
-  private readonly recruitFunds: Phaser.GameObjects.Text;
   private readonly endTurnButton: Phaser.GameObjects.Rectangle;
   private readonly barTurnLabel: Phaser.GameObjects.Text;
   private readonly scenarioName: Phaser.GameObjects.Text;
-  private readonly preview: Phaser.GameObjects.Image;
-  private readonly previewHint: Phaser.GameObjects.Text;
-  private readonly unitName: Phaser.GameObjects.Text;
-  private readonly unitStats: Phaser.GameObjects.Text;
-  private readonly rangeLabel: Phaser.GameObjects.Text;
-  private readonly moveRangeText: Phaser.GameObjects.Text;
-  private readonly visionRangeText: Phaser.GameObjects.Text;
-  private readonly attackRangeText: Phaser.GameObjects.Text;
-  private readonly unitMeta: Phaser.GameObjects.Text;
-  private readonly unitStatus: Phaser.GameObjects.Text;
   private readonly hud: Phaser.GameObjects.Text;
+  private readonly unitCard: UnitCard;
   private theme: FactionTheme = FACTION_THEMES.blue;
   private recruitKind: UnitKind = 'infantry';
 
@@ -94,126 +97,25 @@ export class ScenarioCommandBar {
         .setDepth(21),
     );
 
-    this.preview = this.register(
-      this.scene.add
-        .image(
-          52,
-          barY + BAR_HEIGHT / 2,
-          unitTexture(this.scene, 'infantry', 'blue').key,
-        )
-        .setScale(2.2)
-        .setScrollFactor(0)
-        .setDepth(22)
-        .setVisible(false),
-    );
+    this.makeBarLink('MENU SCENARIUSZY', 16, 14, this.handlers.onScenarioMenu);
+    this.makeBarLink('MENU GŁÓWNE', 16, 32, this.handlers.onMainMenu);
 
-    this.previewHint = this.register(
+    this.barTurnLabel = this.register(
       this.scene.add
-        .text(52, barY + BAR_HEIGHT / 2, 'BRAK\nWYBORU', {
-          fontFamily: 'monospace',
-          fontSize: '10px',
-          color: '#6c7d72',
-          align: 'center',
-        })
-        .setOrigin(0.5)
-        .setScrollFactor(0)
-        .setDepth(22),
-    );
-
-    const unitTextX = 96;
-
-    this.unitName = this.register(
-      this.scene.add
-        .text(unitTextX, barY + 12, '', {
-          fontFamily: 'monospace',
-          fontSize: '15px',
-          color: '#f2f5f7',
-        })
-        .setScrollFactor(0)
-        .setDepth(22),
-    );
-
-    this.unitStats = this.register(
-      this.scene.add
-        .text(unitTextX, barY + 32, '', {
+        .text(16, barY + 8, '', {
           fontFamily: 'monospace',
           fontSize: '12px',
-          color: '#d8e2dc',
+          color: theme.accentSoft,
         })
         .setScrollFactor(0)
         .setDepth(22),
     );
-
-    const rangeY = barY + 52;
-    const rangeFont = { fontFamily: 'monospace', fontSize: '10px' };
-
-    this.rangeLabel = this.register(
-      this.scene.add
-        .text(unitTextX, rangeY, 'Zasięgi:', { ...rangeFont, color: '#9fb0a5' })
-        .setScrollFactor(0)
-        .setDepth(22),
-    );
-
-    this.moveRangeText = this.register(
-      this.scene.add
-        .text(unitTextX + 54, rangeY, '', { ...rangeFont, color: '#6fd08c' })
-        .setScrollFactor(0)
-        .setDepth(22),
-    );
-
-    this.visionRangeText = this.register(
-      this.scene.add
-        .text(unitTextX + 108, rangeY, '', { ...rangeFont, color: '#5aa9e6' })
-        .setScrollFactor(0)
-        .setDepth(22),
-    );
-
-    this.attackRangeText = this.register(
-      this.scene.add
-        .text(unitTextX + 162, rangeY, '', { ...rangeFont, color: '#e0563f' })
-        .setScrollFactor(0)
-        .setDepth(22),
-    );
-
-    this.unitMeta = this.register(
-      this.scene.add
-        .text(unitTextX, barY + 70, '', {
-          fontFamily: 'monospace',
-          fontSize: '10px',
-          color: '#9fb0a5',
-        })
-        .setScrollFactor(0)
-        .setDepth(22),
-    );
-
-    this.unitStatus = this.register(
-      this.scene.add
-        .text(unitTextX, barY + 88, '', {
-          fontFamily: 'monospace',
-          fontSize: '10px',
-          color: '#6fd08c',
-        })
-        .setScrollFactor(0)
-        .setDepth(22),
-    );
-
-    this.barSeparators.push(
-      this.register(
-        this.scene.add
-          .rectangle(404, barY + 16, 1, BAR_HEIGHT - 32, theme.divider, 1)
-          .setOrigin(0, 0)
-          .setScrollFactor(0)
-          .setDepth(21),
-      ),
-    );
-
-    const scenarioX = 420;
 
     this.scenarioName = this.register(
       this.scene.add
-        .text(scenarioX, barY + 10, '', {
+        .text(16, barY + 26, '', {
           fontFamily: 'monospace',
-          fontSize: '13px',
+          fontSize: '12px',
           color: '#f2f5f7',
         })
         .setScrollFactor(0)
@@ -222,24 +124,48 @@ export class ScenarioCommandBar {
 
     this.hud = this.register(
       this.scene.add
-        .text(scenarioX, barY + 32, '', {
+        .text(16, barY + 44, '', {
           fontFamily: 'monospace',
-          fontSize: '10px',
-          color: '#d8e2dc',
-          wordWrap: { width: 340 },
-          lineSpacing: 2,
+          fontSize: '9px',
+          color: '#9fb0a5',
         })
         .setScrollFactor(0)
         .setDepth(22),
     );
 
-    const navX = 792;
+    this.barSeparators.push(
+      this.register(
+        this.scene.add
+          .rectangle(LOG_X - 12, barY + 12, 1, BAR_HEIGHT - 24, theme.divider, 1)
+          .setOrigin(0, 0)
+          .setScrollFactor(0)
+          .setDepth(21),
+      ),
+    );
 
-    this.makeBarLink('MENU SCENARIUSZY', navX, barY + 20, this.handlers.onScenarioMenu);
-    this.makeBarLink('MENU GŁÓWNE', navX, barY + 42, this.handlers.onMainMenu);
+    this.logButton = this.makeBarButton(
+      '',
+      LOG_X,
+      barY + BUTTON_Y,
+      LOG_WIDTH,
+      BUTTON_HEIGHT,
+      this.handlers.onLog,
+    );
+    this.logLabel = this.register(
+      this.scene.add
+        .text(LOG_X + LOG_WIDTH / 2, barY + BUTTON_Y + BUTTON_HEIGHT / 2, 'DZIENNIK', {
+          fontFamily: 'monospace',
+          fontSize: '11px',
+          color: '#ffffff',
+        })
+        .setOrigin(0.5)
+        .setScrollFactor(0)
+        .setDepth(22),
+    );
+
     this.recruitButton = this.register(
       this.scene.add
-        .rectangle(902, barY + 12, 76, 92, theme.accentDark, 1)
+        .rectangle(RECRUIT_X, barY + BUTTON_Y, RECRUIT_WIDTH, BUTTON_HEIGHT, theme.accentDark, 1)
         .setOrigin(0, 0)
         .setScrollFactor(0)
         .setDepth(21)
@@ -249,14 +175,15 @@ export class ScenarioCommandBar {
 
     this.recruitIcon = this.register(
       this.scene.add
-        .image(940, barY + 32, unitTexture(this.scene, 'infantry', 'blue').key)
+        .image(RECRUIT_X + 20, barY + BUTTON_Y + 22, unitTexture(this.scene, 'infantry', 'blue').key)
+        .setDisplaySize(28, 28)
         .setScrollFactor(0)
         .setDepth(22),
     );
 
     this.recruitLabel = this.register(
       this.scene.add
-        .text(940, barY + 52, 'KUP', {
+        .text(RECRUIT_X + 58, barY + BUTTON_Y + 14, 'KUP', {
           fontFamily: 'monospace',
           fontSize: '11px',
           color: '#ffffff',
@@ -268,22 +195,10 @@ export class ScenarioCommandBar {
 
     this.recruitPrice = this.register(
       this.scene.add
-        .text(940, barY + 70, '', {
+        .text(RECRUIT_X + 58, barY + BUTTON_Y + 30, '', {
           fontFamily: 'monospace',
           fontSize: '9px',
           color: theme.accentSoft,
-        })
-        .setOrigin(0.5)
-        .setScrollFactor(0)
-        .setDepth(22),
-    );
-
-    this.recruitFunds = this.register(
-      this.scene.add
-        .text(940, barY + 88, '', {
-          fontFamily: 'monospace',
-          fontSize: '9px',
-          color: '#f2d35c',
         })
         .setOrigin(0.5)
         .setScrollFactor(0)
@@ -298,54 +213,35 @@ export class ScenarioCommandBar {
     );
     this.recruitButton.on('pointerup', this.handlers.onRecruit);
 
-    this.barSeparators.push(
-      this.register(
-        this.scene.add
-          .rectangle(980, barY + 16, 1, BAR_HEIGHT - 32, theme.divider, 1)
-          .setOrigin(0, 0)
-          .setScrollFactor(0)
-          .setDepth(21),
-      ),
-    );
-
-    const turnX = TURN_COLUMN_X;
-    const turnWidth = this.scene.scale.width - turnX - 16;
+    const turnWidth = this.scene.scale.width - TURN_COLUMN_X - 16;
 
     this.endTurnButton = this.makeBarButton(
       'WYKONAJ TURĘ',
-      turnX,
-      barY + 14,
+      TURN_COLUMN_X,
+      barY + BUTTON_Y,
       turnWidth,
-      42,
+      BUTTON_HEIGHT,
       this.handlers.onEndTurn,
     );
 
-    this.barTurnLabel = this.register(
-      this.scene.add
-        .text(turnX, barY + 62, '', {
-          fontFamily: 'monospace',
-          fontSize: '11px',
-          color: theme.accentSoft,
-        })
-        .setScrollFactor(0)
-        .setDepth(22),
-    );
-
-    this.register(
-      this.scene.add
-        .text(turnX, barY + 84, 'LPM — jednostka/trasa/atak · T — wykonaj turę\nDel — usuń akcję · kółko — zoom · ESC — scenariusze', {
-          fontFamily: 'monospace',
-          fontSize: '10px',
-          color: '#9fb0a5',
-          lineSpacing: 1,
-        })
-        .setScrollFactor(0)
-        .setDepth(22),
-    );
+    this.unitCard = new UnitCard(this.scene);
   }
 
   get uiObjects(): readonly Phaser.GameObjects.GameObject[] {
-    return this.objects;
+    return [...this.objects, ...this.unitCard.uiObjects];
+  }
+
+  setVisible(visible: boolean): void {
+    for (const object of this.uiObjects) {
+      if ('setVisible' in object) {
+        (object as Phaser.GameObjects.GameObject & { setVisible: (value: boolean) => void }).setVisible(visible);
+      }
+    }
+  }
+
+  setLogAvailability(available: boolean): void {
+    this.logButton.setAlpha(available ? 1 : 0.5);
+    this.logLabel.setAlpha(available ? 1 : 0.5);
   }
 
   refreshScenario({ scenario, state, turn, hover, funds, recruitKind, vision }: ScenarioBarState): void {
@@ -356,112 +252,36 @@ export class ScenarioCommandBar {
     }
 
     this.recruitIcon.setTexture(unitTexture(this.scene, this.recruitKind, turn.faction).key);
-    this.recruitPrice.setText(`Cena ${UNIT_DEFS[this.recruitKind].cost}`);
-    this.recruitFunds.setText(`Konto ${funds ?? 0}`);
+    this.recruitPrice.setText(`${UNIT_DEFS[this.recruitKind].cost}`);
 
     const counts = countUnits(state.units);
-    const description = scenario.description.trim();
-    const lines: string[] = [];
+    const terrain = hover ? terrainAt(state.map, hover) : undefined;
+    const doubled = hover ? toDoubled(hover) : null;
+    const hoverUnit = hover ? visibleUnitAt(state, hover, turn.faction, vision) : undefined;
+    const parts = [
+      `Jedn. ${counts.blue}/${counts.red}`,
+      `Kafle ${mapTileCount(state.map)}`,
+      `Mgła ${state.map.fogOfWar ? 'wł.' : 'wył.'}`,
+      `Kredyty ${funds ?? 0}`,
+    ];
 
-    if (description) {
-      lines.push(
-        description.length > 110 ? `${description.slice(0, 109)}…` : description,
-      );
-    }
-
-    lines.push(
-      `Jednostki: ${counts.blue} nieb. · ${counts.red} czerw. · Kafle: ${mapTileCount(state.map)}`,
-    );
-    lines.push(`Mgła wojny: ${state.map.fogOfWar ? 'włączona' : 'wyłączona'}`);
-
-    if (hover) {
-      const terrain = terrainAt(state.map, hover);
-      const doubled = toDoubled(hover);
-      const unit = visibleUnitAt(state, hover, turn.faction, vision);
-      const terrainLabel = terrain ? TERRAIN_DEFS[terrain].label : 'pusto';
-      const moveCost = terrain ? TERRAIN_DEFS[terrain].moveCost : 1;
-      const moveCostLabel = moveCost >= 99 ? 'ruch: blokada' : `ruch: ${moveCost}`;
-      const unitLabel = unit
-        ? ` · ${FACTION_DEFS[unit.faction].label} ${UNIT_DEFS[unit.kind].label} HP ${unit.hp}/${UNIT_DEFS[unit.kind].maxHp}`
+    if (doubled && terrain) {
+      const unitLabel = hoverUnit
+        ? ` · ${FACTION_DEFS[hoverUnit.faction].label} ${UNIT_DEFS[hoverUnit.kind].label} HP ${hoverUnit.hp}`
         : '';
-
-      lines.push(`Heks: ${doubled.col},${doubled.row} — ${terrainLabel} · ${moveCostLabel}${unitLabel}`);
+      const cost = TERRAIN_DEFS[terrain].moveCost >= 99 ? 'blokada' : `${TERRAIN_DEFS[terrain].moveCost}`;
+      parts.push(`Heks ${doubled.col},${doubled.row} ${TERRAIN_DEFS[terrain].label} (${cost})${unitLabel}`);
     } else {
-      lines.push('Heks: —');
+      parts.push('Heks —');
     }
 
-    this.scenarioName.setText(
-      scenario.name.length > 40 ? `${scenario.name.slice(0, 39)}…` : scenario.name,
-    );
-    this.hud.setText(lines.join('\n'));
-    this.barTurnLabel.setText(
-      `Tura ${turn.turn} — ${FACTION_DEFS[turn.faction].label}`,
-    );
+    this.scenarioName.setText(truncate(scenario.name, 42));
+    this.hud.setText(truncate(parts.join(' · '), 128));
+    this.barTurnLabel.setText(`Tura ${turn.turn} — ${FACTION_DEFS[turn.faction].label}`);
   }
 
-  refreshUnit({ selected, state, planActions = [] }: ScenarioUnitState): void {
-    if (!selected) {
-      this.preview.setVisible(false);
-      this.previewHint.setVisible(true);
-      this.unitName.setText('Brak wybranej jednostki').setColor('#6c7d72');
-      this.unitStats.setText('Kliknij jednostkę na mapie');
-      this.rangeLabel.setText('');
-      this.moveRangeText.setText('');
-      this.visionRangeText.setText('');
-      this.attackRangeText.setText('');
-      this.unitMeta.setText('');
-      this.unitStatus.setText('');
-      return;
-    }
-
-    const current = selected;
-    const stats = UNIT_DEFS[current.kind];
-    const terrain = terrainAt(state.map, current.pos);
-    const doubled = toDoubled(current.pos);
-
-    const ammo =
-      stats.ammo !== undefined
-        ? ` · POCISKI ${shotsLeft(current)}/${stats.ammo}`
-        : '';
-
-    this.preview
-      .setTexture(unitTexture(this.scene, current.kind, current.faction).key)
-      .setVisible(true);
-    this.previewHint.setVisible(false);
-    this.unitName
-      .setText(`${stats.label} — ${FACTION_DEFS[current.faction].label}`)
-      .setColor('#f2f5f7');
-    this.unitStats.setText(
-      `HP ${current.hp}/${stats.maxHp} · ATK ${stats.attack} · DEF ${stats.defense}${ammo}`,
-    );
-    const canMove = canMoveNow(state, current);
-
-    this.rangeLabel.setText('Zasięgi:');
-    this.moveRangeText
-      .setText(`Ruch ${formatPoints(canMove ? current.movesLeft : 0)}/${stats.moveRange}`)
-      .setColor(canMove ? '#6fd08c' : '#9fb0a5');
-    this.visionRangeText.setText(`Wzrok ${formatRange(stats.visionRange)}`);
-    this.attackRangeText.setText(`Strzał ${formatRange(stats.attackRange)}`);
-    this.unitMeta.setText(
-      `Teren: ${terrain ? TERRAIN_DEFS[terrain].label : 'pusto'} · Heks: ${doubled.col},${doubled.row}`,
-    );
-    const plannedMoves = planActions.filter((action) => action.kind === 'move').length;
-    const plannedAttacks = planActions.filter((action) => action.kind === 'attack').length;
-    const planLabel =
-      planActions.length > 0
-        ? `Plan: ${plannedMoves}× ruch, ${plannedAttacks}× atak · Del — usuń ostatnią`
-        : null;
-
-    this.unitStatus
-      .setText(
-        planLabel ??
-          (current.hasActed
-            ? 'Działała — ruch w następnej turze'
-            : !canMove
-              ? 'Zablokowana — brak dostępnego ruchu'
-              : `Gotowa — klik heks (trasa) albo wroga (atak) · ${formatPoints(current.movesLeft)} pkt.`),
-      )
-      .setColor(planLabel ? '#f2d35c' : canMove ? '#6fd08c' : '#e0a15a');
+  refreshUnit(state: ScenarioUnitState): void {
+    this.unitCard.refresh(state);
   }
 
   private register<T extends Phaser.GameObjects.GameObject>(object: T): T {
@@ -486,6 +306,10 @@ export class ScenarioCommandBar {
       separator.setFillStyle(theme.divider, 1);
     }
 
+    this.logButton
+      .setFillStyle(theme.accentDark, 1)
+      .setStrokeStyle(1, theme.accentBright, 0.8);
+    this.logLabel.setColor(theme.accentSoft);
     this.recruitButton
       .setFillStyle(theme.accentDark, 1)
       .setStrokeStyle(1, theme.accentBright, 0.8);
@@ -542,17 +366,19 @@ export class ScenarioCommandBar {
         .setInteractive({ useHandCursor: true }),
     );
 
-    this.register(
-      this.scene.add
-        .text(x + width / 2, y + height / 2, label, {
-          fontFamily: 'monospace',
-          fontSize: '13px',
-          color: '#ffffff',
-        })
-        .setOrigin(0.5)
-        .setScrollFactor(0)
-        .setDepth(22),
-    );
+    if (label) {
+      this.register(
+        this.scene.add
+          .text(x + width / 2, y + height / 2, label, {
+            fontFamily: 'monospace',
+            fontSize: '12px',
+            color: '#ffffff',
+          })
+          .setOrigin(0.5)
+          .setScrollFactor(0)
+          .setDepth(22),
+      );
+    }
 
     background.on('pointerover', () => background.setFillStyle(this.theme.accent, 1));
     background.on('pointerout', () => background.setFillStyle(this.theme.accentDark, 1));
@@ -560,4 +386,8 @@ export class ScenarioCommandBar {
 
     return background;
   }
+}
+
+function truncate(text: string, limit: number): string {
+  return text.length > limit ? `${text.slice(0, limit - 1)}…` : text;
 }

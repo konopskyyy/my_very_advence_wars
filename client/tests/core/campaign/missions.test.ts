@@ -46,6 +46,7 @@ describe('misje kampanii', () => {
     const terrains = new Set(Object.values(mission.state.map.cells));
 
     expect(mission.autoDeploy).toBe(false);
+    expect(RUCH_JEDNOSTEK.requiresMission).toBe('tutorial-pierwsze-kroki');
     expect(mission.spawn).toEqual({ col: 2, row: 5, vision: 3 });
     expect(blueUnits.map((unit) => unit.kind).sort()).toEqual(['infantry', 'infantry', 'scout']);
     expect(redUnits).toHaveLength(1);

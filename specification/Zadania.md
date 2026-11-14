@@ -98,4 +98,6 @@ zadań do wykonania.
 | [[Zadania-opisy#GRA-078: Logowanie i rejestracja klienta przez API\|GRA-078]] | Logowanie i rejestracja klienta przez API | ✅ | GRA-066, GRA-067, SRV-002, API-001, INTERF-008 |
 | [[Zadania-opisy#GRA-079: Panel konta w grze\|GRA-079]] | Panel konta w grze | ✅ | GRA-078, INTERF-009 |
 | [[Zadania-opisy#GRA-080: Panel administratora Sonata\|GRA-080]] | Panel administratora Sonata | ✅ | SRV-001, SRV-002, INTERF-010, Infrastruktura |
-| [[Zadania-opisy#GRA-081: Dziennik tur i replay całej gry na ekranie wyniku\|GRA-081]] | Dziennik tur i replay całej gry na ekranie wyniku | 🚧 | GRA-060, GRA-061, GRA-075, INTERF-002, INTERF-006 |
+| [[Zadania-opisy#GRA-081: Dziennik tur i replay całej gry na ekranie wyniku\|GRA-081]] | Dziennik tur i replay całej gry na ekranie wyniku | ✅ | GRA-060, GRA-061, GRA-075, INTERF-002, INTERF-006 |
+| [[Zadania-opisy#GRA-082: Kompaktowy HUD pola bitwy\|GRA-082]] | Kompaktowy HUD pola bitwy | ✅ | GRA-061, GRA-081, ADR-001, INTERF-002, INTERF-005 |
+| [[Zadania-opisy#GRA-083: Odblokowywanie misji kampanii\|GRA-083]] | Odblokowywanie misji kampanii | ✅ | GRA-042, GRA-075, GRA-076, ZAL-011, INTERF-007 |

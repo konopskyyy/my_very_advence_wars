@@ -217,6 +217,8 @@
   las, bagno i wodę, gracz dostaje dwóch piechurów i zwiadowcę wokół bazy,
   a rekrutacja jest wyłączona. Czerwony piechur po drugiej stronie jest
   celem; dymki tłumaczą punkty ruchu, koszt terenu i zatwierdzanie trasy.
+  Misja odblokowuje się po ukończeniu pierwszej, a postęp jest zapisywany
+  trwale w przeglądarce.
 - Kafelki „Walka”, „Mgła wojny”, „Amunicja” i „Artyleria” są zapowiedziami —
   kliknięcie pokazuje komunikat „wkrótce”; nie mają jeszcze scenariusza ani
   uruchomienia.

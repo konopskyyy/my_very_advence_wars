@@ -3,6 +3,7 @@ import { CAMPAIGNS, findCampaign, type CampaignId } from '../core/campaign';
 import { installButtonClickSound } from '../view/buttonAudio';
 import { CampaignRibbon } from '../view/campaignRibbon';
 import { CampaignTiles } from '../view/campaignTiles';
+import { readCompletedMissions } from '../storage/progress';
 
 const TITLE_Y = 30;
 const RIBBON_X = 120;
@@ -93,6 +94,6 @@ export class CampaignMenuScene extends Phaser.Scene {
     }
 
     this.ribbon.setActive(id);
-    this.tiles.show(campaign);
+    this.tiles.show(campaign, readCompletedMissions());
   }
 }

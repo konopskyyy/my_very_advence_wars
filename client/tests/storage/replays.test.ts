@@ -1,10 +1,11 @@
 import initSqlJs, { type Database } from 'sql.js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createMap } from '../../src/core/map';
-import { commitPlan, type TurnPlan } from '../../src/core/plan';
+import { buildTurnLog, commitPlan, type TurnPlan } from '../../src/core/plan';
 import { createInitialState, placeUnit, type GameState } from '../../src/core/state';
 import { beginTurn } from '../../src/core/turn';
 import {
+  appendTurnLog,
   appendTurnPlan,
   createReplay,
   createReplayId,
@@ -151,10 +152,33 @@ describe('magazyn replayów', () => {
     expect(() => readReplay(db, 'replay-zepsuty')).toThrow();
   });
 
-  it('usuwa replaye i plany powiązane ze scenariuszem', () => {
+  it('czyta dziennik dopisany do tury', () => {
     const state = battle();
     const plan = turnPlan(state, 'blue', 1);
-    const after = commitPlan(state, plan).state;
+    const committed = commitPlan(state, plan);
+    const log = buildTurnLog(plan, state, committed);
+
+    createReplay(db, {
+      id: 'replay-z-dziennikiem',
+      scenarioId: 'dziennik',
+      scenarioName: 'Dziennik',
+      playerFaction: 'blue',
+      state,
+    });
+    appendTurnPlan(db, 'replay-z-dziennikiem', plan, committed.state);
+    appendTurnLog(db, 'replay-z-dziennikiem', log);
+
+    const replay = readReplay(db, 'replay-z-dziennikiem');
+
+    expect(replay?.truncated).toBe(false);
+    expect(replay?.plans[0]?.log).toEqual(log);
+    expect(replay?.plans[0]?.log?.attacks[0]?.damage).toBe(committed.hits[0]?.damage);
+  });
+
+  it('usuwa replaye, plany i logi powiązane ze scenariuszem', () => {
+    const state = battle();
+    const plan = turnPlan(state, 'blue', 1);
+    const committed = commitPlan(state, plan);
 
     createReplay(db, {
       id: 'replay-do-usuniecia',
@@ -163,20 +187,23 @@ describe('magazyn replayów', () => {
       playerFaction: 'blue',
       state,
     });
-    appendTurnPlan(db, 'replay-do-usuniecia', plan, after);
+    appendTurnPlan(db, 'replay-do-usuniecia', plan, committed.state);
+    appendTurnLog(db, 'replay-do-usuniecia', buildTurnLog(plan, state, committed));
 
     expect(deleteReplaysForScenario(db, 'usuwany')).toBe(1);
     expect(readReplay(db, 'replay-do-usuniecia')).toBeUndefined();
 
-    const statement = db.prepare(
-      `SELECT COUNT(*) AS count FROM turn_plans WHERE replay_id = 'replay-do-usuniecia'`,
-    );
+    for (const table of ['turn_plans', 'turn_logs']) {
+      const statement = db.prepare(
+        `SELECT COUNT(*) AS count FROM ${table} WHERE replay_id = 'replay-do-usuniecia'`,
+      );
 
-    try {
-      statement.step();
-      expect(Number(statement.getAsObject().count)).toBe(0);
-    } finally {
-      statement.free();
+      try {
+        statement.step();
+        expect(Number(statement.getAsObject().count)).toBe(0);
+      } finally {
+        statement.free();
+      }
     }
   });
 

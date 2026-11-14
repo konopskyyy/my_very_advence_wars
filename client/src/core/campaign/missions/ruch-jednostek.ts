@@ -36,6 +36,7 @@ export const RUCH_JEDNOSTEK: CampaignTile = {
   id: 'ruch-jednostek',
   title: 'Ruch jednostek',
   description: 'Punkty ruchu, koszt terenu i wyznaczanie trasy.',
+  requiresMission: 'tutorial-pierwsze-kroki',
   mission: {
     id: 'tutorial-ruch-jednostek',
     name: 'Ruch jednostek',

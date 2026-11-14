@@ -7,6 +7,7 @@ export interface CampaignTile {
   readonly title: string;
   readonly description: string;
   readonly mission?: ScenarioDefinition;
+  readonly requiresMission?: string;
 }
 
 export interface Campaign {
