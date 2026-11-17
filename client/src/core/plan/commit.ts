@@ -1,5 +1,6 @@
 import type { GameState } from '../state';
-import { simulateUnit } from './simulate';
+import { loadPassenger, unloadPassenger } from '../transport';
+import { boardingTarget, simulateUnit, unloadAction } from './simulate';
 import type { PlanHit, TurnPlan } from './types';
 import { planVolley } from './volley';
 
@@ -28,6 +29,18 @@ export function commitPlan(state: GameState, plan: TurnPlan): PlanCommit {
           candidate.id === moved.id ? moved : candidate,
         ),
       };
+
+      const boardTarget = boardingTarget(unitPlan.actions);
+
+      if (boardTarget) {
+        current = loadPassenger(current, unit.id, boardTarget);
+      }
+
+      const unload = unloadAction(unitPlan.actions);
+
+      if (unload) {
+        current = unloadPassenger(current, unit.id, unload.passengerId, unload.target);
+      }
     }
   }
 

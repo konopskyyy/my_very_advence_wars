@@ -370,13 +370,16 @@ CREATE TABLE IF NOT EXISTS turn_plans (
 | `replays.scenario_id` | Identyfikator scenariusza lub zapisanej mapy, z której startuje bitwa. |
 | `replays.player_faction` | Strona wybrana przez gracza (`blue`/`red`). |
 | `replays.initial_state` | `GameState` po `beginTurn()` pierwszej strony, JSON z `serializeGameState()`. |
-| `turn_plans.plan` | Plan tury JSON z `version`, `faction`, `turn` i `units` (akcje `move`/`attack`). |
+| `turn_plans.plan` | Plan tury JSON z `version`, `faction`, `turn` i `units` (akcje `move`/`attack`/`board`). |
 | `turn_plans.state_after` | Stan po `commitPlan()` tury, przed `beginTurn()` następnej strony. |
 
 Start scenariusza wywołuje `startReplay()`; każda wykonana tura dopisuje plan
-przez `recordTurnPlan()` i od razu utrwala bazę w `localStorage`. Para
-`(replay_id, turn)` jest kluczem, więc powtórny zapis tej samej tury nadpisuje
-wpis. `updated_at` replaya zmienia się przy każdym dopisanym planie.
+przez `recordTurnPlan()` i od razu utrwala bazę w `localStorage`. Scena
+serializuje zapisy łańcuchem `pendingSave`, więc `recordTurnPlan()` kolejnej
+tury startuje dopiero po poprzednim zapisie, a otwarcie replayu czeka na cały
+łańcuch. Para `(replay_id, turn)` jest kluczem, więc powtórny zapis tej samej
+tury nadpisuje wpis. `updated_at` replaya zmienia się przy każdym dopisanym
+planie.
 
 Format planu pilnuje `client/src/storage/planSerialization.ts`:
 `PLAN_FORMAT_VERSION = 1`, a `deserializeTurnPlan()` odrzuca nieznaną wersję,

@@ -15,6 +15,20 @@ export function isTileUnlocked(tile: CampaignTile, completed: ReadonlySet<string
   return tile.requiresMission === undefined || completed.has(tile.requiresMission);
 }
 
+export type TileStatus = 'preview' | 'completed' | 'locked' | 'ready';
+
+export function tileStatus(tile: CampaignTile, completed: ReadonlySet<string>): TileStatus {
+  if (!tile.mission) {
+    return 'preview';
+  }
+
+  if (isMissionCompleted(tile, completed)) {
+    return 'completed';
+  }
+
+  return isTileUnlocked(tile, completed) ? 'ready' : 'locked';
+}
+
 export function prerequisiteTile(
   campaign: Campaign,
   tile: CampaignTile,

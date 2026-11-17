@@ -61,7 +61,8 @@ const UNIT_ROLES: Record<UnitKind, string> = {
   infantry: 'ŻOŁNIERZ · piechota liniowa',
   tank: 'POJAZD · czołg',
   artillery: 'POJAZD · artyleria',
-  scout: 'POJAZD · zwiadowca',
+  scout: 'ŻOŁNIERZ · zwiadowca',
+  bazooka: 'ŻOŁNIERZ · bazooka',
 };
 
 export interface RecruitDialogHandlers {
@@ -174,19 +175,19 @@ const LOADOUTS: Record<UnitKind, readonly EquipmentSlot[]> = {
   ],
   scout: [
     {
-      label: 'Silnik',
+      label: 'Kask',
       options: [
-        { label: 'Standard', color: 0x4a5568 },
-        { label: 'Szybki', color: 0x6b7a8a },
-        { label: 'Teren', color: 0x3f4a2f },
+        { label: 'Zwiad', color: 0x3f6b4a },
+        { label: 'Stalowy', color: 0x9aa0a6 },
+        { label: 'Polowy', color: 0x4a5568 },
       ],
     },
     {
-      label: 'Opancerzenie',
+      label: 'Mundur',
       options: [
-        { label: 'Lekkie', color: 0x6b7a8a },
-        { label: 'Standard', color: 0x4a5568 },
-        { label: 'Ciężkie', color: 0x2f3a45 },
+        { label: 'Zwiad', color: 0x3f6b4a },
+        { label: 'Miejski', color: 0x4a5568 },
+        { label: 'Pustynny', color: 0x8a7445 },
       ],
     },
     {
@@ -203,6 +204,40 @@ const LOADOUTS: Record<UnitKind, readonly EquipmentSlot[]> = {
         { label: 'Radio', color: 0x2f4f6b },
         { label: 'Apteczka', color: 0x8a2f2f },
         { label: 'Lornetka', color: 0x5a4632 },
+      ],
+    },
+  ],
+  bazooka: [
+    {
+      label: 'Kask',
+      options: [
+        { label: 'Standard', color: 0x4a86e8 },
+        { label: 'Stalowy', color: 0x9aa0a6 },
+        { label: 'Polowy', color: 0x3f6b4a },
+      ],
+    },
+    {
+      label: 'Mundur',
+      options: [
+        { label: 'Polowy', color: 0x3f6b4a },
+        { label: 'Miejski', color: 0x4a5568 },
+        { label: 'Pustynny', color: 0x8a7445 },
+      ],
+    },
+    {
+      label: 'Wyrzutnia',
+      options: [
+        { label: 'Standard', color: 0x2b2f33 },
+        { label: 'Lekka', color: 0x5a3a22 },
+        { label: 'Ciężka', color: 0x1f2a33 },
+      ],
+    },
+    {
+      label: 'Amunicja',
+      options: [
+        { label: 'Standard', color: 0x8a7445 },
+        { label: 'Kumulacyjna', color: 0x4a2f1f },
+        { label: 'Zapalająca', color: 0x8a2f2f },
       ],
     },
   ],
@@ -252,6 +287,7 @@ export class RecruitDialog {
     tank: [0, 0, 0, 0],
     artillery: [0, 0, 0, 0],
     scout: [0, 0, 0, 0],
+    bazooka: [0, 0, 0, 0],
   };
   private theme: FactionTheme = FACTION_THEMES.blue;
   private faction: FactionId = 'blue';

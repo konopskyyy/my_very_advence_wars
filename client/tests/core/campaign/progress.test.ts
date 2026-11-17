@@ -3,6 +3,7 @@ import {
   isMissionCompleted,
   isTileUnlocked,
   prerequisiteTile,
+  tileStatus,
 } from '../../../src/core/campaign/progress';
 import { TUTORIAL } from '../../../src/core/campaign/tutorial';
 import { PIERWSZE_KROKI } from '../../../src/core/campaign/missions/pierwsze-kroki';
@@ -38,5 +39,13 @@ describe('postęp kampanii', () => {
   it('wskazuje kafelek wymaganej misji', () => {
     expect(prerequisiteTile(TUTORIAL, RUCH_JEDNOSTEK)).toBe(PIERWSZE_KROKI);
     expect(prerequisiteTile(TUTORIAL, PIERWSZE_KROKI)).toBeUndefined();
+  });
+
+  it('lista zadań rozróżnia ukończone, gotowe, zablokowane i zapowiedzi', () => {
+    expect(tileStatus(PIERWSZE_KROKI, NOTHING)).toBe('ready');
+    expect(tileStatus(PIERWSZE_KROKI, FIRST_DONE)).toBe('completed');
+    expect(tileStatus(RUCH_JEDNOSTEK, NOTHING)).toBe('locked');
+    expect(tileStatus(RUCH_JEDNOSTEK, FIRST_DONE)).toBe('ready');
+    expect(tileStatus(TUTORIAL.tiles[2]!, FIRST_DONE)).toBe('preview');
   });
 });

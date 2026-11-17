@@ -71,6 +71,7 @@ export class MenuScene extends Phaser.Scene {
 
     const items: [string, 'blue' | 'red' | 'neutral', () => void][] = [
       ['Kampanie', 'blue', () => this.scene.start('campaign-menu')],
+      ['Zadania', 'blue', () => this.scene.start('tasks-menu')],
       ['Scenariusze', 'blue', () => this.scene.start('scenario-menu')],
       ['Edytor map', 'red', () => this.scene.start('map-menu')],
       ['Wyjście', 'neutral', () => this.quit()],

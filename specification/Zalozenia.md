@@ -60,6 +60,7 @@
 | `tank`      | Czołg     |  300 |     20 |    3 |    9 |      7 |             3 |              1 |        6 |
 | `artillery` | Artyleria |  250 |     14 |    2 |   12 |      3 |    cała mapa |     cała mapa |        6 |
 | `scout`     | Zwiadowca |  150 |      8 |    6 |    3 |      2 |    cała mapa |              1 |        — |
+| `bazooka`   | Żołnierz z bazooką | 200 | 10 | 3 | 15 | 3 | 2 | 2 | — |
 
 - `cost` to cena zakupu jednostki w oknie `KUP`; budżet scenariusza
   i limity zakupów opisuje ADR-046.
@@ -67,7 +68,8 @@
 - `moveRange` to budżet ruchu na turę, `visionRange` — promień widzenia,
   a `attackRange` — maksymalna odległość ataku.
 - Zwiadowca widzi całą mapę, tak jak artyleria; od artylerii odróżnia go
-  ruch (6 zamiast 2) i rola jednostki rozpoznawczej.
+  ruch (6 zamiast 2) i rola jednostki rozpoznawczej. Na mapie i w rekrutacji
+  używa sylwetki oraz portretu żołnierza, tak jak piechota.
 - `defense` jest zapisane, ale nie zmniejsza obrażeń; walka korzysta wyłącznie
   z `attack` atakującego.
 - Czołg i artyleria mają zapas strzałów (`ammo`); piechota i zwiad nie mają
@@ -76,15 +78,23 @@
   `ammo` strzałów, a każdy wydany punkt ruchu proporcjonalnie zmniejsza zapas.
   Jednostka nie przechowuje osobnego licznika amunicji.
 - Jednostka zajmuje jeden heks; na jednym heksie stoi najwyżej jedna jednostka.
+- Czołg ma `capacity: 3` i `carries: ['infantry', 'scout']` — może przewieźć
+  trzech pasażerów: piechurów albo zwiadowców. Zwiadowca jest pieszym zwiadem,
+  a nie pojazdem, więc sam nie ma ładowni i nie może nikogo zabrać. Załadowany pasażer znika z mapy i jest trzymany
+  w `UnitBase.cargo` jako pełna jednostka; nie zajmuje heksu, nie blokuje
+  ruchu, nie strzela i nie może zostać zaatakowany.
 - Strony jednostek to `blue`, `red` i `neutral`; edytor i rozgrywka używają
   niebieskiej i czerwonej.
-- Piechota ma domyślnie broń `RIFLE` (karabin), której `shotSound` wskazuje
-  dźwięk wystrzału; pozostałe rodzaje nie mają jeszcze własnej broni i do czasu
-  jej dodania korzystają z domyślnego dźwięku wystrzału.
+- Piechota ma domyślnie broń `RIFLE` (karabin), a żołnierz z bazooką — `BAZOOKA`;
+  obie wskazują dźwięk wystrzału. Czołg, artyleria i zwiad nie mają jeszcze
+  własnej broni i do czasu jej dodania korzystają z domyślnego dźwięku wystrzału.
 - Dźwięk ruchu jest właściwością definicji jednostki (`UnitStats.moveSound`):
-  piechota ma `'step'`, a czołg, artyleria i zwiad pozostają ciche.
+  piechota, żołnierz z bazooką, zwiadowca i czołg mają `'step'`, a artyleria
+  pozostaje cicha. Podczas odtwarzania tury dźwięk odtwarza się raz na każdy
+  pokonany heks.
 - Dźwięk śmierci jest właściwością definicji jednostki (`UnitStats.deathSound`):
-  piechota ma `'death'`, a czołg, artyleria i zwiad nie mają dźwięku śmierci.
+  piechota i żołnierz z bazooką mają `'death'`, a czołg, artyleria i zwiad nie
+  mają dźwięku śmierci.
 
 ## ZAL-005: Ruch
 
@@ -112,6 +122,18 @@
   kończą się w tym samym momencie.
 - Zaplanowany ruch jest wiążący — jednostka nie zatrzymuje się po odkryciu
   wroga i nie reaguje ogniem w trakcie tury.
+- Piechota i zwiadowca mogą wsiąść do własnego czołgu, jeśli jest on osiągalny
+  w pozostałym budżecie ruchu i ma wolne miejsce. Wybrana jednostka widzi
+  nad osiągalnym pojazdem małą ikonę wsiadania (`↓`); kliknięcie planuje akcję `board`
+  bez drugiego potwierdzenia. Wsiadanie liczy trasę do pozycji startowej
+  pojazdu, kończy turę pasażera i jest akcją `board` w planie. Plan rozlicza
+  pasażera przed ruchem pojazdu, więc kolejność kliknięć nie zmienia
+  wyniku: pojazd zabiera pasażera ze sobą, także wtedy, gdy jego trasę
+  zaplanowano wcześniej. Pasażer zostaje w pojeździe do ręcznego wyładunku:
+  wybrany pojazd z ładunkiem i bez zaplanowanych akcji pokazuje ikonę
+  wysiadania (`↑`) na wolnych sąsiednich heksach, a kliknięcie planuje akcję
+  `unload`, która stawia pasażera na wskazanym heksie i kończy turę
+  pojazdu oraz pasażera. Początek tury nie wyładowuje ładowni.
 - Brak stref kontroli i dodatkowych zasad wejścia na heks.
 
 ## ZAL-006: Walka
@@ -213,12 +235,22 @@
   ataku); dymki znikają po pierwszym wykonanym ataku. Jednostki wychodzą
   z bazy na heksie `(2, 5)`, która sama ma zasięg wzroku 3. Zabicie
   ostatniego wroga kończy misję i pokazuje ekran wyniku.
-- Druga misja (plik `ruch-jednostek.ts`) uczy ruchu: mapa 16×10 ma drogę,
-  las, bagno i wodę, gracz dostaje dwóch piechurów i zwiadowcę wokół bazy,
-  a rekrutacja jest wyłączona. Czerwony piechur po drugiej stronie jest
-  celem; dymki tłumaczą punkty ruchu, koszt terenu i zatwierdzanie trasy.
-  Misja odblokowuje się po ukończeniu pierwszej, a postęp jest zapisywany
-  trwale w przeglądarce.
+- Druga misja (plik `ruch-jednostek.ts`) uczy ruchu i transportu na poligonie:
+  mapa 16×10 ma drogę, las, bagno, góry, miasto i wodę, a gracz dostaje dwóch
+  piechurów i zwiadowcę wokół bazy. Misja ma flagę `sandbox`, więc start bez
+  wroga nie kończy jej po turze. Pierwsze cztery dymki tłumaczą punkty ruchu,
+  koszt góry i bagna, zatwierdzanie trasy oraz miasto; po nich gracz dostaje
+  300 kredytów i odblokowany czołg, a piąty dymek prowadzi do zakupu. Zakup nie
+  kończy misji: kolejne kroki wymagają wsiadania piechura do czołgu, dojechania
+  czołgiem na prawą stronę mapy i przetrwania ognia dwóch czerwonych
+  karabinierów, którzy pojawiają się dopiero po wykonaniu tej tury. Czołg ma
+  20 HP, więc dwa strzały po 5 obrażeń go nie niszczą. Karabinierzy po tym
+  ostrzale wycofują się, a gracz wraca czołgiem do bazy na heksie `(2, 5)`.
+  Przy bazie pojawia się żołnierz z bazooką i w pierwszej turze wroga trafia
+  czołg pociskiem za 15 obrażeń. Dymek potwierdzenia przypomina, że to nie
+  jedyne zagrożenie dla czołgu — równie groźne są inne czołgi, śmigłowce
+  i artyleria. Dopiero dymek z przyciskiem `ROZUMIEM` pozwala zakończyć misję. Misja odblokowuje się po ukończeniu pierwszej, a postęp jest
+  zapisywany trwale w przeglądarce.
 - Kafelki „Walka”, „Mgła wojny”, „Amunicja” i „Artyleria” są zapowiedziami —
   kliknięcie pokazuje komunikat „wkrótce”; nie mają jeszcze scenariusza ani
   uruchomienia.

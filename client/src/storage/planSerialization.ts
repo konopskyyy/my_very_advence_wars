@@ -83,6 +83,34 @@ function parseAction(value: unknown): PlanAction {
     return { kind: 'attack', targetId: value.targetId };
   }
 
+  if (value.kind === 'board') {
+    if (typeof value.targetId !== 'string') {
+      throw new Error('Nieprawidłowa akcja planu: brak pojazdu');
+    }
+
+    if (!Array.isArray(value.path) || value.path.length === 0) {
+      throw new Error('Nieprawidłowa akcja planu: pusta trasa wsiadania');
+    }
+
+    return {
+      kind: 'board',
+      targetId: value.targetId,
+      path: value.path.map(parseCoord),
+    };
+  }
+
+  if (value.kind === 'unload') {
+    if (typeof value.passengerId !== 'string') {
+      throw new Error('Nieprawidłowa akcja planu: brak pasażera');
+    }
+
+    return {
+      kind: 'unload',
+      passengerId: value.passengerId,
+      target: parseCoord(value.target),
+    };
+  }
+
   throw new Error(`Nieprawidłowa akcja planu: ${value.kind}`);
 }
 

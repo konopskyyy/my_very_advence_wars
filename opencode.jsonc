@@ -43,5 +43,12 @@
       "server/vendor/**",
       "server/public/game/**"
     ]
+  },
+  "mcp": {
+    "todoist": {
+      "type": "remote",
+      "url": "https://ai.todoist.net/mcp",
+      "enabled": true
+    }
   }
 }

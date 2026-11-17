@@ -6,4 +6,5 @@ export * from './infantry';
 export * from './tank';
 export * from './artillery';
 export * from './scout';
+export * from './bazooka';
 export * from './weapons';

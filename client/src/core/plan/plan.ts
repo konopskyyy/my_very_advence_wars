@@ -3,6 +3,7 @@ import { hexDistance, type HexCoord } from '../map/layout';
 import { getMovePath } from '../map/movement';
 import { cellKey } from '../map/model';
 import type { GameState } from '../state';
+import { canUnloadAt, cargoOf, cargoCount } from '../transport';
 import type { TurnState } from '../turn';
 import { UNIT_DEFS, type Unit } from '../units';
 import { planningState } from './simulate';
@@ -47,6 +48,22 @@ function withActions(plan: TurnPlan, unitId: string, actions: readonly PlanActio
 
 function fail(reason: PlanError): PlanEditResult {
   return { ok: false, reason };
+}
+
+// Pasażer musi wsiąść, zanim pojazd ruszy — plan rozlicza jednostki po kolei.
+function boardingFirst(plan: TurnPlan, unitId: string, vehicleId: string): TurnPlan {
+  const passengerIndex = plan.units.findIndex((candidate) => candidate.unitId === unitId);
+  const vehicleIndex = plan.units.findIndex((candidate) => candidate.unitId === vehicleId);
+
+  if (vehicleIndex === -1 || passengerIndex < vehicleIndex) {
+    return plan;
+  }
+
+  const units = [...plan.units];
+  const [passenger] = units.splice(passengerIndex, 1);
+  units.splice(vehicleIndex, 0, passenger!);
+
+  return { ...plan, units };
 }
 
 function plannedUnit(state: GameState, plan: TurnPlan, unitId: string): Unit | undefined {
@@ -120,6 +137,128 @@ export function setMove(
   }
 
   const next = withActions(plan, unitId, [...baseActions, { kind: 'move', path }]);
+
+  return uniqueFinalPositions(next, state) ? { ok: true, plan: next } : fail('occupied-target');
+}
+
+export function setBoard(
+  plan: TurnPlan,
+  state: GameState,
+  unitId: string,
+  vehicleId: string,
+): PlanEditResult {
+  const unit = state.units.find((candidate) => candidate.id === unitId);
+
+  if (!unit) {
+    return fail('unknown-unit');
+  }
+
+  if (unit.faction !== plan.faction) {
+    return fail('wrong-faction');
+  }
+
+  const actions = unitActions(plan, unitId);
+  const trailingBoard = actions[actions.length - 1]?.kind === 'board';
+  const baseActions = trailingBoard ? actions.slice(0, -1) : actions;
+  // Wsiadanie liczymy od pozycji startowej pojazdu: pasażer wsiada przed jego jazdą.
+  const basePlan = withActions(plan, unitId, baseActions);
+  const baseState = planningState(state, withActions(basePlan, vehicleId, []));
+  const passenger = baseState.units.find((candidate) => candidate.id === unitId);
+  const vehicle = baseState.units.find((candidate) => candidate.id === vehicleId);
+
+  if (!passenger || !vehicle) {
+    return fail('no-target');
+  }
+
+  const stats = UNIT_DEFS[vehicle.kind];
+
+  if (
+    vehicle.id === passenger.id ||
+    vehicle.faction !== passenger.faction ||
+    (stats.capacity ?? 0) <= 0
+  ) {
+    return fail('not-carrier');
+  }
+
+  if (!(stats.carries ?? []).includes(passenger.kind)) {
+    return fail('not-carried');
+  }
+
+  if (cargoCount(vehicle) >= (stats.capacity ?? 0)) {
+    return fail('cargo-full');
+  }
+
+  if (passenger.hasActed || passenger.movesLeft <= 0) {
+    return fail('invalid-action');
+  }
+
+  const path = getMovePath(baseState, passenger, vehicle.pos, vehicle.id);
+
+  if (!path) {
+    return fail('unreachable');
+  }
+
+  const next = boardingFirst(
+    withActions(plan, unitId, [
+      ...baseActions,
+      { kind: 'board', targetId: vehicleId, path },
+    ]),
+    unitId,
+    vehicleId,
+  );
+
+  return uniqueFinalPositions(next, state) ? { ok: true, plan: next } : fail('occupied-target');
+}
+
+export function setUnload(
+  plan: TurnPlan,
+  state: GameState,
+  vehicleId: string,
+  passengerId: string,
+  target: HexCoord,
+): PlanEditResult {
+  const vehicle = state.units.find((candidate) => candidate.id === vehicleId);
+
+  if (!vehicle) {
+    return fail('unknown-unit');
+  }
+
+  if (vehicle.faction !== plan.faction) {
+    return fail('wrong-faction');
+  }
+
+  if (unitActions(plan, vehicleId).length > 0) {
+    return fail('invalid-action');
+  }
+
+  const baseState = planningState(state, plan);
+  const plannedVehicle = baseState.units.find((candidate) => candidate.id === vehicleId);
+
+  if (!plannedVehicle) {
+    return fail('invalid-action');
+  }
+
+  const passenger = cargoOf(plannedVehicle).find((candidate) => candidate.id === passengerId);
+
+  if (!passenger) {
+    return fail('no-passenger');
+  }
+
+  if ((UNIT_DEFS[plannedVehicle.kind].capacity ?? 0) <= 0) {
+    return fail('not-carrier');
+  }
+
+  if (hexDistance(plannedVehicle.pos, target) !== 1) {
+    return fail('unreachable');
+  }
+
+  if (!canUnloadAt(baseState, target)) {
+    return fail('occupied-target');
+  }
+
+  const next = withActions(plan, vehicleId, [
+    { kind: 'unload', passengerId, target },
+  ]);
 
   return uniqueFinalPositions(next, state) ? { ok: true, plan: next } : fail('occupied-target');
 }

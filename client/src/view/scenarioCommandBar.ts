@@ -25,6 +25,8 @@ import { unitTexture } from './unitLayer';
 
 const LOG_X = 806;
 const LOG_WIDTH = 92;
+const OBJECTIVES_X = 706;
+const OBJECTIVES_WIDTH = 88;
 const RECRUIT_X = 908;
 const RECRUIT_WIDTH = 92;
 const BUTTON_Y = 10;
@@ -50,8 +52,10 @@ export interface ScenarioCommandBarHandlers {
   readonly onEndTurn: () => void;
   readonly onRecruit: () => void;
   readonly onLog: () => void;
+  readonly onObjectives: () => void;
   readonly onScenarioMenu: () => void;
   readonly onMainMenu: () => void;
+  readonly returnLabel?: string;
 }
 
 export class ScenarioCommandBar {
@@ -61,6 +65,7 @@ export class ScenarioCommandBar {
   private readonly barSeparators: Phaser.GameObjects.Rectangle[] = [];
   private readonly logButton: Phaser.GameObjects.Rectangle;
   private readonly logLabel: Phaser.GameObjects.Text;
+  private readonly objectivesButton: Phaser.GameObjects.Rectangle;
   private readonly recruitButton: Phaser.GameObjects.Rectangle;
   private readonly recruitIcon: Phaser.GameObjects.Image;
   private readonly recruitLabel: Phaser.GameObjects.Text;
@@ -97,7 +102,12 @@ export class ScenarioCommandBar {
         .setDepth(21),
     );
 
-    this.makeBarLink('MENU SCENARIUSZY', 16, 14, this.handlers.onScenarioMenu);
+    this.makeBarLink(
+      this.handlers.returnLabel ?? 'MENU SCENARIUSZY',
+      16,
+      14,
+      this.handlers.onScenarioMenu,
+    );
     this.makeBarLink('MENU GŁÓWNE', 16, 32, this.handlers.onMainMenu);
 
     this.barTurnLabel = this.register(
@@ -161,6 +171,15 @@ export class ScenarioCommandBar {
         .setOrigin(0.5)
         .setScrollFactor(0)
         .setDepth(22),
+    );
+
+    this.objectivesButton = this.makeBarButton(
+      'CELE',
+      OBJECTIVES_X,
+      barY + BUTTON_Y,
+      OBJECTIVES_WIDTH,
+      BUTTON_HEIGHT,
+      this.handlers.onObjectives,
     );
 
     this.recruitButton = this.register(
@@ -310,6 +329,9 @@ export class ScenarioCommandBar {
       .setFillStyle(theme.accentDark, 1)
       .setStrokeStyle(1, theme.accentBright, 0.8);
     this.logLabel.setColor(theme.accentSoft);
+    this.objectivesButton
+      .setFillStyle(theme.accentDark, 1)
+      .setStrokeStyle(1, theme.accentBright, 0.8);
     this.recruitButton
       .setFillStyle(theme.accentDark, 1)
       .setStrokeStyle(1, theme.accentBright, 0.8);

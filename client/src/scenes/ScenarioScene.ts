@@ -1,14 +1,15 @@
 import Phaser from 'phaser';
 import { canAttackThisTurn } from '../core/combat';
 import type { HexCoord } from '../core/map';
-import { mapBounds, mapTileCount, moveTargets } from '../core/map';
+import { getMoveCost, IMPASSABLE, mapBounds, mapTileCount, moveTargets } from '../core/map';
 import {
   BUILT_IN_SCENARIOS,
   ensureScenarioArmies,
+  findRecruitSlot,
   recruitUnit,
   type ScenarioDefinition,
 } from '../core/scenario';
-import type { GameState } from '../core/state';
+import { placeUnit, type GameState } from '../core/state';
 import {
   createRecruitment,
   purchaseUnit,
@@ -18,15 +19,20 @@ import { attackTiles } from '../core/ranges';
 import {
   addAttack,
   buildTimeline,
+  boardingTarget,
   buildTurnLog,
+  clearUnit,
   commitPlan,
   createTurnPlan,
+  MOVE_STEP_MS,
   planningState,
   planState,
   removeActionFrom,
   removeLastAction,
   sampleTimeline,
+  setBoard,
   setMove,
+  setUnload,
   unitActions,
   type PlanError,
   type TimelineAttackClip,
@@ -48,10 +54,24 @@ import {
   type UnitKind,
 } from '../core/units';
 import { visibleTileKeys, visibleUnitAt, visibleUnits, type VisionPoint } from '../core/vision';
-import { activeTutorialHint, tutorialProgress, type TutorialScript } from '../core/tutorial';
+import {
+  activeTutorialHint,
+  applyTutorialRewards,
+  pendingTutorialRetirements,
+  pendingTutorialSpawns,
+  tutorialComplete,
+  tutorialProgress,
+  tutorialStepStates,
+  type TutorialProgress,
+  type TutorialScript,
+} from '../core/tutorial';
+import { boardingPath, canBoard, cargoOf, unloadTargets } from '../core/transport';
 import { HexMapView, HEX_SIZE, outlineHex } from '../view/hexGrid';
 import { MapViewport } from '../view/mapViewport';
 import { MissionResult } from '../view/missionResult';
+import { Minimap } from '../view/minimap';
+import { ObjectivesPanel } from '../view/objectivesPanel';
+import { PauseMenu } from '../view/pauseMenu';
 import { PlanTimeline } from '../view/planTimeline';
 import { ReplayBanner } from '../view/replayBanner';
 import { RecruitDialog } from '../view/recruitDialog';
@@ -62,13 +82,16 @@ import { installButtonClickSound } from '../view/buttonAudio';
 import {
   playDeathSound,
   playHitSound,
+  playMoveSound,
   playShotSound,
 } from '../view/combatAudio';
 import { preloadFogTile } from '../view/fogTile';
 import { preloadRecruitPortraits } from '../view/recruitPortrait';
 import { playShotEffect } from '../view/shotEffect';
 import { preloadTerrainTiles } from '../view/terrainTiles';
+import { TutorialConfirm } from '../view/tutorialConfirm';
 import { TutorialTip } from '../view/tutorialTip';
+import { TransportIcons, type TransportBadge } from '../view/transportIcons';
 import { TurnLogPanel } from '../view/turnLogPanel';
 import { UnitLayer, unitTexture } from '../view/unitLayer';
 import { VisionFog } from '../view/visionFog';
@@ -86,6 +109,7 @@ const EDGE_PAN_MARGIN = 24;
 const MOVE_HINT_COLOR = 0x6fd08c;
 const ATTACK_HINT_COLOR = 0xe0563f;
 const PENDING_ATTACK_COLOR = 0xffb347;
+const BOARD_HINT_COLOR = 0x5aa9e6;
 const ATTACK_HINT_SIZE = HEX_SIZE - 8;
 const SHOT_LINE_DASH = 8;
 const SHOT_LINE_GAP = 5;
@@ -119,6 +143,11 @@ export class ScenarioScene extends Phaser.Scene {
     readonly unitId: string;
     readonly targetId: string;
   } | null = null;
+  private pendingBoard: {
+    readonly unitId: string;
+    readonly vehicleId: string;
+    readonly plan: TurnPlan;
+  } | null = null;
   private timeline: TurnTimeline = { durationMs: 0, clips: [] };
   private previewMs: number | null = null;
   private playing = false;
@@ -136,6 +165,15 @@ export class ScenarioScene extends Phaser.Scene {
   private tutorialScript?: TutorialScript;
   private tutorialMoves = 0;
   private tutorialAttacks = 0;
+  private tutorialBoarded = 0;
+  private tutorialTankCol = 0;
+  private tutorialSurvived = 0;
+  private tutorialBazookaHits = 0;
+  private tutorialReturned = false;
+  private tutorialConfirmed = false;
+  private tutorialRetirements = new Set<number>();
+  private tutorialRewards = new Set<number>();
+  private tutorialSpawnedUnits = new Map<number, string[]>();
   private returnScene = 'scenario-menu';
   private returnLabel = 'MENU SCENARIUSZY';
   private finished = false;
@@ -152,6 +190,7 @@ export class ScenarioScene extends Phaser.Scene {
   private unitLayer!: UnitLayer;
   private visionFog!: VisionFog;
   private tutorialTip!: TutorialTip;
+  private tutorialConfirm!: TutorialConfirm;
   private missionResult!: MissionResult;
   private uiCamera?: Phaser.Cameras.Scene2D.Camera;
   private commandBar!: ScenarioCommandBar;
@@ -159,6 +198,10 @@ export class ScenarioScene extends Phaser.Scene {
   private recruitDialog!: RecruitDialog;
   private turnLogPanel!: TurnLogPanel;
   private replayBanner!: ReplayBanner;
+  private pauseMenu!: PauseMenu;
+  private minimap!: Minimap;
+  private objectivesPanel!: ObjectivesPanel;
+  private transportIcons!: TransportIcons;
   private readonly planGhosts: Phaser.GameObjects.Image[] = [];
   private pendingGhost?: Phaser.GameObjects.Image;
   private cursor!: Phaser.GameObjects.Graphics;
@@ -213,11 +256,24 @@ export class ScenarioScene extends Phaser.Scene {
     this.previewMs = null;
     this.playing = false;
     this.playback = null;
+    this.pendingMove = null;
+    this.pendingAttack = null;
+    this.pendingBoard = null;
+    this.hoverUnitId = null;
     this.recruitment = createRecruitment(this.scenario.recruitment);
     this.recruitKind = this.recruitment.allowedKinds[0] ?? 'infantry';
     this.tutorialScript = this.scenario.tutorial;
     this.tutorialMoves = 0;
     this.tutorialAttacks = 0;
+    this.tutorialBoarded = 0;
+    this.tutorialTankCol = 0;
+    this.tutorialSurvived = 0;
+    this.tutorialBazookaHits = 0;
+    this.tutorialReturned = false;
+    this.tutorialConfirmed = false;
+    this.tutorialRetirements = new Set();
+    this.tutorialRewards = new Set();
+    this.tutorialSpawnedUnits = new Map();
     this.returnScene = data?.returnScene ?? 'scenario-menu';
     this.returnLabel = data?.returnLabel ?? 'MENU SCENARIUSZY';
     this.finished = false;
@@ -235,7 +291,8 @@ export class ScenarioScene extends Phaser.Scene {
       zoomMax: 2.5,
       startZoom: 0.9,
       edgePanMargin: EDGE_PAN_MARGIN,
-      edgePanBlocked: (pointer) => this.pointerOverUi(pointer) && !this.pointerOverBarEdge(pointer),
+      edgePanBlocked: (pointer) =>
+        this.pointerOverModal() || this.pointerOverCommandBar(pointer),
     });
 
     this.mapView = new HexMapView(this, this.state.map);
@@ -253,6 +310,9 @@ export class ScenarioScene extends Phaser.Scene {
     this.cursor.setDepth(5);
 
     this.tutorialTip = new TutorialTip(this);
+    this.tutorialConfirm = new TutorialConfirm(this, {
+      onConfirm: () => this.confirmTutorialBazooka(),
+    });
 
     this.commandBar = new ScenarioCommandBar(this, {
       onEndTurn: () => this.playTurn(),
@@ -262,8 +322,10 @@ export class ScenarioScene extends Phaser.Scene {
         }
       },
       onLog: () => this.openLogPanel(),
-      onScenarioMenu: () => this.scene.start('scenario-menu'),
+      onObjectives: () => this.openObjectives(),
+      onScenarioMenu: () => this.scene.start(this.returnScene),
       onMainMenu: () => this.scene.start('menu'),
+      returnLabel: this.returnLabel,
     });
     this.planner = new PlanTimeline(this, {
       onToggle: () => this.clearPreview(),
@@ -295,6 +357,16 @@ export class ScenarioScene extends Phaser.Scene {
       onClose: () => this.turnLogPanel.hide(),
     });
     this.replayBanner = new ReplayBanner(this);
+    this.pauseMenu = new PauseMenu(this, {
+      subtitle: this.scenario.name,
+      onEndMission: () => this.scene.start(this.returnScene),
+      onMainMenu: () => this.scene.start('menu'),
+    });
+    this.minimap = new Minimap(this);
+    this.objectivesPanel = new ObjectivesPanel(this, {
+      onClose: () => this.objectivesPanel.hide(),
+    });
+    this.transportIcons = new TransportIcons(this);
 
     this.setupUiCamera();
 
@@ -341,6 +413,23 @@ export class ScenarioScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number): void {
+    this.refreshTransportIcons();
+    this.minimap.update({
+      map: this.state.map,
+      units: this.replayMode
+        ? this.state.units
+        : visibleUnits(this.state, this.playerFaction, this.visionFor(this.playerFaction)),
+      camera: this.cameras.main,
+      bottomInset: this.replayMode ? 8 : BAR_HEIGHT + this.planner.height + 8,
+      spawn: this.scenario.spawn
+        ? { col: this.scenario.spawn.col, row: this.scenario.spawn.row }
+        : undefined,
+    });
+
+    if (this.pauseMenu.isOpen) {
+      return;
+    }
+
     this.unitLayer.update(delta);
 
     if (this.finished) {
@@ -352,7 +441,7 @@ export class ScenarioScene extends Phaser.Scene {
       return;
     }
 
-    if (this.recruitDialog?.isOpen || this.playing || this.replayMode) {
+    if (this.recruitDialog?.isOpen || this.tutorialConfirm?.isOpen || this.playing || this.replayMode) {
       return;
     }
 
@@ -375,9 +464,14 @@ export class ScenarioScene extends Phaser.Scene {
       ...this.planner.uiObjects,
       ...this.recruitDialog.uiObjects,
       ...this.tutorialTip.uiObjects,
+      ...this.tutorialConfirm.uiObjects,
       ...this.missionResult.uiObjects,
       ...this.turnLogPanel.uiObjects,
       ...this.replayBanner.uiObjects,
+      ...this.pauseMenu.uiObjects,
+      ...this.minimap.uiObjects,
+      ...this.objectivesPanel.uiObjects,
+      ...this.transportIcons.uiObjects,
     ]);
     uiCamera.ignore([
       this.cursor,
@@ -472,7 +566,11 @@ export class ScenarioScene extends Phaser.Scene {
       return;
     }
 
-    if (this.pointerOverUi(pointer)) {
+    if (this.pointerOverModal() || this.pointerOverCommandBar(pointer)) {
+      return;
+    }
+
+    if (this.minimap.contains(pointer.x, pointer.y)) {
       return;
     }
 
@@ -480,7 +578,19 @@ export class ScenarioScene extends Phaser.Scene {
       return;
     }
 
+    if (this.pointerOverPlanner(pointer)) {
+      return;
+    }
+
     if (pointer.button !== 0) {
+      return;
+    }
+
+    this.refreshTransportIcons();
+    const badge = this.transportIcons.hitAt(pointer.x, pointer.y);
+
+    if (badge) {
+      this.applyTransportBadge(badge);
       return;
     }
 
@@ -502,6 +612,7 @@ export class ScenarioScene extends Phaser.Scene {
           this.applyPlan(this.pendingMove.plan);
         }
 
+        this.pendingBoard = null;
         const result = addAttack(this.plan, this.state, unit.id, target.id);
 
         if (!result.ok) {
@@ -527,6 +638,43 @@ export class ScenarioScene extends Phaser.Scene {
 
       const ontoOwnUnit = target !== undefined && target.id !== unit.id;
 
+      if (ontoOwnUnit) {
+        const carrierFirst = canBoard(unit, target);
+        const passengerId = carrierFirst ? target.id : unit.id;
+        const vehicleId = carrierFirst ? unit.id : target.id;
+        const boarded = setBoard(this.plan, this.state, passengerId, vehicleId);
+
+        if (boarded.ok) {
+          if (
+            this.pendingBoard?.unitId === passengerId &&
+            this.pendingBoard.vehicleId === vehicleId
+          ) {
+            this.applyPlan(boarded.plan);
+            return;
+          }
+
+          this.pendingMove = null;
+          this.pendingAttack = null;
+          this.pendingBoard = { unitId: passengerId, vehicleId, plan: boarded.plan };
+          this.drawPath();
+          this.planner.notice('Kliknij pojazd ponownie, aby potwierdzić wsiadanie');
+          return;
+        }
+
+        if (boarded.reason !== 'not-carrier' && boarded.reason !== 'not-carried') {
+          this.pendingMove = null;
+          this.pendingAttack = null;
+          this.pendingBoard = null;
+          this.drawPath();
+          this.planner.notice(
+            boarded.reason === 'unreachable'
+              ? 'Piechur nie dojdzie do czołgu w tej turze. Przybliż piechura do pojazdu'
+              : describePlanError(boarded.reason),
+          );
+          return;
+        }
+      }
+
       if (!target || ontoOwnUnit) {
         const result = setMove(this.plan, this.state, unit.id, coord);
 
@@ -538,6 +686,7 @@ export class ScenarioScene extends Phaser.Scene {
 
           this.pendingMove = null;
           this.pendingAttack = null;
+          this.pendingBoard = null;
           this.drawPath();
           this.planner.notice(describePlanError(result.reason));
           return;
@@ -553,6 +702,7 @@ export class ScenarioScene extends Phaser.Scene {
         }
 
         this.pendingAttack = null;
+        this.pendingBoard = null;
         this.pendingMove = { unitId: unit.id, coord, plan: result.plan };
         this.drawPath();
         this.planner.notice('Kliknij ten heks ponownie, aby potwierdzić ruch');
@@ -612,13 +762,50 @@ export class ScenarioScene extends Phaser.Scene {
     );
   }
 
+  private boardingCandidate(): { passenger: Unit; vehicle: Unit; path: HexCoord[] } | null {
+    const hovered = this.hoveredUnit();
+    const selected = this.selectedUnit();
+
+    if (!hovered || !selected || hovered.id === selected.id) {
+      return null;
+    }
+
+    const base = planningState(this.state, removeActionFrom(this.plan, hovered.id, 0));
+    const passenger = base.units.find((candidate) => candidate.id === selected.id);
+    const vehicle = base.units.find((candidate) => candidate.id === hovered.id);
+
+    if (!passenger || !vehicle || !canBoard(vehicle, passenger)) {
+      return null;
+    }
+
+    const path = boardingPath(base, passenger, vehicle);
+
+    return path ? { passenger, vehicle, path } : null;
+  }
+
+  private refreshBoardingHint(): void {
+    const candidate = this.boardingCandidate();
+
+    if (!candidate) {
+      return;
+    }
+
+    this.planner.notice(
+      `${UNIT_DEFS[candidate.vehicle.kind].label} może zabrać ${UNIT_DEFS[
+        candidate.passenger.kind
+      ].label.toLowerCase()} — kliknij pojazd, aby zaplanować`,
+    );
+  }
+
   private applyPlan(plan: TurnPlan): void {
     this.plan = plan;
     this.pendingMove = null;
     this.pendingAttack = null;
+    this.pendingBoard = null;
     this.timeline = buildTimeline(this.plan, this.state);
     this.clearPreview();
     this.refreshPlan();
+    this.refreshHiddenUnits();
     this.drawSelection();
     this.drawRangeHints();
     this.drawPath();
@@ -660,6 +847,11 @@ export class ScenarioScene extends Phaser.Scene {
     this.refreshUnitPreview();
     this.refreshPlan();
     this.refreshTutorial();
+
+    if (this.finished) {
+      return true;
+    }
+
     this.drawPath();
     this.planner.notice(`${UNIT_DEFS[kind].label} dołącza do armii`);
     return true;
@@ -676,9 +868,10 @@ export class ScenarioScene extends Phaser.Scene {
       return;
     }
 
-    if (this.pendingMove || this.pendingAttack) {
+    if (this.pendingMove || this.pendingAttack || this.pendingBoard) {
       this.pendingMove = null;
       this.pendingAttack = null;
+      this.pendingBoard = null;
       this.drawPath();
     }
 
@@ -687,6 +880,7 @@ export class ScenarioScene extends Phaser.Scene {
 
     this.unitLayer.setFramePositions(frame.units);
     this.hideGhosts();
+    this.refreshHiddenUnits(this.previewMs);
     this.planner.setPlayhead(this.previewMs);
     this.refreshUnitPreview();
   }
@@ -694,6 +888,7 @@ export class ScenarioScene extends Phaser.Scene {
   private clearPreview(): void {
     this.previewMs = null;
     this.unitLayer.resetPositions();
+    this.refreshHiddenUnits();
     this.planner.setPlayhead(0);
     this.drawPath();
   }
@@ -726,6 +921,7 @@ export class ScenarioScene extends Phaser.Scene {
     this.timeline = buildTimeline(this.plan, this.state);
     this.pendingMove = null;
     this.pendingAttack = null;
+    this.pendingBoard = null;
     this.clearPreview();
     this.selected = null;
     this.selection.clear();
@@ -746,6 +942,7 @@ export class ScenarioScene extends Phaser.Scene {
       elapsed: 0,
       fired: new Set<string>(),
     };
+    this.refreshHiddenUnits(0);
     this.planner.setPlaying(true);
   }
 
@@ -761,6 +958,36 @@ export class ScenarioScene extends Phaser.Scene {
     const frame = sampleTimeline(playback.timeline, this.state, playback.elapsed);
 
     this.unitLayer.setFramePositions(frame.units);
+    this.refreshHiddenUnits(playback.elapsed);
+
+    for (const clip of playback.timeline.clips) {
+      if (clip.kind !== 'move' || playback.elapsed < clip.startMs) {
+        continue;
+      }
+
+      const mover = this.state.units.find((unit) => unit.id === clip.unitId);
+      const sound = mover ? UNIT_DEFS[mover.kind].moveSound : undefined;
+
+      if (!sound) {
+        continue;
+      }
+
+      const steps = Math.min(
+        clip.path.length,
+        Math.floor((playback.elapsed - clip.startMs) / MOVE_STEP_MS) + 1,
+      );
+
+      for (let step = 0; step < steps; step += 1) {
+        const key = `move:${clip.unitId}:${clip.actionIndex}:${step}`;
+
+        if (playback.fired.has(key)) {
+          continue;
+        }
+
+        playback.fired.add(key);
+        playMoveSound(sound);
+      }
+    }
 
     for (const clip of frame.attacks) {
       const key = `${clip.unitId}:${clip.actionIndex}`;
@@ -816,21 +1043,60 @@ export class ScenarioScene extends Phaser.Scene {
       this.missionDamage += log.damageTotal;
     }
 
-    this.pendingSave = this.saveTurn(finishedPlan, committed.state, log);
+    const tankIds = new Set(
+      this.state.units
+        .filter((unit) => unit.faction === this.playerFaction && unit.kind === 'tank')
+        .map((unit) => unit.id),
+    );
+    const hitsOnTank = committed.hits.filter((hit) => tankIds.has(hit.targetId));
+    const enemyHitTank = !wasPlayerTurn && hitsOnTank.length > 0;
 
-    if (wasPlayerTurn) {
-      const executed = tutorialProgress(this.recruitment, finishedPlan);
-
-      this.tutorialMoves += executed.moves;
-      this.tutorialAttacks += executed.attacks;
+    if (!wasPlayerTurn) {
+      this.tutorialBazookaHits += hitsOnTank.filter(
+        (hit) => this.state.units.find((unit) => unit.id === hit.attackerId)?.kind === 'bazooka',
+      ).length;
     }
 
     this.state = committed.state;
+
+    if (wasPlayerTurn) {
+      const executed = tutorialProgress(this.recruitment, finishedPlan, {
+        state: this.state,
+        tankFaction: this.playerFaction,
+        base: this.scenario.spawn
+          ? { col: this.scenario.spawn.col, row: this.scenario.spawn.row }
+          : undefined,
+        bazookaHits: this.tutorialBazookaHits,
+      });
+
+      this.tutorialMoves += executed.moves;
+      this.tutorialAttacks += executed.attacks;
+      this.tutorialBoarded += executed.boarded;
+      this.tutorialTankCol = Math.max(this.tutorialTankCol, executed.tankCol);
+      this.tutorialReturned = this.tutorialReturned || executed.returned;
+    }
+
+    if (enemyHitTank) {
+      this.tutorialSurvived += 1;
+    }
+
+    this.applyTutorialRetirements();
+    this.applyTutorialSpawns();
+
+    const savedState = this.state;
+
+    this.pendingSave = this.pendingSave
+      .then(() => this.saveTurn(finishedPlan, savedState, log))
+      .catch((error) => {
+        console.warn('Nie udało się zapisać planu tury', error);
+      });
+
     this.playing = false;
     this.playback = null;
     this.previewMs = null;
     this.pendingMove = null;
     this.pendingAttack = null;
+    this.pendingBoard = null;
     this.selected = null;
     this.hover = null;
     this.hoverUnitId = null;
@@ -852,12 +1118,16 @@ export class ScenarioScene extends Phaser.Scene {
 
     const enemyLeft = this.state.units.some((unit) => unit.faction !== this.playerFaction);
 
-    if (wasPlayerTurn && !enemyLeft) {
+    if (wasPlayerTurn && !enemyLeft && !this.scenario.sandbox) {
       this.finishMission();
       return;
     }
 
-    this.turn = nextTurn(this.turn);
+    const keepPlayerTurn = wasPlayerTurn && this.scenario.sandbox && !enemyLeft;
+
+    this.turn = keepPlayerTurn
+      ? { faction: this.turn.faction, turn: this.turn.turn + 1 }
+      : nextTurn(this.turn);
     this.state = beginTurn(this.state, this.turn.faction);
     this.plan = createTurnPlan(this.turn);
     this.timeline = { durationMs: 0, clips: [] };
@@ -882,6 +1152,7 @@ export class ScenarioScene extends Phaser.Scene {
     this.timeline = { durationMs: 0, clips: [] };
     this.recruitDialog.hide();
     this.tutorialTip.hide();
+    this.tutorialConfirm.hide();
 
     this.refreshUnits();
     this.refreshHud();
@@ -909,7 +1180,25 @@ export class ScenarioScene extends Phaser.Scene {
   }
 
   private beginSiTurn(): void {
-    this.plan = buildSiPlan(this.state, this.turn, this.spawns);
+    let plan = buildSiPlan(this.state, this.turn, this.spawns);
+
+    if (this.scenario.id === 'tutorial-ruch-jednostek') {
+      const bazooka = this.state.units.find(
+        (unit) => unit.kind === 'bazooka' && unit.faction !== this.playerFaction,
+      );
+      const tank = this.state.units.find(
+        (unit) => unit.kind === 'tank' && unit.faction === this.playerFaction,
+      );
+
+      if (bazooka && tank) {
+        const attack = addAttack(clearUnit(plan, bazooka.id), this.state, bazooka.id, tank.id);
+        if (attack.ok) {
+          plan = attack.plan;
+        }
+      }
+    }
+
+    this.plan = plan;
     this.timeline = buildTimeline(this.plan, this.state);
     this.refreshPlan();
     this.playTurn();
@@ -946,6 +1235,116 @@ export class ScenarioScene extends Phaser.Scene {
     }
   }
 
+  private openObjectives(): void {
+    if (this.playing || this.replayMode) {
+      return;
+    }
+
+    this.objectivesPanel.show({
+      name: this.scenario.name,
+      description: this.scenario.description,
+      steps: tutorialStepStates(this.tutorialScript, this.tutorialProgressNow()),
+    });
+  }
+
+  private refreshTransportIcons(): void {
+    const unit = this.selectedUnit();
+
+    if (
+      !unit ||
+      this.playing ||
+      this.replayMode ||
+      this.finished ||
+      this.pauseMenu.isOpen ||
+      unit.faction !== this.turn.faction ||
+      this.turn.faction !== this.playerFaction
+    ) {
+      this.transportIcons.hide();
+      return;
+    }
+
+    const badges: TransportBadge[] = [];
+    const camera = this.cameras.main;
+    const toScreen = (coord: HexCoord): { x: number; y: number } => {
+      const center = this.mapView.center(coord);
+
+      return {
+        x: (center.x - camera.worldView.x) * camera.zoom,
+        y: (center.y - camera.worldView.y) * camera.zoom,
+      };
+    };
+    const passenger = cargoOf(unit)[0];
+
+    if (passenger && unitActions(this.plan, unit.id).length === 0) {
+      for (const target of unloadTargets(this.state, unit)) {
+        if (setUnload(this.plan, this.state, unit.id, passenger.id, target).ok) {
+          badges.push({
+            kind: 'unload',
+            ...toScreen(target),
+            label: '↑',
+            passengerId: passenger.id,
+            vehicleId: unit.id,
+            target,
+          });
+        }
+      }
+    }
+
+    for (const vehicle of this.state.units) {
+      if (
+        vehicle.id !== unit.id &&
+        vehicle.faction === unit.faction &&
+        canBoard(vehicle, unit) &&
+        setBoard(this.plan, this.state, unit.id, vehicle.id).ok
+      ) {
+        badges.push({
+          kind: 'board',
+          ...toScreen(vehicle.pos),
+          label: '↓',
+          passengerId: unit.id,
+          vehicleId: vehicle.id,
+        });
+      }
+    }
+
+    this.transportIcons.show(badges);
+  }
+
+  private applyTransportBadge(badge: TransportBadge): void {
+    const result =
+      badge.kind === 'unload' && badge.target
+        ? setUnload(this.plan, this.state, badge.vehicleId, badge.passengerId, badge.target)
+        : setBoard(this.plan, this.state, badge.passengerId, badge.vehicleId);
+
+    if (!result.ok) {
+      this.planner.notice(describePlanError(result.reason));
+      return;
+    }
+
+    this.applyPlan(result.plan);
+  }
+
+  private refreshHiddenUnits(ms?: number): void {
+    const hidden = new Set<string>();
+
+    if (ms !== undefined) {
+      for (const unitPlan of this.plan.units) {
+        if (!boardingTarget(unitPlan.actions)) {
+          continue;
+        }
+
+        const clips = this.timeline.clips.filter((clip) => clip.unitId === unitPlan.unitId);
+        const end = clips.reduce((latest, clip) => Math.max(latest, clip.endMs), 0);
+
+        if (ms >= end) {
+          hidden.add(unitPlan.unitId);
+        }
+      }
+    }
+
+    this.unitLayer.setHidden(hidden);
+  }
+
   private openLogPanel(): void {
     if (this.playing || this.replayMode) {
       return;
@@ -956,6 +1355,7 @@ export class ScenarioScene extends Phaser.Scene {
   }
 
   private async openReplayFromStart(): Promise<void> {
+    await this.pendingSave;
     const replay = this.replay ?? (await this.loadReplayForRestart());
 
     if (!replay || replay.plans.length === 0) {
@@ -995,6 +1395,7 @@ export class ScenarioScene extends Phaser.Scene {
     this.commandBar.setVisible(false);
     this.planner.setVisible(false);
     this.tutorialTip.hide();
+    this.tutorialConfirm.hide();
 
     if (!this.replay || this.replay.plans.length === 0) {
       this.replayBanner.show('BRAK ZAPISU REPLAY — ESC: POWRÓT');
@@ -1014,6 +1415,7 @@ export class ScenarioScene extends Phaser.Scene {
       return;
     }
 
+    this.replayIndex = index;
     this.state = beginTurn(index === 0 ? replay.initialState : this.state, entry.faction);
     this.turn = { faction: entry.faction, turn: entry.turn };
     this.plan = entry.plan;
@@ -1054,7 +1456,7 @@ export class ScenarioScene extends Phaser.Scene {
     this.unitLayer.resetPositions();
 
     if (entry) {
-      this.state = commitPlan(this.state, entry.plan).state;
+      this.state = entry.stateAfter;
     }
 
     this.refreshUnits();
@@ -1085,7 +1487,7 @@ export class ScenarioScene extends Phaser.Scene {
   }
 
   private onPointerMove(pointer: Phaser.Input.Pointer): void {
-    if (this.playing || this.finished || this.replayMode || this.turnLogPanel.isOpen) {
+    if (this.playing || this.finished || this.replayMode || this.pointerOverModal()) {
       return;
     }
 
@@ -1124,6 +1526,8 @@ export class ScenarioScene extends Phaser.Scene {
       this.hoverUnitId = hoveredId;
       this.drawRangeHints();
     }
+
+    this.refreshBoardingHint();
   }
 
   private onPointerUp(): void {
@@ -1145,11 +1549,23 @@ export class ScenarioScene extends Phaser.Scene {
   }
 
   private onKeyDown(event: KeyboardEvent): void {
+    if (this.pauseMenu.isOpen) {
+      if (event.key === 'Escape') {
+        this.pauseMenu.hide();
+      }
+
+      return;
+    }
+
     if (this.turnLogPanel.isOpen) {
       if (event.key === 'Escape') {
         this.turnLogPanel.hide();
       }
 
+      return;
+    }
+
+    if (this.tutorialConfirm.isOpen) {
       return;
     }
 
@@ -1169,12 +1585,16 @@ export class ScenarioScene extends Phaser.Scene {
       return;
     }
 
-    if (this.playing || this.finished) {
+    if (this.finished) {
       return;
     }
 
     if (event.key === 'Escape') {
-      this.scene.start(event.shiftKey ? 'menu' : 'scenario-menu');
+      this.pauseMenu.show();
+      return;
+    }
+
+    if (this.playing) {
       return;
     }
 
@@ -1206,6 +1626,7 @@ export class ScenarioScene extends Phaser.Scene {
       ) ?? null;
     this.pendingMove = null;
     this.pendingAttack = null;
+    this.pendingBoard = null;
     this.clearPreview();
     this.refreshSelection();
   }
@@ -1256,6 +1677,19 @@ export class ScenarioScene extends Phaser.Scene {
       ? canAttackThisTurn(planned)
       : UNIT_DEFS[planned.kind].attackRange > 0;
     const canMove = own && !planned.hasActed && planned.movesLeft > 0;
+
+    const board = this.boardingCandidate();
+
+    if (board) {
+      this.drawDashedLine(
+        this.mapView.center(board.passenger.pos),
+        this.mapView.center(board.vehicle.pos),
+        2,
+        0.75,
+        BOARD_HINT_COLOR,
+      );
+      outlineHex(this.rangeHints, this.mapView.center(board.vehicle.pos), BOARD_HINT_COLOR, 4);
+    }
 
     if (canMove) {
       for (const target of moveTargets(rangeState, planned)) {
@@ -1317,7 +1751,7 @@ export class ScenarioScene extends Phaser.Scene {
       let from = unit.pos;
 
       for (const action of unitPlan.actions) {
-        if (action.kind === 'move') {
+        if (action.kind === 'move' || action.kind === 'board') {
           for (const coord of action.path) {
             outlineHex(this.pathHints, this.mapView.center(coord), color, lineWidth);
           }
@@ -1328,9 +1762,19 @@ export class ScenarioScene extends Phaser.Scene {
 
           if (end) {
             outlineHex(this.pathHints, this.mapView.center(end), color, 4);
+
+            if (action.kind === 'board') {
+              outlineHex(this.pathHints, this.mapView.center(end), BOARD_HINT_COLOR, 6);
+            }
+
             from = end;
           }
 
+          continue;
+        }
+
+        if (action.kind === 'unload') {
+          outlineHex(this.pathHints, this.mapView.center(action.target), BOARD_HINT_COLOR, 4);
           continue;
         }
 
@@ -1368,6 +1812,40 @@ export class ScenarioScene extends Phaser.Scene {
     this.drawShotLines(selectedId);
     this.drawPendingMove();
     this.drawPendingAttack();
+    this.drawPendingBoard();
+  }
+
+  private drawPendingBoard(): void {
+    const pending = this.pendingBoard;
+
+    if (!pending) {
+      return;
+    }
+
+    const unit = this.state.units.find((candidate) => candidate.id === pending.unitId);
+    const vehicle = planningState(this.state, pending.plan).units.find(
+      (candidate) => candidate.id === pending.vehicleId,
+    );
+
+    if (!unit || !vehicle) {
+      return;
+    }
+
+    const action = unitActions(pending.plan, pending.unitId).find(
+      (candidate) => candidate.kind === 'board',
+    );
+
+    if (!action || action.kind !== 'board') {
+      return;
+    }
+
+    for (const coord of action.path) {
+      outlineHex(this.pathHints, this.mapView.center(coord), BOARD_HINT_COLOR, 2);
+    }
+
+    this.drawMovementArrows(unit.pos, action.path, BOARD_HINT_COLOR, 2);
+    outlineHex(this.pathHints, this.mapView.center(vehicle.pos), BOARD_HINT_COLOR, 5);
+    outlineHex(this.pathHints, this.mapView.center(vehicle.pos), 0xffffff, 2);
   }
 
   private drawPendingMove(): void {
@@ -1599,20 +2077,33 @@ export class ScenarioScene extends Phaser.Scene {
     outlineHex(this.cursor, this.mapView.center(this.hover), 0xffffff, 2);
   }
 
-  private pointerOverBarEdge(pointer: Phaser.Input.Pointer): boolean {
-    return pointer.y >= this.scale.height - EDGE_PAN_MARGIN;
+  private pointerOverModal(): boolean {
+    return (
+      this.pauseMenu?.isOpen === true ||
+      (this.turnLogPanel?.isOpen ?? false) ||
+      (this.recruitDialog?.isOpen ?? false) ||
+      (this.tutorialConfirm?.isOpen ?? false)
+    );
+  }
+
+  private pointerOverCommandBar(pointer: Phaser.Input.Pointer): boolean {
+    return !this.replayMode && pointer.y >= this.scale.height - BAR_HEIGHT;
+  }
+
+  private pointerOverPlanner(pointer: Phaser.Input.Pointer): boolean {
+    return (
+      !this.replayMode &&
+      !this.pointerOverCommandBar(pointer) &&
+      pointer.y >= this.scale.height - BAR_HEIGHT - (this.planner?.height ?? 0)
+    );
   }
 
   private pointerOverUi(pointer: Phaser.Input.Pointer): boolean {
-    if ((this.turnLogPanel?.isOpen ?? false) || (this.recruitDialog?.isOpen ?? false)) {
-      return true;
-    }
-
-    if (this.replayMode) {
-      return false;
-    }
-
-    return pointer.y >= this.scale.height - BAR_HEIGHT - (this.planner?.height ?? 0);
+    return (
+      this.pointerOverModal() ||
+      this.pointerOverCommandBar(pointer) ||
+      this.pointerOverPlanner(pointer)
+    );
   }
 
   private refreshHud(): void {
@@ -1628,17 +2119,195 @@ export class ScenarioScene extends Phaser.Scene {
   }
 
   private refreshTutorial(): void {
-    const hint = activeTutorialHint(this.tutorialScript, {
-      purchased: this.recruitment.purchased,
-      moves: this.tutorialMoves,
-      attacks: this.tutorialAttacks,
-    });
+    const enemiesLeft = this.state.units.some(
+      (unit) => unit.faction !== this.playerFaction,
+    );
+
+    if (this.tutorialSpawnedUnits.size > 0 && !enemiesLeft) {
+      this.tutorialSurvived = Math.max(this.tutorialSurvived, 1);
+    }
+
+    const bazookaSpawnIndex =
+      this.tutorialScript?.steps.findIndex((step) =>
+        step.spawn?.some((unit) => unit.kind === 'bazooka'),
+      ) ?? -1;
+
+    if (bazookaSpawnIndex >= 0 && this.tutorialSpawnedUnits.has(bazookaSpawnIndex) && !enemiesLeft) {
+      this.tutorialBazookaHits = Math.max(this.tutorialBazookaHits, 1);
+    }
+
+    const progress = this.tutorialProgressNow();
+
+    const rewarded = applyTutorialRewards(
+      this.recruitment,
+      this.tutorialScript,
+      progress,
+      this.tutorialRewards,
+    );
+
+    if (rewarded.applied.length !== this.tutorialRewards.size) {
+      this.tutorialRewards = new Set(rewarded.applied);
+      this.recruitment = rewarded.recruitment;
+      this.syncRecruitKind();
+      this.refreshHud();
+      this.refreshUnitPreview();
+      this.planner.notice('Nagroda samouczka przyznana');
+    }
+
+    const needsBazookaConfirm =
+      !this.replayMode &&
+      this.scenario.id === 'tutorial-ruch-jednostek' &&
+      progress.bazookaHits > 0 &&
+      !this.tutorialConfirmed;
+
+    if (needsBazookaConfirm && !this.tutorialConfirm.isOpen) {
+      this.tutorialTip.hide();
+      this.tutorialConfirm.show({
+        title: 'TRAFIENIE Z BAZOOKI!',
+        text: 'Karabiny nie przebiły pancerza, ale żołnierz z bazooką przy bazie trafił czołg i zadał mu 15 obrażeń. Pancerz nie chroni przed wszystkim — czołgowi zagrażają też inne czołgi, śmigłowce i artyleria. Kliknij ROZUMIEM, żeby zakończyć lekcję.',
+      });
+      return;
+    }
+
+    if (this.tutorialConfirm.isOpen) {
+      return;
+    }
+
+    const hint = activeTutorialHint(this.tutorialScript, progress);
 
     if (hint) {
       this.tutorialTip.show(hint);
     } else {
       this.tutorialTip.hide();
     }
+
+    if (
+      !this.replayMode &&
+      !this.finished &&
+      this.scenario.sandbox &&
+      tutorialComplete(this.tutorialScript, progress)
+    ) {
+      this.finishMission();
+    }
+  }
+
+  private confirmTutorialBazooka(): void {
+    if (!this.tutorialConfirm.isOpen) {
+      return;
+    }
+
+    this.tutorialConfirmed = true;
+    this.tutorialConfirm.hide();
+    this.finishMission();
+  }
+
+  private tutorialProgressNow(): TutorialProgress {
+    return {
+      purchased: this.recruitment.purchased,
+      moves: this.tutorialMoves,
+      attacks: this.tutorialAttacks,
+      boarded: this.tutorialBoarded,
+      tankCol: this.tutorialTankCol,
+      survived: this.tutorialSurvived,
+      returned: this.tutorialReturned,
+      bazookaHits: this.tutorialBazookaHits,
+    };
+  }
+
+  private applyTutorialRetirements(): void {
+    const indices = pendingTutorialRetirements(
+      this.tutorialScript,
+      this.tutorialProgressNow(),
+      this.tutorialRetirements,
+    );
+
+    if (indices.length === 0) {
+      return;
+    }
+
+    const retiredIds = new Set<string>();
+
+    for (const index of indices) {
+      const spawnIndex = this.tutorialScript?.steps[index]?.retireSpawn;
+
+      if (spawnIndex === undefined) {
+        continue;
+      }
+
+      for (const id of this.tutorialSpawnedUnits.get(spawnIndex) ?? []) {
+        retiredIds.add(id);
+      }
+
+      this.tutorialRetirements.add(index);
+    }
+
+    if (retiredIds.size === 0) {
+      return;
+    }
+
+    this.state = {
+      ...this.state,
+      units: this.state.units.filter((unit) => !retiredIds.has(unit.id)),
+    };
+  }
+
+  private applyTutorialSpawns(): void {
+    const batches = pendingTutorialSpawns(
+      this.tutorialScript,
+      this.tutorialProgressNow(),
+      new Set(this.tutorialSpawnedUnits.keys()),
+    );
+
+    if (batches.length === 0) {
+      return;
+    }
+
+    let state = this.state;
+    const spawnedKinds = new Set<UnitKind>();
+
+    for (const batch of batches) {
+      const ids: string[] = [];
+
+      for (const spawn of batch.units) {
+        const beforeIds = new Set(state.units.map((unit) => unit.id));
+        const coord = this.spawnCoord(state, spawn.faction, spawn.col, spawn.row);
+        state = placeUnit(state, spawn.kind, coord, spawn.faction);
+        const added = state.units.find((unit) => !beforeIds.has(unit.id));
+
+        if (added) {
+          ids.push(added.id);
+        }
+
+        spawnedKinds.add(spawn.kind);
+      }
+
+      this.tutorialSpawnedUnits.set(batch.index, ids);
+    }
+
+    this.state = state;
+
+    if (!this.replayMode) {
+      this.planner.notice(
+        spawnedKinds.has('bazooka')
+          ? 'Przy bazie pojawia się czerwony żołnierz z bazooką'
+          : 'Na prawym skrzydle pojawiają się czerwoni karabinierzy',
+      );
+    }
+  }
+
+  private spawnCoord(
+    state: GameState,
+    faction: FactionId,
+    col: number,
+    row: number,
+  ): HexCoord {
+    const occupied = state.units.some((unit) => unit.pos.col === col && unit.pos.row === row);
+
+    if (!occupied && getMoveCost(state, { col, row }) < IMPASSABLE) {
+      return { col, row };
+    }
+
+    return findRecruitSlot(state, faction, { col, row }) ?? { col, row };
   }
 }
 
@@ -1658,6 +2327,12 @@ function describePlanError(reason: PlanError): string {
       return 'Brak celu';
     case 'invalid-action':
       return 'Jednostka nie może już działać w tej turze';
+    case 'not-carrier':
+      return 'Ten pojazd nie może zabrać pasażera';
+    case 'cargo-full':
+      return 'Pojazd jest już pełny';
+    case 'not-carried':
+      return 'Ten rodzaj jednostki nie wsiada do pojazdu';
     default:
       return 'Nie można zaplanować tej akcji';
   }

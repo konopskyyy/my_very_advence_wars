@@ -1,6 +1,7 @@
 import type { GameState } from '../state';
+import { loadPassenger, unloadPassenger } from '../transport';
 import { UNIT_DEFS } from '../units';
-import { walkActions } from './simulate';
+import { boardingTarget, unloadAction, walkActions } from './simulate';
 import type { PlanHit, TurnPlan } from './types';
 
 export interface VolleyPlan {
@@ -54,6 +55,18 @@ export function planVolley(state: GameState, plan: TurnPlan): VolleyPlan {
           candidate.id === simulated.id ? simulated : candidate,
         ),
       };
+
+      const boardTarget = boardingTarget(unitPlan.actions);
+
+      if (boardTarget) {
+        current = loadPassenger(current, unit.id, boardTarget);
+      }
+
+      const unload = unloadAction(unitPlan.actions);
+
+      if (unload) {
+        current = unloadPassenger(current, unit.id, unload.passengerId, unload.target);
+      }
     }
   }
 

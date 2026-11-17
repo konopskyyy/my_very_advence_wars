@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { isSoundEnabled } from './combatAudio';
 
 const CHORD_SECONDS = 8;
 const VOLUME = 0.045;
@@ -44,6 +45,10 @@ export class MenuMusic {
   }
 
   start(): void {
+    if (!isSoundEnabled()) {
+      return;
+    }
+
     void this.context.resume();
     this.master.gain.setTargetAtTime(VOLUME, this.context.currentTime, 1.5);
     this.playChord();
