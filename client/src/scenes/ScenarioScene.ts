@@ -88,6 +88,7 @@ import {
 import { preloadFogTile } from '../view/fogTile';
 import { preloadRecruitPortraits } from '../view/recruitPortrait';
 import { playShotEffect } from '../view/shotEffect';
+import { playAirstrikeEffect, preloadAirstrikeCraft } from '../view/airstrikeEffect';
 import { preloadTerrainTiles } from '../view/terrainTiles';
 import { TutorialConfirm } from '../view/tutorialConfirm';
 import { TutorialTip } from '../view/tutorialTip';
@@ -218,6 +219,7 @@ export class ScenarioScene extends Phaser.Scene {
     preloadTerrainTiles(this);
     preloadFogTile(this);
     preloadRecruitPortraits(this);
+    preloadAirstrikeCraft(this);
   }
 
   init(data: ScenarioData): void {
@@ -323,6 +325,7 @@ export class ScenarioScene extends Phaser.Scene {
       },
       onLog: () => this.openLogPanel(),
       onObjectives: () => this.openObjectives(),
+      onAirstrike: () => this.startAirstrike(),
       onScenarioMenu: () => this.scene.start(this.returnScene),
       onMainMenu: () => this.scene.start('menu'),
       returnLabel: this.returnLabel,
@@ -1013,18 +1016,37 @@ export class ScenarioScene extends Phaser.Scene {
 
   private playAttackEffect(clip: TimelineAttackClip): void {
     const attacker = this.state.units.find((unit) => unit.id === clip.unitId);
+    const to = this.unitLayer.center(clip.targetPos);
+    const registerFx = (object: Phaser.GameObjects.GameObject): void => {
+      this.uiCamera?.ignore(object);
+      this.shotFx.add(object);
+      object.once('destroy', () => this.shotFx.delete(object));
+    };
 
     playShotSound(attacker ? UNIT_DEFS[attacker.kind].weapon : undefined);
+
+    if (attacker?.kind === 'bomber') {
+      const bounds = mapBounds(this.state.map);
+      const from = bounds
+        ? this.unitLayer.center({ col: bounds.minCol, row: clip.targetPos.row })
+        : this.unitLayer.center(clip.attackerPos);
+
+      playAirstrikeEffect(
+        this,
+        { x: from.x - 80, y: from.y },
+        to,
+        () => playHitSound(),
+        registerFx,
+      );
+      return;
+    }
+
     playShotEffect(
       this,
       this.unitLayer.center(clip.attackerPos),
-      this.unitLayer.center(clip.targetPos),
+      to,
       () => playHitSound(),
-      (object) => {
-        this.uiCamera?.ignore(object);
-        this.shotFx.add(object);
-        object.once('destroy', () => this.shotFx.delete(object));
-      },
+      registerFx,
     );
   }
 
@@ -1616,6 +1638,27 @@ export class ScenarioScene extends Phaser.Scene {
     return this.keys.get(code)?.isDown ?? false;
   }
 
+  private startAirstrike(): void {
+    if (this.playing || this.finished || this.replayMode || this.turnLogPanel.isOpen) {
+      return;
+    }
+
+    const bomber = this.state.units.find(
+      (unit) =>
+        unit.faction === this.turn.faction &&
+        unit.kind === 'bomber' &&
+        canAttackThisTurn(unit),
+    );
+
+    if (!bomber) {
+      this.planner.notice('Brak gotowego bombowca — kup bombera w oknie KUP');
+      return;
+    }
+
+    this.selectAt(bomber.pos);
+    this.planner.notice('Wybierz cel nalotu — kliknij wroga dwukrotnie');
+  }
+
   private selectAt(coord: HexCoord): void {
     this.selected =
       visibleUnitAt(
@@ -2115,6 +2158,7 @@ export class ScenarioScene extends Phaser.Scene {
       funds: this.recruitment.funds,
       recruitKind: this.recruitKind,
       vision: this.visionFor(this.turn.faction),
+      recruitment: this.recruitment,
     });
   }
 

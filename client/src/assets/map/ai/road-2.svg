@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs>
+    <clipPath id="hexClipOuter"><polygon points="128,8 231.92,68 231.92,188 128,248 24.08,188 24.08,68"/></clipPath>
+    <radialGradient id="meadowDomeRoadAlt" cx="42%" cy="30%" r="86%">
+      <stop offset="0" stop-color="#739f4d"/>
+      <stop offset="100%" stop-color="#46712e"/>
+    </radialGradient>
+    <radialGradient id="specGradRoadAlt" cx="30%" cy="24%" r="76%">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="aoGradRoadAlt" cx="68%" cy="80%" r="80%">
+      <stop offset="0" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.14"/>
+    </radialGradient>
+  </defs>
+  <g clip-path="url(#hexClipOuter)">
+    <rect width="256" height="256" fill="url(#meadowDomeRoadAlt)"/>
+    <path d="M-18 68 C 40 102 72 72 124 120 S 204 182 274 176" stroke="#6d6045" stroke-width="52" fill="none"/>
+    <path d="M-18 68 C 40 102 72 72 124 120 S 204 182 274 176" stroke="#c2ae7f" stroke-width="42" fill="none"/>
+    <path d="M-18 68 C 40 102 72 72 124 120 S 204 182 274 176" stroke="#d9c99b" stroke-width="34" fill="none"/>
+    <path d="M-18 68 C 40 102 72 72 124 120 S 204 182 274 176" stroke="#f4e8c4" stroke-width="2.5" stroke-dasharray="14 12" fill="none" opacity="0.85"/>
+    <ellipse cx="194" cy="56" rx="26" ry="8" fill="#000000" opacity="0.08"/>
+    <ellipse cx="50" cy="214" rx="30" ry="9" fill="#000000" opacity="0.08"/>
+    <rect width="256" height="256" fill="url(#specGradRoadAlt)"/>
+    <rect width="256" height="256" fill="url(#aoGradRoadAlt)"/>
+  </g>
+</svg>

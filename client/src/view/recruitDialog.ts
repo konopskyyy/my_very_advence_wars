@@ -63,6 +63,8 @@ const UNIT_ROLES: Record<UnitKind, string> = {
   artillery: 'POJAZD · artyleria',
   scout: 'ŻOŁNIERZ · zwiadowca',
   bazooka: 'ŻOŁNIERZ · bazooka',
+  bomber: 'LOTNICTWO · bombowiec',
+  helicopter: 'LOTNICTWO · śmigłowiec',
 };
 
 export interface RecruitDialogHandlers {
@@ -241,6 +243,42 @@ const LOADOUTS: Record<UnitKind, readonly EquipmentSlot[]> = {
       ],
     },
   ],
+  bomber: [
+    {
+      label: 'Kadłub',
+      options: [
+        { label: 'Standard', color: 0x4a86e8 },
+        { label: 'Pancerz', color: 0x9aa0a6 },
+        { label: 'Polowy', color: 0x3f6b4a },
+      ],
+    },
+    {
+      label: 'Uzbrojenie',
+      options: [
+        { label: 'Bomba 25', color: 0xe2b248 },
+        { label: 'Zapalająca', color: 0x8a2f2f },
+        { label: 'Odłamkowa', color: 0x8a7445 },
+      ],
+    },
+  ],
+  helicopter: [
+    {
+      label: 'Kadłub',
+      options: [
+        { label: 'Standard', color: 0x5b6a3a },
+        { label: 'Pancerz', color: 0x9aa0a6 },
+        { label: 'Polowy', color: 0x3f6b4a },
+      ],
+    },
+    {
+      label: 'Uzbrojenie',
+      options: [
+        { label: 'Działo 18', color: 0xe2b248 },
+        { label: 'Rakiety', color: 0x8a2f2f },
+        { label: 'Karabin', color: 0x2b2f33 },
+      ],
+    },
+  ],
 };
 
 function denialMessage(denial: RecruitmentDenial): string {
@@ -288,6 +326,8 @@ export class RecruitDialog {
     artillery: [0, 0, 0, 0],
     scout: [0, 0, 0, 0],
     bazooka: [0, 0, 0, 0],
+    bomber: [0, 0],
+    helicopter: [0, 0],
   };
   private theme: FactionTheme = FACTION_THEMES.blue;
   private faction: FactionId = 'blue';

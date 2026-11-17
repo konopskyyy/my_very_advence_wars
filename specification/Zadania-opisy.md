@@ -937,3 +937,51 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
   - **Komunikat:** końcowy dymek nie twierdzi, że bazooka jest jedynym zagrożeniem; wymienia też inne czołgi, śmigłowce i artylerię.
   - **Testy:** testy transportu, czołgu i misji pokrywają zmiany, a `make verify` przechodzi.
   - **Dokumentacja:** ZAL-004, ZAL-005, ZAL-011 i INTERF-005 opisują pasażerów czołgu, dźwięk ruchu i nowe nazewnictwo.
+
+## GRA-098: Trzeci akt samouczka — Walka
+- **Kontekst:** Trzeci kafelek samouczka „Walka” był zapowiedzią z komunikatem „wkrótce”, a poprzedni akt skończył się na nauce transportu. Gracz nie miał jeszcze misji, która wymagałaby zaplanowania kilku ataków w jednym wolumenie i nauczenia się jednorazowego nalotu.
+- **Opis:** Plik `client/src/core/campaign/missions/walka.ts` dostaje `id: 'tutorial-walka'`, roboczy tytuł „Grzyby strzelają” i `requiresMission: 'tutorial-ruch-jednostek'`. Mapa 16×10 bez mgły wojny składa się z łąki z kilkoma lasami i miastami; gracz startuje z czołgiem, dwiema piechotami i zwiadowcą przy bazie `(2, 5)`, a pierwszy czerwony piechur stoi na `(6, 5)`. Flagi `autoDeploy: false`, `sandbox: true` i rekrutacja 0 dają czysty poligon — zakup bombera odblokuje dopiero nagroda drugiego kroku. Skrypt ma cztery dymki: „PIERWSZY STRZAŁ” po jednym ataku, „DOCISNIJ CEL” po dwóch atakach i spawnie dwóch piechurów, „JEDEN WOLUMEN” po czterech atakach, spawnie czołgu i nagrodzie 250 kredytów z dostępem do bombera oraz „NALOT” po zakupie bombera i wykonanym ataku. Ostatni wróg ginie w zwykłym wolumenie, a zakończenie przechodzi przez `tutorialComplete()`. Kafelek „Mgła wojny” dostaje `requiresMission: 'tutorial-walka'`.
+- **Kryteria:**
+  - **Mapa:** 16×10, łąka z lasami i miastami, bez mgły wojny, startowe jednostki przy bazie `(2, 5)` i pierwszy wróg na `(6, 5)` z 10 HP.
+  - **Dymki:** cztery kroki skryptu z warunkami `attacks: 1`, `attacks: 2`, `attacks: 4` oraz `purchased: 'bomber'` i wykonanym atakiem; spawny i nagroda pojawiają się po wykonaniu tury, która spełniła krok.
+  - **Nagroda:** 250 kredytów i `allowedKinds: ['bomber']` dopiero po trzecim kroku, bez wcześniejszej rekrutacji.
+  - **Finał:** próg ataków wyznaczony tak, by ostatni wróg zginął; scena sam kończy misję w trybie `sandbox`, bez nowego modalu; kafelek 4 wymaga ukończenia aktu 3.
+  - **Testy:** testy danych i skryptu misji sprawdzają id, zależność, start, flagi, kroki, nagrodę, spawny i blokadę kafelka 4, a `make verify` przechodzi.
+  - **Dokumentacja:** ZAL-011 i INTERF-007 opisują grywalny trzeci kafelek i odblokowanie czwartego.
+
+## GRA-099: Nalot jako jednorazowa jednostka
+- **Kontekst:** Gra nie miała systemu nalotu, a dodanie osobnej akcji planu oznaczałoby nowy `PlanAction`, nowe pole w zapisie tury i osobną ścieżkę replayu. Samouczek potrzebował przycisku, który wybiera bombera i strzela istniejącą drogą ataku.
+- **Opis:** Zgodnie z ADR-049 nalot jest zwykłą jednostką `bomber` z `ammo: 1`, zasięgiem i wzrokiem na całą mapę oraz atakiem 25. Przycisk `NALOT` w `scenarioCommandBar.ts` dołącza do paska dowodzenia i pojawia się po zakupie bombera na podstawie `RecruitmentState.purchased.bomber`. `ScenarioScene` podpina go do istniejącego celowania: wybiera bombera i uruchamia tę samą ścieżkę co kliknięcie jednostki i wroga, bez nowego `PlanAction`. Warstwa widoku dodaje portret w oknie `KUP`, dźwięk zrzutu, przelot samolotu nad mapą i wybuch w momencie rozstrzygnięcia ataku. Bomber nie ma stałego tokenu na heksie — reprezentuje go przycisk `NALOT` i animacja przelotu; dane klipu pozostają `TimelineAttackClip`, więc replay nie wymaga zmiany zapisu tury.
+- **Kryteria:**
+  - **Przycisk:** piąty przycisk paska dowodzenia nie nachodzi na pozostałe przy 1280×720 i jest widoczny wyłącznie po zakupie bombera.
+  - **Widok:** `UnitLayer` nie tworzy tokenu dla `kind: 'bomber'`; nalot jest widoczny jako przelot samolotu i wybuch przy celu.
+  - **Strzał:** jeden strzał w turze zużywa cały ruch (`hasActed`), zadaje 25 obrażeń w zwykłym wolumenie i niszczy czołg jednym trafieniem.
+  - **Replay:** animacja przelotu i zrzutu nie dodaje pól do zapisu tury ani nowego typu klipu.
+  - **Dane:** `UnitKind`, `UNIT_DEFS`, ZAL-004 i ZAL-006 opisują bombera bez regresji amunicji piechoty, czołgu i artylerii.
+  - **Testy:** testy jednorazowego strzału, dostępności przycisku i braku regresji przechodzą w `make verify`.
+  - **Dokumentacja:** ADR-049, ZAL-004, ZAL-006 i INTERF-005 opisują nalot jako jednorazową jednostkę.
+
+## GRA-100: Nowe hexy gór i dróg
+- **Kontekst:** Mapa miała grafiki dla łąki, lasu, wody i miasta, natomiast góry i drogi korzystały z prostych wzorów zastępczych. Nowe hexy mają wyróżniać te tereny w mapach samouczka, edytorze i scenariuszach.
+- **Opis:** Do `client/src/assets/map/ai/` trafiają pliki `mountain-1.svg`, `mountain-2.svg`, `road-1.svg` i `road-2.svg` z widokiem `0 0 256 256` i tym samym klipem heksu co pozostałe tekstury. `view/terrainTiles.ts` wykrywa je automatycznie przez `import.meta.glob`, więc `TerrainId.mountain` i `TerrainId.road` zyskują po dwa warianty bez zmiany kodu wczytywania.
+- **Kryteria:**
+  - **Grafika:** góry mają skaliste szczyty, drogi wyraźny pas jezdni; oba tereny mają dwa warianty.
+  - **Wiring:** warianty są widoczne w scenie i edytorze, a wybór wariantu działa przez istniejący `pickVariantIndex`.
+  - **Testy:** `make verify` przechodzi bez regresji renderu pozostałych terenów.
+
+## GRA-101: Śmigłowiec jako jednostka
+- **Kontekst:** Końcowy dymek drugiej misji wymienia śmigłowce jako zagrożenie dla czołgu, ale rodzaj ten nie istniał w danych ani w oknie rekrutacji. Todoist wymagał dodania jednostki do `UnitKind`, `UNIT_DEFS`, tokenu na mapie i portretu w `KUP`.
+- **Opis:** Nowy moduł `client/src/core/units/helicopter.ts` definiuje `HELICOPTER_STATS` i `createHelicopter`; `UnitKind`, `Unit`, `UNIT_DEFS`, `UNIT_KINDS` i `createUnit` zostają rozszerzone o `'helicopter'`. Statystyki to cena 300, 12 HP, ruch 5, atak 18, obrona 3, wzrok 4, zasięg strzału 2 i sześć pocisków. Widok dostaje token `drawHelicopter()` w `unitLayer.ts`, portret `assets/ai/units/helicopter.png` w `recruitPortrait.ts`, rolę i wyposażenie w `UNIT_ROLES`/`LOADOUTS` oraz wpis w `selection`. ZAL-004 i INTERF-005 opisują nowy rodzaj i jego miejsce na liście rekrutacji.
+- **Kryteria:**
+  - **Dane:** helikopter da się stworzyć przez `createUnit`, ma wpis w `UNIT_DEFS` i jest częścią `UNIT_KINDS`.
+  - **Widok:** token na mapie i portret w oknie `KUP` są przypisane do `'helicopter'`, a lista, rola i wyposażenie nie rzucają wyjątku dla nowego rodzaju.
+  - **Dokumentacja:** ZAL-004 i INTERF-005 wymieniają śmigłowiec wśród jednostek i opcji rekrutacji.
+  - **Testy:** `make verify` przechodzi z nowym rodzajem jednostki.
+
+## GRA-102: Replay animacji nalotu
+- **Kontekst:** Nalot z GRA-099 dodaje przelot samolotu i wybuch w warstwie widoku. Trzeba potwierdzić, że efekt pozostaje czysto wizualny i nie zmienia zapisu tury ani odtwarzania.
+- **Opis:** `ScenarioScene.playAttackEffect()` dla ataku bombera uruchamia `playAirstrikeEffect()` na podstawie danych klipu ataku (`TimelineAttackClip`), nie modyfikuje `GameState`, `PlanAction` ani listy klipów. Test sprawdza, że po odtworzeniu efektu dane klipu ataku pozostają identyczne, a ścieżka replayu nie dostaje nowego pola.
+- **Kryteria:**
+  - **Dane:** zapis tury i typy klipów nie zmieniają się; nalot używa istniejącego `TimelineAttackClip`.
+  - **Widok:** animacja zależy wyłącznie od pozycji atakującego i celu oraz `delta`, więc działa też przy odtwarzaniu.
+  - **Testy:** test replayu przechodzi w `make verify`.

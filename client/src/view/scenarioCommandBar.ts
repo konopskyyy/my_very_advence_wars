@@ -7,6 +7,7 @@ import {
 } from '../core/map';
 import type { ScenarioDefinition } from '../core/scenario';
 import type { PlanAction } from '../core/plan';
+import type { RecruitmentState } from '../core/recruitment';
 import { countUnits, type GameState } from '../core/state';
 import { TERRAIN_DEFS } from '../core/map/terrain';
 import type { TurnState } from '../core/turn';
@@ -25,8 +26,10 @@ import { unitTexture } from './unitLayer';
 
 const LOG_X = 806;
 const LOG_WIDTH = 92;
-const OBJECTIVES_X = 706;
-const OBJECTIVES_WIDTH = 88;
+const OBJECTIVES_X = 640;
+const OBJECTIVES_WIDTH = 76;
+const AIRSTRIKE_X = 722;
+const AIRSTRIKE_WIDTH = 76;
 const RECRUIT_X = 908;
 const RECRUIT_WIDTH = 92;
 const BUTTON_Y = 10;
@@ -40,6 +43,7 @@ export interface ScenarioBarState {
   readonly funds?: number;
   readonly recruitKind?: UnitKind;
   readonly vision?: VisionPoint;
+  readonly recruitment?: RecruitmentState;
 }
 
 export interface ScenarioUnitState {
@@ -53,6 +57,7 @@ export interface ScenarioCommandBarHandlers {
   readonly onRecruit: () => void;
   readonly onLog: () => void;
   readonly onObjectives: () => void;
+  readonly onAirstrike: () => void;
   readonly onScenarioMenu: () => void;
   readonly onMainMenu: () => void;
   readonly returnLabel?: string;
@@ -66,6 +71,7 @@ export class ScenarioCommandBar {
   private readonly logButton: Phaser.GameObjects.Rectangle;
   private readonly logLabel: Phaser.GameObjects.Text;
   private readonly objectivesButton: Phaser.GameObjects.Rectangle;
+  private readonly airstrikeButton: Phaser.GameObjects.Rectangle;
   private readonly recruitButton: Phaser.GameObjects.Rectangle;
   private readonly recruitIcon: Phaser.GameObjects.Image;
   private readonly recruitLabel: Phaser.GameObjects.Text;
@@ -182,6 +188,15 @@ export class ScenarioCommandBar {
       this.handlers.onObjectives,
     );
 
+    this.airstrikeButton = this.makeBarButton(
+      'NALOT',
+      AIRSTRIKE_X,
+      barY + BUTTON_Y,
+      AIRSTRIKE_WIDTH,
+      BUTTON_HEIGHT,
+      this.handlers.onAirstrike,
+    );
+
     this.recruitButton = this.register(
       this.scene.add
         .rectangle(RECRUIT_X, barY + BUTTON_Y, RECRUIT_WIDTH, BUTTON_HEIGHT, theme.accentDark, 1)
@@ -263,8 +278,19 @@ export class ScenarioCommandBar {
     this.logLabel.setAlpha(available ? 1 : 0.5);
   }
 
-  refreshScenario({ scenario, state, turn, hover, funds, recruitKind, vision }: ScenarioBarState): void {
+  setAirstrikeAvailability(available: boolean): void {
+    this.airstrikeButton.setAlpha(available ? 1 : 0.4);
+
+    if (available) {
+      this.airstrikeButton.setInteractive({ useHandCursor: true });
+    } else {
+      this.airstrikeButton.disableInteractive();
+    }
+  }
+
+  refreshScenario({ scenario, state, turn, hover, funds, recruitKind, vision, recruitment }: ScenarioBarState): void {
     this.applyTheme(turn.faction);
+    this.setAirstrikeAvailability(Boolean(recruitment?.purchased.bomber));
 
     if (recruitKind) {
       this.recruitKind = recruitKind;
@@ -295,7 +321,7 @@ export class ScenarioCommandBar {
     }
 
     this.scenarioName.setText(truncate(scenario.name, 42));
-    this.hud.setText(truncate(parts.join(' · '), 128));
+    this.hud.setText(truncate(parts.join(' · '), 108));
     this.barTurnLabel.setText(`Tura ${turn.turn} — ${FACTION_DEFS[turn.faction].label}`);
   }
 
@@ -330,6 +356,9 @@ export class ScenarioCommandBar {
       .setStrokeStyle(1, theme.accentBright, 0.8);
     this.logLabel.setColor(theme.accentSoft);
     this.objectivesButton
+      .setFillStyle(theme.accentDark, 1)
+      .setStrokeStyle(1, theme.accentBright, 0.8);
+    this.airstrikeButton
       .setFillStyle(theme.accentDark, 1)
       .setStrokeStyle(1, theme.accentBright, 0.8);
     this.recruitButton

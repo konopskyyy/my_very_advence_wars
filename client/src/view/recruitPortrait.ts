@@ -1,6 +1,8 @@
 import type Phaser from 'phaser';
 import type { UnitKind } from '../core/units';
 import artilleryUrl from '../assets/ai/units/artillery.png?url';
+import bomberUrl from '../assets/ai/units/bomber.png?url';
+import helicopterUrl from '../assets/ai/units/helicopter.png?url';
 import infantryUrl from '../assets/ai/units/infantry.png?url';
 import tankUrl from '../assets/ai/units/tank.png?url';
 
@@ -10,6 +12,8 @@ const PORTRAIT_URLS: Record<UnitKind, string> = {
   tank: tankUrl,
   artillery: artilleryUrl,
   bazooka: infantryUrl,
+  bomber: bomberUrl,
+  helicopter: helicopterUrl,
 };
 
 function portraitKey(kind: UnitKind): string {

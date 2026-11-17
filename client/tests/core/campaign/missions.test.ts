@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { PIERWSZE_KROKI } from '../../../src/core/campaign/missions/pierwsze-kroki';
 import { RUCH_JEDNOSTEK } from '../../../src/core/campaign/missions/ruch-jednostek';
+import { WALKA } from '../../../src/core/campaign/missions/walka';
 import { commitPlan, createTurnPlan, setBoard, setMove } from '../../../src/core/plan';
 import { recruitUnit } from '../../../src/core/scenario';
 import { boardingPath, canCarry } from '../../../src/core/transport';
@@ -77,6 +78,51 @@ describe('misje kampanii', () => {
     expect([...terrains]).toEqual(
       expect.arrayContaining(['plain', 'road', 'forest', 'swamp', 'water', 'mountain', 'city']),
     );
+  });
+
+  it('walka to poligon z czterema dymkami, spawnami i nagrodą na bombera', () => {
+    const mission = WALKA.mission;
+
+    expect(mission).toBeDefined();
+    if (!mission) {
+      return;
+    }
+
+    const steps = mission.tutorial?.steps ?? [];
+    const blueUnits = mission.state.units.filter((unit) => unit.faction === 'blue');
+    const redUnits = mission.state.units.filter((unit) => unit.faction === 'red');
+
+    expect(WALKA.requiresMission).toBe('tutorial-ruch-jednostek');
+    expect(mission.id).toBe('tutorial-walka');
+    expect(mission.name).toBe('Grzyby strzelają');
+    expect(mission.autoDeploy).toBe(false);
+    expect(mission.sandbox).toBe(true);
+    expect(mission.state.map.fogOfWar).toBe(false);
+    expect(mission.spawn).toEqual({ col: 2, row: 5, vision: 3 });
+    expect(mission.recruitment).toEqual({ funds: 0, allowedKinds: [] });
+
+    expect(blueUnits.map((unit) => unit.kind).sort()).toEqual([
+      'infantry',
+      'infantry',
+      'scout',
+      'tank',
+    ]);
+    expect(redUnits).toHaveLength(1);
+    expect(redUnits[0]?.kind).toBe('infantry');
+    expect(redUnits[0]?.pos).toEqual({ col: 6, row: 5 });
+    expect(redUnits[0]?.hp).toBe(10);
+
+    expect(steps).toHaveLength(4);
+    expect(steps[0]?.until).toEqual({ attacks: 1 });
+    expect(steps[1]?.until).toEqual({ attacks: 2 });
+    expect(steps[1]?.spawn).toEqual([
+      { kind: 'infantry', faction: 'red', col: 9, row: 4 },
+      { kind: 'infantry', faction: 'red', col: 9, row: 6 },
+    ]);
+    expect(steps[2]?.until).toEqual({ attacks: 4 });
+    expect(steps[2]?.spawn).toEqual([{ kind: 'tank', faction: 'red', col: 12, row: 5 }]);
+    expect(steps[2]?.reward).toEqual({ funds: 250, allowedKinds: ['bomber'] });
+    expect(steps[3]?.until).toEqual({ purchased: 'bomber', attacks: 9 });
   });
 
   it('kupiony czołg staje w zasięgu piechura i przyjmuje pasażera', () => {

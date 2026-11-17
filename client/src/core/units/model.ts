@@ -5,13 +5,22 @@ import {
   type ArtilleryUnit,
 } from './artillery';
 import { BAZOOKA_STATS, createBazooka, type BazookaUnit } from './bazooka';
+import { BOMBER_STATS, createBomber, type BomberUnit } from './bomber';
+import { createHelicopter, HELICOPTER_STATS, type HelicopterUnit } from './helicopter';
 import type { FactionId } from './faction';
 import { createInfantry, INFANTRY_STATS, type InfantryUnit } from './infantry';
 import { createScout, SCOUT_STATS, type ScoutUnit } from './scout';
 import { createTank, TANK_STATS, type TankUnit } from './tank';
 import type { UnitKind, UnitStats } from './types';
 
-export type Unit = InfantryUnit | TankUnit | ArtilleryUnit | ScoutUnit | BazookaUnit;
+export type Unit =
+  | InfantryUnit
+  | TankUnit
+  | ArtilleryUnit
+  | ScoutUnit
+  | BazookaUnit
+  | BomberUnit
+  | HelicopterUnit;
 
 export const UNIT_DEFS: Record<UnitKind, UnitStats> = {
   infantry: INFANTRY_STATS,
@@ -19,9 +28,19 @@ export const UNIT_DEFS: Record<UnitKind, UnitStats> = {
   artillery: ARTILLERY_STATS,
   scout: SCOUT_STATS,
   bazooka: BAZOOKA_STATS,
+  bomber: BOMBER_STATS,
+  helicopter: HELICOPTER_STATS,
 };
 
-export const UNIT_KINDS: readonly UnitKind[] = ['infantry', 'tank', 'artillery', 'scout', 'bazooka'];
+export const UNIT_KINDS: readonly UnitKind[] = [
+  'infantry',
+  'tank',
+  'artillery',
+  'scout',
+  'bazooka',
+  'bomber',
+  'helicopter',
+];
 
 export function createUnit(
   id: string,
@@ -40,5 +59,9 @@ export function createUnit(
       return createScout(id, faction, pos);
     case 'bazooka':
       return createBazooka(id, faction, pos);
+    case 'bomber':
+      return createBomber(id, faction, pos);
+    case 'helicopter':
+      return createHelicopter(id, faction, pos);
   }
 }

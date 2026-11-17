@@ -61,6 +61,8 @@
 | `artillery` | Artyleria |  250 |     14 |    2 |   12 |      3 |    cała mapa |     cała mapa |        6 |
 | `scout`     | Zwiadowca |  150 |      8 |    6 |    3 |      2 |    cała mapa |              1 |        — |
 | `bazooka`   | Żołnierz z bazooką | 200 | 10 | 3 | 15 | 3 | 2 | 2 | — |
+| `bomber`    | Bombowiec | 250 | 10 | 2 | 25 | 2 | cała mapa | cała mapa | 1 |
+| `helicopter` | Śmigłowiec | 300 | 12 | 5 | 18 | 3 | 4 | 2 | 6 |
 
 - `cost` to cena zakupu jednostki w oknie `KUP`; budżet scenariusza
   i limity zakupów opisuje ADR-046.
@@ -95,6 +97,14 @@
 - Dźwięk śmierci jest właściwością definicji jednostki (`UnitStats.deathSound`):
   piechota i żołnierz z bazooką mają `'death'`, a czołg, artyleria i zwiad nie
   mają dźwięku śmierci.
+- Bombowiec (`bomber`) ma jeden strzał w turze: `ammo: 1` i ruch 2, więc strzał
+  kosztuje cały budżet ruchu i ustawia `hasActed`. Zasięg wzroku i strzału obejmuje
+  całą mapę (stała `FULL_MAP_RANGE`), a atak 25 niszczy czołg jednym trafieniem.
+  Nalot nie jest nową akcją planu — patrz ADR-049.
+- Śmigłowiec (`helicopter`) jest szybką jednostką wsparcia z zapasem sześciu
+  strzałów, zasięgiem strzału 2 i wzrokiem 4. Na razie porusza się według tych
+  samych zasad terenu co jednostki lądowe; jego rolą w danych i rekrutacji jest
+  zapowiedź przeciwnika z dymka drugiej misji.
 
 ## ZAL-005: Ruch
 
@@ -164,6 +174,10 @@
   proporcjonalny zapas pocisków.
 - Brak ognia zwrotnego i redukcji obrażeń przez obronę; kontratak to osobna
   seria.
+- Bombowiec strzela na całą mapę jednym strzałem w turze (`ammo: 1`). Strzał
+  kosztuje jego cały ruch, więc po ataku jednostka ma `hasActed`. Obrażenia 25
+  wchodzą do zwykłego wolumenu z ADR-040 — nalot nie dodaje osobnej fazy ani
+  nowego `PlanAction` (ADR-049).
 
 ## ZAL-007: Mgła wojny
 
@@ -251,9 +265,15 @@
   jedyne zagrożenie dla czołgu — równie groźne są inne czołgi, śmigłowce
   i artyleria. Dopiero dymek z przyciskiem `ROZUMIEM` pozwala zakończyć misję. Misja odblokowuje się po ukończeniu pierwszej, a postęp jest
   zapisywany trwale w przeglądarce.
-- Kafelki „Walka”, „Mgła wojny”, „Amunicja” i „Artyleria” są zapowiedziami —
-  kliknięcie pokazuje komunikat „wkrótce”; nie mają jeszcze scenariusza ani
-  uruchomienia.
+- Trzecia misja (plik `walka.ts`, identyfikator `tutorial-walka`) uczy walki
+  i nalotu na poligonie 16×10 bez mgły wojny. Gracz startuje z czołgiem, dwiema
+  piechotami i zwiadowcą przy bazie `(2, 5)`, a pierwszy czerwony piechur stoi na
+  `(6, 5)`. Cztery dymki prowadzą od pierwszego strzału przez dwóch nowych
+  piechurów i wspólny wolumen do zakupu bombera i nalotu. Po trzecim kroku gracz
+  dostaje 250 kredytów i dostęp do bombera; misja kończy się po skrypcie, bez
+  osobnego modalu. Kafelek „Mgła wojny” odblokowuje się po ukończeniu aktu 3.
+- Kafelki „Amunicja” i „Artyleria” są zapowiedziami — kliknięcie pokazuje
+  komunikat „wkrótce”; nie mają jeszcze scenariusza ani uruchomienia.
 - „Kampania 1” i „Kampania 2” nie mają kafelków do czasu dodania misji.
 
 ## ZAL-012: SI wroga

@@ -115,6 +115,12 @@ function drawUnitIcon(
     case 'scout':
       drawSoldier(context, factionColor);
       break;
+    case 'bomber':
+      drawBomber(context, factionColor);
+      break;
+    case 'helicopter':
+      drawHelicopter(context, factionColor);
+      break;
   }
 
   context.restore();
@@ -193,6 +199,79 @@ function drawArtillery(context: CanvasRenderingContext2D, factionColor: string):
   context.beginPath();
   context.arc(17, 19, 1.5, 0, Math.PI * 2);
   context.fill();
+}
+
+function drawBomber(context: CanvasRenderingContext2D, factionColor: string): void {
+  context.lineWidth = 2;
+  context.beginPath();
+  context.moveTo(2, 14);
+  context.lineTo(24, 11);
+  context.stroke();
+
+  context.beginPath();
+  context.ellipse(14, 12, 8, 3, -0.1, 0, Math.PI * 2);
+  context.fill();
+
+  context.beginPath();
+  context.moveTo(14, 11);
+  context.lineTo(4, 5);
+  context.lineTo(8, 12);
+  context.closePath();
+  context.fill();
+
+  context.beginPath();
+  context.moveTo(15, 12);
+  context.lineTo(24, 6);
+  context.lineTo(21, 13);
+  context.closePath();
+  context.fill();
+
+  context.fillStyle = factionColor;
+  context.beginPath();
+  context.arc(12, 10, 1.7, 0, Math.PI * 2);
+  context.fill();
+  context.fillRect(10, 16, 2, 4);
+  context.fillRect(15, 15, 2, 4);
+}
+
+function drawHelicopter(context: CanvasRenderingContext2D, factionColor: string): void {
+  context.lineWidth = 2;
+  context.beginPath();
+  context.moveTo(4, 7);
+  context.lineTo(22, 7);
+  context.stroke();
+
+  context.fillRect(12, 7, 2, 4);
+
+  context.beginPath();
+  context.moveTo(24, 10);
+  context.lineTo(24, 6);
+  context.lineTo(21, 12);
+  context.closePath();
+  context.fill();
+
+  context.beginPath();
+  context.ellipse(13, 14, 7, 5, -0.1, 0, Math.PI * 2);
+  context.fill();
+
+  context.beginPath();
+  context.ellipse(9, 14, 3.5, 3, -0.1, 0, Math.PI * 2);
+  context.fillStyle = '#b9d3dc';
+  context.fill();
+
+  context.fillStyle = factionColor;
+  context.fillRect(13, 17, 6, 1.5);
+
+  context.strokeStyle = INK;
+  context.lineWidth = 1.5;
+  context.beginPath();
+  context.moveTo(7, 22);
+  context.lineTo(19, 22);
+  context.moveTo(9, 19);
+  context.lineTo(8, 22);
+  context.moveTo(17, 19);
+  context.lineTo(18, 22);
+  context.stroke();
 }
 
 export function createUnitToken(
@@ -337,7 +416,11 @@ export class UnitLayer {
     for (const [id, token] of this.tokens) {
       const unit = unitsById.get(id);
 
-      if (unit && token.texture.key === unitTextureKey(unit.kind, unit.faction)) {
+      if (
+        unit &&
+        unit.kind !== 'bomber' &&
+        token.texture.key === unitTextureKey(unit.kind, unit.faction)
+      ) {
         continue;
       }
 
@@ -350,6 +433,10 @@ export class UnitLayer {
     }
 
     for (const unit of this.units) {
+      if (unit.kind === 'bomber') {
+        continue;
+      }
+
       let token = this.tokens.get(unit.id);
 
       if (!token) {

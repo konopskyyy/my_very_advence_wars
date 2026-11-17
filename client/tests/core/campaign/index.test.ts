@@ -15,15 +15,17 @@ describe('kampanie', () => {
     ]);
   });
 
-  it('samouczek ma sześć kafelków, a pierwsze dwa mają misje', () => {
+  it('samouczek ma sześć kafelków, a pierwsze trzy mają misje', () => {
     const tutorial = findCampaign('tutorial');
 
     expect(tutorial?.tiles).toHaveLength(6);
     expect(tutorial?.tiles[0]?.title).toBe('To był zwykły spacer na grzyby');
     expect(tutorial?.tiles[1]?.title).toBe('Ruch jednostek');
+    expect(tutorial?.tiles[2]?.title).toBe('Walka');
     expect(tutorial?.tiles[0]?.mission).toBeDefined();
     expect(tutorial?.tiles[1]?.mission).toBeDefined();
-    expect(tutorial?.tiles.slice(2).every((tile) => tile.mission === undefined)).toBe(true);
+    expect(tutorial?.tiles[2]?.mission).toBeDefined();
+    expect(tutorial?.tiles.slice(3).every((tile) => tile.mission === undefined)).toBe(true);
   });
 
   it('kampanie 1 i 2 nie mają jeszcze kafelków', () => {
