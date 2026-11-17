@@ -120,3 +120,4 @@ zadań do wykonania.
 | [[Zadania-opisy#GRA-100: Nowe hexy gór i dróg\|GRA-100]] | Nowe hexy gór i dróg | ✅ | GRA-007, INTERF-003 |
 | [[Zadania-opisy#GRA-101: Śmigłowiec jako jednostka\|GRA-101]] | Śmigłowiec jako jednostka | ✅ | GRA-097, ZAL-004, INTERF-005 |
 | [[Zadania-opisy#GRA-102: Replay animacji nalotu\|GRA-102]] | Replay animacji nalotu | ✅ | GRA-099, ADR-049 |
+| [[Zadania-opisy#GRA-103: Styl menu kampanii zgodny z menu głównym\|GRA-103]] | Styl menu kampanii zgodny z menu głównym | ✅ | GRA-042, GRA-073, INTERF-001, INTERF-007 |

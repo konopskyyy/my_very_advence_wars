@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import type { CampaignId } from '../core/campaign';
+import { FACTION_THEMES } from './factionTheme';
 
 export interface CampaignRibbonOptions {
   readonly x: number;
@@ -20,10 +21,11 @@ interface RibbonTab {
 const TAB_WIDTH = 210;
 const TAB_GAP = 6;
 const PADDING = 10;
-const ACTIVE_FILL = 0x15231b;
-const INACTIVE_FILL = 0x0d1319;
-const ACTIVE_STROKE = 0x6fd08c;
-const INACTIVE_STROKE = 0x2c4437;
+const theme = FACTION_THEMES.blue;
+const ACTIVE_FILL = theme.accentDark;
+const INACTIVE_FILL = 0x111826;
+const ACTIVE_STROKE = theme.accentBright;
+const INACTIVE_STROKE = theme.divider;
 
 export class CampaignRibbon {
   private readonly tabs: RibbonTab[] = [];
@@ -31,7 +33,7 @@ export class CampaignRibbon {
 
   constructor(scene: Phaser.Scene, options: CampaignRibbonOptions) {
     scene.add
-      .rectangle(options.x, options.y, options.width, options.height, 0x0d1319, 0.95)
+      .rectangle(options.x, options.y, options.width, options.height, theme.barBackground, 0.92)
       .setOrigin(0, 0)
       .setStrokeStyle(1, INACTIVE_STROKE, 1);
 
@@ -52,11 +54,13 @@ export class CampaignRibbon {
 
       const label = scene.add
         .text(x + TAB_WIDTH / 2, options.y + options.height / 2, tab.label, {
-          fontFamily: 'monospace',
-          fontSize: '13px',
-          color: '#9fb0a5',
+          fontFamily: 'Trebuchet MS, Verdana, sans-serif',
+          fontSize: '14px',
+          fontStyle: 'bold',
+          color: '#8fa3b8',
         })
-        .setOrigin(0.5);
+        .setOrigin(0.5)
+        .setLetterSpacing(2);
 
       const underline = scene.add.rectangle(
         x + 6,
@@ -75,7 +79,7 @@ export class CampaignRibbon {
         }
 
         background.setFillStyle(ACTIVE_FILL, 1);
-        label.setColor('#d8e2dc');
+        label.setColor('#e8eef5');
       });
       background.on('pointerout', () => {
         if (this.active === tab.id) {
@@ -83,7 +87,7 @@ export class CampaignRibbon {
         }
 
         background.setFillStyle(INACTIVE_FILL, 1);
-        label.setColor('#9fb0a5');
+        label.setColor('#8fa3b8');
       });
       background.on('pointerdown', () => options.onSelect(tab.id));
 
@@ -99,7 +103,7 @@ export class CampaignRibbon {
 
       tab.background.setFillStyle(isActive ? ACTIVE_FILL : INACTIVE_FILL, 1);
       tab.background.setStrokeStyle(1, isActive ? ACTIVE_STROKE : INACTIVE_STROKE, 1);
-      tab.label.setColor(isActive ? '#ffffff' : '#9fb0a5');
+      tab.label.setColor(isActive ? '#ffffff' : '#8fa3b8');
       tab.underline.setVisible(isActive);
     }
   }
