@@ -1,1 +1,1 @@
-export type SoundId = 'rifle-shot' | 'hit' | 'step' | 'click' | 'death';
+export type SoundId = 'rifle-shot' | 'hit' | 'step' | 'click' | 'death' | 'tip';

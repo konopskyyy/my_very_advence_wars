@@ -771,3 +771,169 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
   - **Dane:** brak `requiresMission` oznacza misję dostępną od razu; kafelki zapowiedzi pozostają `WKRÓTCE`.
   - **Testy:** testy jednostkowe sprawdzają logikę dostępności oraz zapis i odczyt postępu.
   - **Dokumentacja:** INTERF-007 i ZAL-011 opisują blokadę, statusy kafelków i trwały postęp.
+
+## GRA-084: Druga misja samouczka — teren i odblokowanie czołgu
+- **Kontekst:** Druga misja kończyła się walką z jednym czerwonym piechurem, więc lekcja kosztu terenu była tylko pretekstem do starcia. Gracz nie widział różnicy między górą, bagnem i miastem, a rekrutacja była wyłączona na stałe.
+- **Opis:** `missions/ruch-jednostek.ts` traci startowego przeciwnika i dostaje poligon: góry, bagno, miasto, las, drogę i wodę w zasięgu pierwszych ruchów. `ScenarioDefinition` dostaje `sandbox`, więc brak wroga nie kończy misji po turze. `TutorialStep` dostaje `reward` (kredyty, dozwolone rodzaje, limity), a scena przyznaje nagrodę raz, po spełnieniu warunku kroku. Po czterech ruchach gracz dostaje 300 kredytów i odblokowany czołg, a piąty dymek prowadzi do zakupu. Skrypt tłumaczy punkty ruchu, koszt góry i bagna, zatwierdzanie trasy, miasto jako tani teren oraz zakup czołgu. Dalszą część lekcji — transport i odporność czołgu — opisuje GRA-088.
+- **Kryteria:**
+  - **Spokojny start:** na początku nie ma jednostek czerwonej strony, a tura gracza nie kończy misji od razu.
+  - **Teren:** trasa obok bazy prowadzi przez górę, bagno i miasto, a podgląd pokazuje różny koszt tych pól.
+  - **Nagroda:** przed wykonaniem czterech ruchów `KUP` nie pozwala nic kupić; po nich pojawia się 300 kredytów i czołg.
+  - **Kontynuacja:** zakup czołgu nie pokazuje ekranu „MISJA UKOŃCZONA”; misję kończą dopiero kroki z GRA-088.
+  - **Testy:** `tests/core/campaign/missions.test.ts` sprawdza start bez wroga, teren, nagrodę i skrypt, a `tests/core/tutorial.test.ts` — przyznawanie nagród i zakończenie kroków.
+  - **Dokumentacja:** ZAL-011 i INTERF-005 opisują poligon, nagrodę i dalszą część misji.
+
+## GRA-085: Wsiadanie piechoty do pojazdów
+- **Kontekst:** Czołg i zwiadowca jeździły samotnie, a piechota nie mogła skorzystać z transportu. Gracz nie widział też, że pojazd może kogoś zabrać, ani gdzie podział się pasażer. Zwiadowca okazał się przy tym złym kandydatem na pojazd: jest pieszym zwiadem, a jego ładownia przechwytywała kliknięcie piechura i blokowała zwykłe wybranie jednostki.
+- **Opis:** `UnitStats` dostaje `capacity` i `carries`, a `UnitBase` — `cargo` z pełnymi jednostkami. Transportem jest wyłącznie czołg, który ma miejsce dla jednej piechoty; zwiadowca nie ma `capacity` ani `carries`, więc nie przechwytuje kliknięć i zachowuje się jak jednostka piesza. `core/transport.ts` liczy trasę do pojazdu (`getMovePath()` z dozwolonym occupantsem), ładuje pasażera i wyładowuje go na pierwszy wolny sąsiedni heks. Plan dostaje akcję `board` z trasą i `targetId`; `setBoard()` wymaga pojazdu osiągalnego w pozostałym ruchu, a wsiadanie kończy turę pasażera. `planningState()` i `commitPlan()` przenoszą pasażera do `cargo`, a `beginTurn()` wyładowuje go na początku następnej tury właściciela. Scena pokazuje na hoverze obrys pojazdu i podpowiedź, pierwszy klik podgląda trasę, drugi zatwierdza; karta jednostki i token pokazują ładunek. Plan, replay i zapis mapy serializują `board` oraz `cargo`.
+- **Kryteria:**
+  - **Dostępność:** tylko piechota może wsiąść, i tylko do czołgu z wolnym miejscem; zwiadowca nie jest nośnikiem.
+  - **Zasięg:** pojazd musi być osiągalny w pozostałym budżecie ruchu; trasa jest widoczna przed potwierdzeniem.
+  - **Hover:** najechanie na czołg pokazuje obrys i komunikat o możliwości wsiadania.
+  - **Plan:** wsiadanie dodaje akcję do planera i kończy turę pasażera; nie można go połączyć z atakiem.
+  - **Wyładunek:** na początku następnej tury właściciela pasażer pojawia się na pierwszym wolnym sąsiednim heksie; bez miejsca zostaje w pojeździe.
+  - **Widok:** token pojazdu i karta jednostki pokazują liczbę pasażerów; wsiadający znikają z mapy.
+  - **Zapis:** plan z akcją `board` i stan z `cargo` przechodzą przez replay i SQLite.
+  - **Testy:** testy jednostkowe pokrywają wsiadanie, odmowy, wyładunek, plan, commit i serializację; `make verify` przechodzi.
+  - **Dokumentacja:** ZAL-004, ZAL-005, INTERF-005 i `Mapy.md` opisują transport.
+
+## GRA-088: Druga misja samouczka — transport i odporność czołgu
+- **Kontekst:** Misja kończyła się zaraz po zakupie czołgu, więc gracz nie widział transportu w akcji ani różnicy między czołgiem a piechotą. Zwiadowca miał ładownię, przez co kliknięcie go wybranym piechurem zaczynało wsiadanie zamiast wyboru jednostki; dodatkowo rysowano go jak pojazd.
+- **Opis:** `SCOUT_STATS` traci `capacity` i `carries`, a `drawScout()` rysuje pieszą postać z lornetką zamiast jeepa. `TutorialGoal` dostaje `boarded`, `tankCol` i `survived`, a `TutorialStep` — opcjonalne `spawn` z listą jednostek. Scena liczy wsiadania i maksymalną kolumnę czołgu dopiero po wykonaniu tury, zlicza trafienia wroga w czołg gracza i dodaje wrogów raz, po zatwierdzonej turze spełniającej krok. Ten sam spawn jest odtwarzany w replayu. Skrypt drugiej misji po zakupie czołgu wymaga wsiadania piechura, dojechania czołgiem do kolumny 12 i przetrwania ognia dwóch czerwonych piechurów, którzy pojawiają się na prawym skrzydle; po pierwszym trafieniu karabinami w czołg pojawia się komunikat o odporności pancerza. Finał z powrotem do bazy i żołnierzem z bazooką rozszerza GRA-096. Poligon z wrogiem oddaje turę stronie czerwonej; bez wroga gracz zachowuje turę. Gdy po spawnie nie zostanie żaden wróg, krok odporności uznaje się za spełniony, żeby misja nie mogła utknąć.
+- **Kryteria:**
+  - **Zwiadowca:** nie ma ładowni, nie przyjmuje pasażerów i po kliknięciu piechurem daje się normalnie wybrać; token przedstawia pieszego zwiadowcę.
+  - **Zakup:** kupienie czołgu nie kończy misji.
+  - **Transport:** krokiem zaliczanym jest wykonana akcja `board` co najmniej jednego piechura.
+  - **Jazda:** czołg gracza musi dotrzeć do kolumny 12; wrogowie pojawiają się dopiero po wykonanej turze, nie w trakcie planowania.
+  - **Odporność:** czerwoni piechurzy strzelają do czołgu, a czołg przeżywa trafienia; ekran wyniku pojawia się po tym kroku.
+  - **Tury:** w poligonie z wrogiem działa tura przeciwnika; bez wroga gracz nie oddaje tury.
+  - **Odporność na utknięcie:** wybicie wrogów po spawnie także zalicza krok odporności.
+  - **Testy:** testy pokrywają brak ładowni zwiadowcy, nowe cele i spawny samouczka, dane misji oraz przechodzenie tur poligonu; `make verify` przechodzi.
+  - **Dokumentacja:** ZAL-004, ZAL-005, ZAL-011 i INTERF-005 opisują zwiadowcę, transport, spawn i zakończenie misji.
+
+## GRA-086: Replay odtwarzający wszystkie tury
+- **Kontekst:** Replay dwuturownej rozgrywki pokazywał tylko jedną turę. Zapis mógł wyprzedzić odczyt, a scena odtwarzania nie pilnowała kolejności i indeksu wpisów, więc część planów ginęła.
+- **Opis:** `ScenarioScene` serializuje zapisy przez łańcuch `pendingSave = pendingSave.then(...)`, dzięki czemu `recordTurnPlan()` nie wyprzedza wcześniejszej tury, a `openReplayFromStart()` czeka na cały łańcuch przed `loadReplay()`. Odtwarzanie ustawia `replayIndex` na wejściu, zaczyna każdą turę od `beginTurn()` na stanie po poprzedniej i kończy dopiero po ostatnim wpisie. Stan po turze jest liczony przez `commitPlan()`, a zapisany `stateAfter` pozostaje punktem odniesienia dla magazynu; uszkodzony wpis nadal przerywa odczyt bez wywracania sceny.
+- **Kryteria:**
+  - **Kompletność:** dwie i więcej tur odtwarzają się po kolei, a banner pokazuje `TURA x/y` zgodne z liczbą planów.
+  - **Kolejność:** każda tura startuje ze stanu po poprzedniej, bez podwójnego `beginTurn()` i bez pomijania wpisów.
+  - **Zapis:** kolejne tury nie nadpisują się nawzajem; replay otwarty po zakończeniu misji zawiera wszystkie zapisane plany.
+  - **Odporność:** brak zapisu i uszkodzony wpis kończą się komunikatem, nie wyjątkiem.
+  - **Testy:** testy magazynu i scenariusza pokrywają wiele tur, a `make verify` przechodzi.
+  - **Dokumentacja:** INTERF-005 i `Mapy.md` opisują kolejność zapisu, odczytu i odtwarzania.
+
+## GRA-087: Przewijanie mapy nad planerem
+- **Kontekst:** Po dodaniu kompaktowego HUD planer leży nad mapą, ale cały jego obszar był traktowany jak interfejs. Środkowy przycisk myszy i przewijanie krawędzią nie działały nad panelem, więc dolna część mapy była praktycznie niedostępna.
+- **Opis:** `ScenarioScene` rozdziela strefy: modal (`KUP`, dziennik) blokuje wszystko, pasek dowodzenia blokuje kliknięcia i przewijanie, a planer tylko kliknięcia mapy i zoom. `viewport.startPan()` jest wywoływany przed sprawdzeniem planera, więc środkowy przycisk chwyta mapę także nad panelem. `edgePanBlocked` obejmuje wyłącznie modal i pasek dowodzenia, a `MapViewport` przewija krawędź również nad planerem. Kliknięcia poza panelem nadal planują ruch, a kółko nad panelem nie zoomuje mapy.
+- **Kryteria:**
+  - **Panel:** środkowy przycisk myszy przesuwa mapę zaczynając nad planerem.
+  - **Krawędź:** kursor przy krawędzi ekranu przewija mapę także wtedy, gdy planer jest otwarty.
+  - **Blokady:** pasek dowodzenia i modal nadal nie przepuszczają kliknięć ani przewijania; kółko nad planerem nie zmienia zoomu.
+  - **Mapa:** kliknięcie heksa poza panelem planuje ruch tak jak wcześniej.
+  - **Testy:** `make verify` przechodzi; logika stref ma testy jednostkowe, jeśli zostanie wydzielona.
+  - **Dokumentacja:** INTERF-002 i INTERF-005 opisują strefy przewijania i planer jako nakładkę.
+
+## GRA-089: Menu pauzy w misji
+- **Kontekst:** `ESC` w misji od razu przenosił do menu scenariuszy, także wtedy, gdy misję uruchomiono z kampanii. Gracz tracił miejsce powrotu i nie miał szansy przerwać odtwarzania tury ani wyciszyć dźwięku bez wychodzenia z rozgrywki.
+- **Opis:** `view/pauseMenu.ts` rysuje nakładkę nad mapą z tytułem „PAUZA” i pozycjami „KONTYNUUJ”, „OPCJE”, „ZAKOŃCZ MISJĘ” i „MENU GŁÓWNE”. `ScenarioScene` otwiera ją na `ESC`, wstrzymuje `update()` (razem z odtwarzaniem tury) i blokuje klikanie w mapę, a `ESC` zamyka nakładkę. „ZAKOŃCZ MISJĘ” wraca do `returnScene`, czyli menu kampanii albo scenariuszy, z którego przyszła gra. „OPCJE” przełącza dźwięk: `storage/settings.ts` zapisuje wybór w `localStorage`, a `combatAudio` i `menuMusic` respektują flagę. Nakładka nie otwiera się po zakończeniu misji ani w replayu.
+- **Kryteria:**
+  - **ESC:** w normalnej turze otwiera menu pauzy zamiast zmieniać scenę.
+  - **Powrót:** „KONTYNUUJ” i `ESC` wracają do gry bez utraty planu; „ZAKOŃCZ MISJĘ” prowadzi do sceny, z której uruchomiono misję.
+  - **Pauza:** otwarte menu zatrzymuje odtwarzanie tury i nie przepuszcza kliknięć na mapę.
+  - **Opcje:** przełącznik dźwięku działa w efekcie natychmiast i przetrwa ponowne uruchomienie gry.
+  - **Testy:** przełącznik dźwięku i blokada wejścia mają testy jednostkowe, a `make verify` przechodzi.
+  - **Dokumentacja:** INTERF-002, INTERF-005 i INTERF-011 opisują menu pauzy.
+
+## GRA-090: Lista zadań z odhaczaniem ukończonych
+- **Kontekst:** Postęp misji widać było tylko na kafelkach kampanii; gracz nie miał jednego miejsca, w którym zobaczyłby wszystkie zadania naraz i które odhacza ukończone lekcje.
+- **Opis:** Menu główne dostaje pozycję „Zadania” otwierającą scenę `tasks-menu`. Scena grupuje kafelki `CAMPAIGNS` pod nagłówkami kampanii i rysuje przewijaną listę wierszy z checkboxem `[x]`/`[ ]`, tytułem i statusem. Ukończenie liczy `isMissionCompleted()` na zbiorze z `readCompletedMissions()`, blokadę — `isTileUnlocked()`. Kliknięcie odblokowanej misji uruchamia scenariusz z powrotem do listy, a zapowiedź pokazuje komunikat o planowanej lekcji; `ESC` wraca do menu głównego.
+- **Kryteria:**
+  - **Odhaczanie:** ukończona misja ma `[x]` i status „UKOŃCZONA” po powrocie z rozgrywki, także po restarcie gry.
+  - **Blokady:** misja z niespełnionym wymaganiem ma `[ ]` i status „ZABLOKOWANA”, a kliknięcie nie uruchamia scenariusza.
+  - **Zapowiedzi:** kafelek bez misji ma status „WKRÓTCE” i nie startuje rozgrywki.
+  - **Nawigacja:** start misji wraca do listy zadań, a `ESC` do menu głównego.
+  - **Testy:** porządek i statusy listy mają test jednostkowy, a `make verify` przechodzi.
+  - **Dokumentacja:** INTERF-001, INTERF-007 i INTERF-011 opisują pozycję menu i listę zadań.
+
+## GRA-091: Ikony transportu i ręczny wyładunek
+- **Kontekst:** Po zaplanowaniu wsiadania pasażer rysował się jako duch na heksie czołgu, więc wyglądał jak skok na pojazd, a po wejściu znikał bez śladu. Wyładunek działał automatycznie na początku tury właściciela, przez co gracz nie decydował, gdzie postawić piechura, i nie widział różnicy między jazdą z pasażerem a pustym czołgiem.
+- **Opis:** `PlanAction` dostaje `unload` z `passengerId` i docelowym heksem, a `transport.ts` — `unloadTargets()` i `unloadPassenger()`; `setUnload()` wymaga pojazdu bez zaplanowanych akcji, pasażera w ładowni i wolnego przechodniego sąsiedniego heksu. `beginTurn()` nie wyładowuje już ładunku. Scena pokazuje klikalne ikony `WEJDŹ` nad osiągalnymi pojazdami wybranego piechura i `WYJDŹ` nad wolnymi heksami wokół wybranego pojazdu z pasażerem; kliknięcie od razu zatwierdza akcję. Planowanie i playback ukrywają token wsiadającego po zakończeniu jego trasy zamiast rysować duch na czołgu, a plan wyładunku pokazuje pasażera na heksie docelowym. Wyładunek kończy turę pojazdu i pasażera, jest rozliczany w `planningState()`, `commitPlan()`, `planVolley()`, `buildTimeline()` i dzienniku tur oraz przechodzi przez zapis planu i replay.
+- **Kryteria:**
+  - **Wejście:** wybrany piechur widzi `WEJDŹ` na każdym osiągalnym pojeździe z wolnym miejscem; kliknięcie planuje `board` bez drugiego kliknięcia.
+  - **Widok:** po zakończeniu trasy wsiadania token pasażera znika, a na heksie pojazdu nie ma ducha piechura.
+  - **Wyjście:** wybrany pojazd z pasażerem i bez planu pokazuje `WYJDŹ` na wolnych sąsiednich heksach; kliknięcie planuje `unload`.
+  - **Skutek:** wyładunek stawia pasażera na wskazanym heksie, opróżnia ładownię i kończy turę pojazdu oraz pasażera.
+  - **Trwałość:** `beginTurn()` nie zmienia ładowni; pasażer zostaje w pojeździe do ręcznego wyładunku, także po turze przeciwnika.
+  - **Zapis:** akcja `unload` przechodzi przez serializację planu i replay; `commitPlan()` oraz podgląd pokazują pasażera poza pojazdem.
+  - **Testy:** testy pokrywają cele wyładunku, plan, commit, brak automatycznego wyładunku i serializację; `make verify` przechodzi.
+  - **Dokumentacja:** ZAL-005 i INTERF-005 opisują ikony oraz ręczny wyładunek.
+
+## GRA-092: Minimapa pola bitwy
+- **Kontekst:** Przy dużej mapie „Front Wschodni” gracz widział tylko wycinek planszy i nie miał sposobu ocenić, gdzie jest jego armia ani jak daleko ma do przeciwnika. Przewijanie mapy nie pokazywało całości, a planer zasłaniał dolną krawędź.
+- **Opis:** `view/minimap.ts` rysuje w lewym dolnym rogu pływający panel z blokami terenu, kropkami jednostek w kolorach stron, znacznikiem bazy i prostokątem widocznego wycinka kamery. Panel leży nad planerem i przesuwa się razem z jego zwijaniem, a jego kliknięcia nie przechodzą na mapę. Jednostki pochodzą z aktualnego widoku gracza, więc mgła nie zdradza ukrytych wrogów; replay pokazuje cały stan. Minimapa jest rysowana przez kamerę UI i ignorowana przez kamerę mapy.
+- **Kryteria:**
+  - **Położenie:** panel jest w lewym dolnym rogu nad planerem i nie zasłania paska dowodzenia; po zwinięciu planera opada niżej.
+  - **Teren:** bloki odwzorowują kształt mapy i kolory rodzajów terenu.
+  - **Jednostki:** każda widoczna jednostka ma kropkę w kolorze swojej strony, a baza własny znacznik.
+  - **Kamera:** prostokąt pokazuje aktualny wycinek mapy i zmienia się przy przewijaniu oraz zoomie.
+  - **Wejście:** kliknięcie i kółko nad minimapą nie planują ruchu ani nie zoomują mapy.
+  - **Testy:** geometria rzutowania mapy na minimapę ma test jednostkowy, a `make verify` przechodzi.
+  - **Dokumentacja:** INTERF-002 i INTERF-005 opisują minimapę i jej strefę wejścia.
+
+## GRA-093: Przycisk celów misji
+- **Kontekst:** Samouczek pokazywał tylko jeden aktywny krok w dymku, a po jego zaliczeniu poprzednie znikały. Gracz nie mógł sprawdzić, ile lekcji zostało ani jakie warunki ma cała misja, choć lista zadań w menu głównym odhaczała już ukończone misje.
+- **Opis:** Pasek dowodzenia dostaje przycisk `CELE` otwierający modal `view/objectivesPanel.ts` z nazwą i opisem scenariusza oraz listą kroków samouczka w formie `[x]`/`[ ]`. `core/tutorial.ts` udostępnia `tutorialStepStates()` zwracające tytuł i stan każdego kroku na podstawie bieżącego postępu. Panel zamyka `ESC`, kliknięcie tła albo `ZAMKNIJ`; wchodzi w listę blokad wskaźnika i nie otwiera się w replayu.
+- **Kryteria:**
+  - **Przycisk:** `CELE` jest widoczne w pasku dowodzenia obok dziennika i zakupów.
+  - **Treść:** modal pokazuje nazwę i opis misji oraz wszystkie kroki samouczka z odhaczeniem.
+  - **Stan:** wykonany krok ma `[x]`, pozostały `[ ]`; po zaliczeniu kolejnego kroku panel pokazuje aktualny stan.
+  - **Zamknięcie:** `ESC`, tło i `ZAMKNIJ` wracają do gry bez utraty planu.
+  - **Blokady:** otwarty panel nie przepuszcza kliknięć na mapę ani do paska dowodzenia.
+  - **Testy:** `tutorialStepStates()` ma test jednostkowy, a `make verify` przechodzi.
+  - **Dokumentacja:** INTERF-005 i INTERF-011 opisują przycisk i modal celów.
+
+## GRA-094: Trzy miejsca w czołgu
+- **Kontekst:** Czołg z GRA-085 i GRA-091 woził jednego piechura (`capacity: 1`), więc transport trzech osób wymagał trzech osobnych przejazdów. Model ładowni od początku był tablicą `UnitBase.cargo`, a liczba miejsc wynikała tylko ze statystyki pojazdu.
+- **Opis:** `TANK_STATS.capacity` zmienia się z `1` na `3`; `carries` nadal zawiera wyłącznie `infantry`. `core/transport.ts`, plan i karta jednostki liczą wolne miejsca z `capacity`, więc wsiadanie, wyładunek, `cargo-full`, zapis mapy i replay obsługują trzech pasażerów bez zmian w logice. Wyładunek nadal przenosi jednego pasażera na akcję i kończy turę pojazdu oraz pasażera.
+- **Kryteria:**
+  - **Ładownia:** czołg przyjmuje trzech piechurów, a czwarty dostaje `cargo-full`.
+  - **Interfejs:** karta jednostki pokazuje `ŁADUNEK x/3`, a token nadal rysuje liczbę pasażerów.
+  - **Wyładunek:** wybrany pojazd z pasażerami pokazuje `WYSIADŹ` dla pierwszego z nich na wolnych sąsiednich heksach.
+  - **Testy:** test transportu pokrywa trzech pasażerów i odmowę czwartego, a `make verify` przechodzi.
+  - **Dokumentacja:** ZAL-004 i INTERF-005 opisują trzy miejsca czołgu.
+
+## GRA-095: Dźwięk pojawienia się dymku samouczka
+- **Kontekst:** Dymki samouczka pojawiały się bez żadnego dźwięku, więc gracz mógł przeoczyć nowy krok, gdy patrzył na mapę zamiast na prawy górny róg. `activeTutorialHint()` zwraca ten sam obiekt `TutorialHint` z definicji kroku, a `refreshTutorial()` woła `show()` przy każdym odświeżeniu, więc dźwięk nie może grać na każdym wywołaniu.
+- **Opis:** `view/tutorialTip.ts` zapamiętuje ostatnio pokazany `TutorialHint` i odtwarza `playTipSound()` tylko wtedy, gdy przyszedł inny obiekt kroku. `core/sound.ts` dostaje `'tip'`, a `view/combatAudio.ts` mapuje go na `assets/ai/audio/click.wav` z niższą głośnością niż kliknięcie przycisku. Odtwarzanie przechodzi przez `play()`, więc respektuje wyłącznik dźwięku z opcji. Logika `core/tutorial.ts` pozostaje bez zmian.
+- **Kryteria:**
+  - **Pojawienie:** nowy krok samouczka odtwarza krótki dźwięk raz, w chwili pokazania dymku.
+  - **Bez powtórzeń:** odświeżenie tego samego kroku i ponowne `show()` z tym samym `TutorialHint` nie odtwarza dźwięku.
+  - **Opcje:** wyłączony dźwięk w menu pauzy wycisza dymek tak samo jak walkę i przyciski.
+  - **Warstwa:** dźwięk jest wyłącznie w `view/`; `core/tutorial.ts` nie zna audio (ADR-001, ADR-035).
+  - **Testy:** `make verify` przechodzi.
+  - **Dokumentacja:** ZAL-011, INTERF-005 oraz ADR-035 i ADR-037 opisują dźwięk dymku.
+
+## GRA-096: Finał drugiej misji — powrót do bazy i bazooka
+- **Kontekst:** Druga misja kończyła się w chwili pierwszego trafienia karabinierów, więc bazooka dodana w GRA-088 pojawiała się za późno — zwykle wcale. Gracz nie wracał czołgiem do bazy i nie dostawał dymka do potwierdzenia, co właśnie się wydarzyło, zanim scena pokazała ekran wyniku.
+- **Opis:** `TutorialGoal` dostaje `returned` i `bazookaHits`, a `TutorialProgress` liczy powrót czołgu do heksu bazy (albo sąsiedniego) oraz trafienia bazooką w czołg gracza. `TutorialStep.retireSpawn` wycofuje jednostki wskazanego wcześniejszego kroku po zaliczeniu kroku bieżącego, więc karabinierzy przestają atakować w drodze powrotnej. Skrypt drugiej misji dodaje po odporności krok „POWRÓT DO BAZY” ze spawnem żołnierza z bazooką przy bazie i krok „BAZOOKA” zaliczany jednym trafieniem w czołg. `ScenarioScene` wymusza w pierwszej turze wroga atak żołnierza z bazooką na czołg i zlicza trafienia z `PlanHit`. Po trafieniu zamiast natychmiastowego ekranu wyniku pojawia się modal `view/tutorialConfirm.ts` z dymkiem i przyciskiem `ROZUMIEM`; dopiero po jego kliknięciu misja się kończy. Replay odtwarza wycofanie karabinierów, spawn żołnierza z bazooką i jego strzał, ale nie pokazuje modalu. Zapis tury obejmuje stan po wycofaniach i spawnach, a odtwarzanie bierze `state_after` zamiast liczyć stan od nowa, więc zakupy i jednostki dodane przez skrypt wracają w replayu.
+- **Kryteria:**
+  - **Karabinierzy:** po pierwszym nieskutecznym ostrzale wycofują się i nie atakują czołgu w drodze powrotnej.
+  - **Powrót:** krok „POWRÓT DO BAZY” zalicza się, gdy czołg stanie na heksie bazy `(2, 5)` albo obok; dopiero wtedy przy bazie pojawia się żołnierz z bazooką.
+  - **Atak:** bazooka w pierwszej turze wroga strzela do czołgu i zadaje 15 obrażeń, a czołg pozostaje na mapie.
+  - **Potwierdzenie:** po trafieniu pojawia się blokujący dymek z przyciskiem `ROZUMIEM`; kliknięcie tła ani `ESC` go nie zamyka.
+  - **Koniec:** ekran wyniku pojawia się wyłącznie po potwierdzeniu dymku.
+  - **Replay:** odtwarzanie pokazuje wycofanie karabinierów, bazookę i jej strzał bez modalu.
+  - **Testy:** testy pokrywają nowe cele, wycofanie i spawny drugiej misji, a `make verify` przechodzi.
+  - **Dokumentacja:** ZAL-011 i INTERF-005 opisują nowy finał i dymek potwierdzenia.
+
+## GRA-097: Poprawki drugiej misji — zwiad w czołgu, dźwięki, wygląd i nazewnictwo
+- **Kontekst:** Po finale z GRA-096 zostały cztery błędy: zwiadowca nie mógł wsiąść do czołgu, choć jest pieszym zwiadem; odtwarzanie tury przestało odtwarzać dźwięk kroków; nazwa „bazookier” nie istnieje w grze, a jednostka ma być żołnierzem z bazooką; końcowy komunikat fałszywie twierdził, że tylko bazooka zagraża czołgowi.
+- **Opis:** `TANK_STATS.carries` dostaje `'scout'`, więc czołg przyjmuje piechurów i zwiadowców w ramach trzech miejsc. `ScenarioScene.advancePlayback()` odtwarza `UnitStats.moveSound` raz na każdy pokonany heks, korzystając z kluczy `fired`, więc dźwięk nie powtarza się przy kolejnych klatkach; podgląd i przewijanie playheada pozostają nieme. Czołg i zwiadowca dostają `moveSound: 'step'`, ten sam dźwięk co piechota. Zwiadowca używa portretu i tokenu piechura, więc wygląda jak żołnierz. Etykieta `BAZOOKA_STATS` i rola w oknie rekrutacji mówią o żołnierzu z bazooką, a dymki i powiadomienie o spawnie nie używają słowa „bazookier”. Końcowy dymek wymienia inne czołgi, śmigłowce i artylerię jako zagrożenia dla czołgu. Wewnętrzny `UnitKind` pozostaje `'bazooka'`.
+- **Kryteria:**
+  - **Zwiad:** zwiadowca może wsiąść do własnego czołgu i podróżować jako pasażer; sam nadal nie przewozi nikogo.
+  - **Dźwięk:** podczas `WYKONAJ TURĘ` każdy pokonany heks jednostki z `moveSound` odtwarza dźwięk kroku; piechota, żołnierz z bazooką, zwiadowca i czołg używają tego samego `'step'`, a podgląd trasy i przewijanie są ciche.
+  - **Wygląd:** zwiadowca ma portret i token żołnierza, tak jak piechota; odróżniają go statystyki, a nie grafika.
+  - **Nazewnictwo:** interfejs nie używa słowa „bazookier”; jednostka to żołnierz z bazooką, a jej wewnętrzny rodzaj pozostaje `bazooka`.
+  - **Komunikat:** końcowy dymek nie twierdzi, że bazooka jest jedynym zagrożeniem; wymienia też inne czołgi, śmigłowce i artylerię.
+  - **Testy:** testy transportu, czołgu i misji pokrywają zmiany, a `make verify` przechodzi.
+  - **Dokumentacja:** ZAL-004, ZAL-005, ZAL-011 i INTERF-005 opisują pasażerów czołgu, dźwięk ruchu i nowe nazewnictwo.

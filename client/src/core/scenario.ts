@@ -36,6 +36,7 @@ export interface ScenarioDefinition {
   readonly tutorial?: TutorialScript;
   readonly spawn?: SpawnPoint;
   readonly autoDeploy?: boolean;
+  readonly sandbox?: boolean;
   readonly withFogOfWar?: (state: GameState) => GameState;
 }
 

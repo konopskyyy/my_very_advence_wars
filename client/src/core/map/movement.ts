@@ -42,7 +42,12 @@ export function canMoveUnit(state: GameState, unit: Unit, target: HexCoord): boo
   return moveCost <= unit.movesLeft;
 }
 
-export function getMovePath(state: GameState, unit: Unit, target: HexCoord): HexCoord[] | undefined {
+export function getMovePath(
+  state: GameState,
+  unit: Unit,
+  target: HexCoord,
+  allowOccupantId?: string,
+): HexCoord[] | undefined {
   if (unit.hasActed || unit.movesLeft <= 0) {
     return undefined;
   }
@@ -59,7 +64,7 @@ export function getMovePath(state: GameState, unit: Unit, target: HexCoord): Hex
 
   const unitAtTarget = findUnitAt(state, target);
 
-  if (unitAtTarget && unitAtTarget.id !== unit.id) {
+  if (unitAtTarget && unitAtTarget.id !== unit.id && unitAtTarget.id !== allowOccupantId) {
     return undefined;
   }
 
@@ -84,7 +89,10 @@ export function getMovePath(state: GameState, unit: Unit, target: HexCoord): Hex
       const isTarget = neighbor.col === target.col && neighbor.row === target.row;
       const occupant = findUnitAt(state, neighbor);
 
-      if (occupant && !(isTarget && occupant.id === unit.id)) {
+      if (
+        occupant &&
+        !(isTarget && (occupant.id === unit.id || occupant.id === allowOccupantId))
+      ) {
         continue;
       }
 

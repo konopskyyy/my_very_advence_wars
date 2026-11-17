@@ -5,6 +5,7 @@ import shotUrl from '../assets/ai/audio/shot.wav?url';
 import stepUrl from '../assets/ai/audio/step.wav?url';
 import type { SoundId } from '../core/sound';
 import type { Weapon } from '../core/units';
+import { readSoundEnabled, writeSoundEnabled } from '../storage/settings';
 
 interface SoundSource {
   readonly url: string;
@@ -23,9 +24,30 @@ const SOURCES: Record<SoundId, SoundSource> = {
   step: { url: stepUrl, volume: 0.9 },
   click: { url: clickUrl, volume: 0.35 },
   death: { url: deathUrl, volume: 0.6 },
+  tip: { url: clickUrl, volume: 0.3 },
 };
 const pools = new Map<SoundId, SoundPool>();
 let unlockInstalled = false;
+let soundEnabled = readSoundEnabled();
+
+export function isSoundEnabled(): boolean {
+  return soundEnabled;
+}
+
+export function setSoundEnabled(enabled: boolean): void {
+  soundEnabled = enabled;
+  writeSoundEnabled(enabled);
+
+  if (enabled) {
+    return;
+  }
+
+  for (const pool of pools.values()) {
+    for (const audio of pool.elements) {
+      audio.pause();
+    }
+  }
+}
 
 function getPool(name: SoundId): SoundPool {
   const existing = pools.get(name);
@@ -96,7 +118,15 @@ export function playClickSound(): void {
   play('click');
 }
 
+export function playTipSound(): void {
+  play('tip');
+}
+
 function play(name: SoundId): void {
+  if (!soundEnabled) {
+    return;
+  }
+
   const source = SOURCES[name];
   const pool = getPool(name);
   const audio = pool.elements[pool.next];

@@ -1,8 +1,9 @@
 import type { HexCoord } from '../map';
 import type { GameState } from '../state';
+import { cargoOf, loadPassenger, unloadPassenger } from '../transport';
 import type { UnitKind } from '../units';
 import type { PlanCommit } from './commit';
-import { walkActions } from './simulate';
+import { boardingTarget, unloadAction, walkActions } from './simulate';
 import type { TurnPlan } from './types';
 
 export interface TurnLogMove {
@@ -35,16 +36,36 @@ export function buildTurnLog(
   commit: Pick<PlanCommit, 'hits' | 'killed'>,
 ): TurnLog {
   const moves: TurnLogMove[] = [];
+  let current = stateBefore;
 
   for (const unitPlan of plan.units) {
-    const unit = stateBefore.units.find((candidate) => candidate.id === unitPlan.unitId);
+    const unit = current.units.find((candidate) => candidate.id === unitPlan.unitId);
 
     if (!unit) {
       continue;
     }
 
-    walkActions(stateBefore, unit, unitPlan.actions, (step) => {
-      if (step.action.kind !== 'move' || step.action.path.length === 0) {
+    const simulated = walkActions(current, unit, unitPlan.actions, (step) => {
+      const action = step.action;
+
+      if (action.kind === 'unload') {
+        const passenger = cargoOf(step.before).find(
+          (candidate) => candidate.id === action.passengerId,
+        );
+
+        if (passenger) {
+          moves.push({
+            unitId: passenger.id,
+            kind: passenger.kind,
+            from: step.before.pos,
+            to: action.target,
+          });
+        }
+
+        return;
+      }
+
+      if ((action.kind !== 'move' && action.kind !== 'board') || action.path.length === 0) {
         return;
       }
 
@@ -55,6 +76,27 @@ export function buildTurnLog(
         to: step.after.pos,
       });
     });
+
+    if (simulated) {
+      current = {
+        ...current,
+        units: current.units.map((candidate) =>
+          candidate.id === simulated.id ? simulated : candidate,
+        ),
+      };
+
+      const boardTarget = boardingTarget(unitPlan.actions);
+
+      if (boardTarget) {
+        current = loadPassenger(current, unit.id, boardTarget);
+      }
+
+      const unload = unloadAction(unitPlan.actions);
+
+      if (unload) {
+        current = unloadPassenger(current, unit.id, unload.passengerId, unload.target);
+      }
+    }
   }
 
   const killed = new Set(commit.killed);

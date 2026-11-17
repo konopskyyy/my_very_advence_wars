@@ -101,3 +101,17 @@ zadań do wykonania.
 | [[Zadania-opisy#GRA-081: Dziennik tur i replay całej gry na ekranie wyniku\|GRA-081]] | Dziennik tur i replay całej gry na ekranie wyniku | ✅ | GRA-060, GRA-061, GRA-075, INTERF-002, INTERF-006 |
 | [[Zadania-opisy#GRA-082: Kompaktowy HUD pola bitwy\|GRA-082]] | Kompaktowy HUD pola bitwy | ✅ | GRA-061, GRA-081, ADR-001, INTERF-002, INTERF-005 |
 | [[Zadania-opisy#GRA-083: Odblokowywanie misji kampanii\|GRA-083]] | Odblokowywanie misji kampanii | ✅ | GRA-042, GRA-075, GRA-076, ZAL-011, INTERF-007 |
+| [[Zadania-opisy#GRA-084: Druga misja samouczka — teren i odblokowanie czołgu\|GRA-084]] | Druga misja samouczka — teren i odblokowanie czołgu | ✅ | GRA-076, GRA-083, ZAL-011, INTERF-005 |
+| [[Zadania-opisy#GRA-085: Wsiadanie piechoty do pojazdów\|GRA-085]] | Wsiadanie piechoty do pojazdów | ✅ | GRA-049, GRA-057, ADR-001, ADR-039, ZAL-004, ZAL-005, INTERF-005 |
+| [[Zadania-opisy#GRA-086: Replay odtwarzający wszystkie tury\|GRA-086]] | Replay odtwarzający wszystkie tury | ✅ | GRA-060, GRA-081, ADR-041, INTERF-005, `specification/Mapy.md` |
+| [[Zadania-opisy#GRA-087: Przewijanie mapy nad planerem\|GRA-087]] | Przewijanie mapy nad planerem | ✅ | GRA-024, GRA-082, ADR-023, INTERF-002, INTERF-005 |
+| [[Zadania-opisy#GRA-088: Druga misja samouczka — transport i odporność czołgu\|GRA-088]] | Druga misja samouczka — transport i odporność czołgu | ✅ | GRA-084, GRA-085, ZAL-004, ZAL-005, ZAL-011, INTERF-005 |
+| [[Zadania-opisy#GRA-089: Menu pauzy w misji\|GRA-089]] | Menu pauzy w misji | ✅ | GRA-082, GRA-088, INTERF-002, INTERF-005, INTERF-011 |
+| [[Zadania-opisy#GRA-090: Lista zadań z odhaczaniem ukończonych\|GRA-090]] | Lista zadań z odhaczaniem ukończonych | ✅ | GRA-083, GRA-088, INTERF-001, INTERF-007, INTERF-011 |
+| [[Zadania-opisy#GRA-091: Ikony transportu i ręczny wyładunek\|GRA-091]] | Ikony transportu i ręczny wyładunek | ✅ | GRA-085, GRA-088, ZAL-005, INTERF-005 |
+| [[Zadania-opisy#GRA-092: Minimapa pola bitwy\|GRA-092]] | Minimapa pola bitwy | ✅ | GRA-082, GRA-087, INTERF-002, INTERF-005 |
+| [[Zadania-opisy#GRA-093: Przycisk celów misji\|GRA-093]] | Przycisk celów misji | ✅ | GRA-088, GRA-090, INTERF-005, INTERF-011 |
+| [[Zadania-opisy#GRA-094: Trzy miejsca w czołgu\|GRA-094]] | Trzy miejsca w czołgu | ✅ | GRA-085, GRA-091, ZAL-004, ZAL-005, INTERF-005 |
+| [[Zadania-opisy#GRA-095: Dźwięk pojawienia się dymku samouczka\|GRA-095]] | Dźwięk pojawienia się dymku samouczka | ✅ | GRA-054, GRA-074, ADR-001, ADR-035, ADR-037, ZAL-011, INTERF-005 |
+| [[Zadania-opisy#GRA-096: Finał drugiej misji — powrót do bazy i bazooka\|GRA-096]] | Finał drugiej misji — powrót do bazy i bazooka | ✅ | GRA-088, ZAL-004, ZAL-011, INTERF-005 |
+| [[Zadania-opisy#GRA-097: Poprawki drugiej misji — zwiad w czołgu, dźwięki, wygląd i nazewnictwo\|GRA-097]] | Poprawki drugiej misji — zwiad w czołgu, dźwięki, wygląd i nazewnictwo | ✅ | GRA-088, GRA-096, ZAL-004, ZAL-005, ZAL-011, INTERF-005 |

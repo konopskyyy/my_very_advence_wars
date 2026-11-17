@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import type { TutorialHint } from '../core/tutorial';
+import { playTipSound } from './combatAudio';
 import { FACTION_THEMES } from './factionTheme';
 
 const WIDTH = 340;
@@ -17,6 +18,7 @@ export class TutorialTip {
   private readonly tag: Phaser.GameObjects.Text;
   private readonly title: Phaser.GameObjects.Text;
   private readonly body: Phaser.GameObjects.Text;
+  private currentHint?: TutorialHint;
 
   constructor(private readonly scene: Phaser.Scene) {
     this.panel = scene.add.graphics().setScrollFactor(0).setDepth(DEPTH);
@@ -57,6 +59,9 @@ export class TutorialTip {
   }
 
   show(hint: TutorialHint): void {
+    const isNew = hint !== this.currentHint;
+    this.currentHint = hint;
+
     this.tag.setText('SAMOUCZEK');
     this.title.setText(hint.title);
     this.body.setText(hint.text);
@@ -90,6 +95,10 @@ export class TutorialTip {
     );
 
     this.setVisible(true);
+
+    if (isNew) {
+      playTipSound();
+    }
   }
 
   hide(): void {

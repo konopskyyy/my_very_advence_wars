@@ -5,6 +5,7 @@ import { MapMenuScene } from './scenes/MapMenuScene';
 import { MenuScene } from './scenes/MenuScene';
 import { ScenarioMenuScene } from './scenes/ScenarioMenuScene';
 import { ScenarioScene } from './scenes/ScenarioScene';
+import { TasksMenuScene } from './scenes/TasksMenuScene';
 import { mountAccountOverlay } from './view/accountOverlay';
 import { mountAuthScreen } from './view/authScreen';
 import { preloadCombatAudio } from './view/combatAudio';
@@ -49,6 +50,7 @@ function startGame(): void {
     scene: [
       MenuScene,
       CampaignMenuScene,
+      TasksMenuScene,
       ScenarioMenuScene,
       ScenarioScene,
       MapMenuScene,

@@ -649,12 +649,15 @@ export class PlanTimeline {
       const isSelected = selected === unitPlan.unitId;
       const moves = unitPlan.actions.filter((action) => action.kind === 'move').length;
       const attacks = unitPlan.actions.filter((action) => action.kind === 'attack').length;
+      const boards = unitPlan.actions.filter((action) => action.kind === 'board').length;
+      const unloads = unitPlan.actions.filter((action) => action.kind === 'unload').length;
+      const extras = `${boards > 0 ? ' +W' : ''}${unloads > 0 ? ' +WY' : ''}`;
 
       this.timelineGraphics.fillStyle(TRACK_BACKGROUND, 0.55);
       this.timelineGraphics.fillRect(areaX, y, areaWidth, Math.max(2, trackHeight - 4));
 
       const text = this.scene.add
-        .text(12, y + 1, `${index + 1}. ${label} · ${moves}R ${attacks}A`, {
+        .text(12, y + 1, `${index + 1}. ${label} · ${moves}R ${attacks}A${extras}`, {
           fontFamily: 'monospace',
           fontSize: '10px',
           color: isSelected ? '#f2d35c' : '#d8e2dc',
