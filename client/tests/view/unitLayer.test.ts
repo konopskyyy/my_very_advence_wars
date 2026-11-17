@@ -146,3 +146,24 @@ describe('UnitLayer — animacja ruchu', () => {
     expect(token.x).not.toBe(startX);
   });
 });
+
+describe('UnitLayer — bombowiec', () => {
+  it('nie rysuje stałego tokenu bombowca na mapie', () => {
+    const scene = fakeScene();
+    const layer = new UnitLayer(scene, [createUnit('b1', 'bomber', 'blue', { col: 2, row: 2 })]);
+
+    expect(layer.getToken('b1')).toBeUndefined();
+    expect(layer.unitCount).toBe(0);
+  });
+
+  it('usuwa token, gdy piechota zostaje zastąpiona bombowcem', () => {
+    const scene = fakeScene();
+    const layer = new UnitLayer(scene, [unitAt('u1', 1, 1)]);
+    const token = layer.getToken('u1') as unknown as FakeToken;
+
+    layer.setUnits([createUnit('u1', 'bomber', 'blue', { col: 1, row: 1 })]);
+
+    expect(token.destroy).toHaveBeenCalled();
+    expect(layer.getToken('u1')).toBeUndefined();
+  });
+});

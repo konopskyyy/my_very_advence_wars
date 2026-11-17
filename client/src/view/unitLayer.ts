@@ -416,7 +416,11 @@ export class UnitLayer {
     for (const [id, token] of this.tokens) {
       const unit = unitsById.get(id);
 
-      if (unit && token.texture.key === unitTextureKey(unit.kind, unit.faction)) {
+      if (
+        unit &&
+        unit.kind !== 'bomber' &&
+        token.texture.key === unitTextureKey(unit.kind, unit.faction)
+      ) {
         continue;
       }
 
@@ -429,6 +433,10 @@ export class UnitLayer {
     }
 
     for (const unit of this.units) {
+      if (unit.kind === 'bomber') {
+        continue;
+      }
+
       let token = this.tokens.get(unit.id);
 
       if (!token) {
