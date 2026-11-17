@@ -6,11 +6,13 @@ import {
   ARTILLERY_AMMO,
   ARTILLERY_SHOT_MOVE_COST,
   ARTILLERY_STATS,
+  BOMBER_STATS,
   createUnit,
   FULL_MAP_RANGE,
   shotMoveCost,
   shotsLeft,
   TANK_AMMO,
+  TANK_STATS,
   UNIT_DEFS,
   type UnitKind,
 } from '../../src/core/units';
@@ -95,6 +97,15 @@ describe('canAttack', () => {
     expect(Number.isFinite(UNIT_DEFS.artillery.visionRange)).toBe(true);
     expect(canAttack(artillery, target)).toBe(true);
   });
+
+  it('bombowiec sięga każdego heksa mapy', () => {
+    const target = createUnit('target', 'infantry', 'red', { col: 0, row: 0 });
+    const bomber = createUnit('bomber', 'bomber', 'blue', { col: 40, row: 20 });
+
+    expect(UNIT_DEFS.bomber.attackRange).toBe(FULL_MAP_RANGE);
+    expect(UNIT_DEFS.bomber.visionRange).toBe(FULL_MAP_RANGE);
+    expect(canAttack(bomber, target)).toBe(true);
+  });
 });
 
 describe('canAttackThisTurn', () => {
@@ -148,6 +159,21 @@ describe('attackUnit', () => {
 
     expect(findUnitAt(next, target!.pos)).toBeUndefined();
     expect(next.units).toHaveLength(1);
+  });
+
+  it('bombowiec jednym nalotem niszczy pełnoprawny czołg', () => {
+    const state = stateWith(
+      { kind: 'bomber', pos: { col: 0, row: 0 } },
+      { kind: 'tank', pos: { col: 8, row: 8 } },
+    );
+    const [attacker, target] = state.units;
+    const wounded = withHp(state, target!.pos, TANK_STATS.maxHp);
+    const next = attackUnit(wounded, attacker!.id, target!.id);
+
+    expect(BOMBER_STATS.attack).toBeGreaterThan(TANK_STATS.maxHp);
+    expect(findUnitAt(next, target!.pos)).toBeUndefined();
+    expect(next.units).toHaveLength(1);
+    expect(findUnitAt(next, attacker!.pos)).toMatchObject({ movesLeft: 0, hasActed: true });
   });
 
   it('odejmuje koszt strzału i zostawia resztę ruchu', () => {

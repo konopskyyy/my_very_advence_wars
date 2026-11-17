@@ -25,6 +25,18 @@ describe('serializacja planu tury', () => {
     expect(deserializeTurnPlan(serializeTurnPlan(SAMPLE_PLAN))).toEqual(SAMPLE_PLAN);
   });
 
+  it('nie dopisuje pól animacji nalotu do zapisanego ataku', () => {
+    const plan: TurnPlan = {
+      ...SAMPLE_PLAN,
+      units: [{ unitId: 'bomber-1', actions: [{ kind: 'attack', targetId: 'unit-2' }] }],
+    };
+    const json = serializeTurnPlan(plan);
+    const parsed = JSON.parse(json);
+
+    expect(parsed.units[0].actions[0]).toEqual({ kind: 'attack', targetId: 'unit-2' });
+    expect(deserializeTurnPlan(json)).toEqual(plan);
+  });
+
   it('umieszcza w formacie numer wersji', () => {
     const parsed = JSON.parse(serializeTurnPlan(SAMPLE_PLAN));
 

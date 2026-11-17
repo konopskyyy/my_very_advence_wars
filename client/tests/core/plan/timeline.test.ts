@@ -94,6 +94,38 @@ describe('timeline', () => {
     expect(attack).toMatchObject({ attackerPos: { col: 6, row: 5 } });
   });
 
+  it('przedstawia nalot jako zwykły klip ataku bez pól animacji', () => {
+    let state = placeUnit(createInitialState(createMap(9, 9)), 'bomber', { col: 0, row: 0 }, 'blue');
+    state = placeUnit(state, 'tank', { col: 8, row: 8 }, 'red');
+    const attack = addAttack(
+      createTurnPlan(createTurnState()),
+      state,
+      state.units[0]!.id,
+      state.units[1]!.id,
+    );
+
+    expect(attack.ok).toBe(true);
+
+    if (!attack.ok) {
+      throw new Error('bomber attack');
+    }
+
+    const clip = buildTimeline(attack.plan, state).clips[0]!;
+
+    expect(clip.kind).toBe('attack');
+    expect(Object.keys(clip).sort()).toEqual([
+      'actionIndex',
+      'attackerPos',
+      'damage',
+      'endMs',
+      'kind',
+      'startMs',
+      'targetId',
+      'targetPos',
+      'unitId',
+    ]);
+  });
+
   it('przed startem tury pokazuje pozycje startowe', () => {
     const { state, plan } = planForTwoUnits();
     const frame = sampleTimeline(buildTimeline(plan, state), state, 0);

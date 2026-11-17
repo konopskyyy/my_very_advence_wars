@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs>
+    <clipPath id="hexClipOuter"><polygon points="128,8 231.92,68 231.92,188 128,248 24.08,188 24.08,68"/></clipPath>
+    <linearGradient id="rockBaseAlt" x1="0.2" y1="0" x2="0.9" y2="1">
+      <stop offset="0" stop-color="#938a75"/>
+      <stop offset="1" stop-color="#655c4c"/>
+    </linearGradient>
+    <linearGradient id="peakFaceAlt" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#b7ad95"/>
+      <stop offset="1" stop-color="#776d5a"/>
+    </linearGradient>
+    <radialGradient id="specGradAlt" cx="36%" cy="24%" r="78%">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.14"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="aoGradAlt" cx="62%" cy="82%" r="82%">
+      <stop offset="0" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.2"/>
+    </radialGradient>
+  </defs>
+  <g clip-path="url(#hexClipOuter)">
+    <rect width="256" height="256" fill="url(#rockBaseAlt)"/>
+    <ellipse cx="132" cy="216" rx="106" ry="26" fill="#000000" opacity="0.13"/>
+    <polygon points="8,216 58,142 110,216" fill="#5b5343"/>
+    <polygon points="58,142 110,216 76,216" fill="url(#peakFaceAlt)"/>
+    <polygon points="58,142 46,164 59,158 70,168" fill="#e8e3d6"/>
+    <polygon points="70,220 146,58 226,220" fill="#4f483b"/>
+    <polygon points="146,58 226,220 172,220" fill="url(#peakFaceAlt)"/>
+    <polygon points="146,58 126,100 146,91 166,104" fill="#f4f1e8"/>
+    <polygon points="146,58 166,104 154,96" fill="#d6d0c2"/>
+    <path d="M146 94 L138 140 L158 178 L148 220" stroke="#453f34" stroke-width="3" fill="none" opacity="0.55"/>
+    <path d="M58 160 L54 188 L68 206" stroke="#453f34" stroke-width="2" fill="none" opacity="0.5"/>
+    <rect width="256" height="256" fill="url(#specGradAlt)"/>
+    <rect width="256" height="256" fill="url(#aoGradAlt)"/>
+  </g>
+</svg>

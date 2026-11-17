@@ -1,6 +1,6 @@
 import type { SoundId } from '../sound';
 
-export type WeaponId = 'rifle' | 'bazooka';
+export type WeaponId = 'rifle' | 'bazooka' | 'bomb';
 
 export interface Weapon {
   readonly id: WeaponId;
@@ -18,4 +18,10 @@ export const BAZOOKA: Weapon = {
   id: 'bazooka',
   label: 'Bazooka',
   shotSound: 'rifle-shot',
+};
+
+export const BOMB: Weapon = {
+  id: 'bomb',
+  label: 'Bomba',
+  shotSound: 'bomb-drop',
 };

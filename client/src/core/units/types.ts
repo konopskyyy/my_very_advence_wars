@@ -4,7 +4,7 @@ import type { FactionId } from './faction';
 import type { Unit } from './model';
 import type { Weapon } from './weapons';
 
-export type UnitKind = 'infantry' | 'tank' | 'artillery' | 'scout' | 'bazooka';
+export type UnitKind = 'infantry' | 'tank' | 'artillery' | 'scout' | 'bazooka' | 'bomber' | 'helicopter';
 
 export const FULL_MAP_RANGE = 999;
 

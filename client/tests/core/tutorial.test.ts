@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { PIERWSZE_KROKI } from '../../src/core/campaign/missions/pierwsze-kroki';
 import { RUCH_JEDNOSTEK } from '../../src/core/campaign/missions/ruch-jednostek';
+import { WALKA } from '../../src/core/campaign/missions/walka';
 import { generateMap } from '../../src/core/map';
 import type { TurnPlan } from '../../src/core/plan';
 import { createRecruitment, purchaseUnit, type RecruitmentState } from '../../src/core/recruitment';
@@ -302,5 +303,50 @@ describe('podpowiedzi samouczka', () => {
         base,
       }).returned,
     ).toBe(false);
+  });
+
+  it('trzecia misja wymaga zakupu bombera i dziewięciu ataków w jednym kroku', () => {
+    const tutorial = WALKA.mission?.tutorial;
+
+    expect(tutorial).toBeDefined();
+    if (!tutorial) {
+      return;
+    }
+
+    const base = createRecruitment({ funds: 0, allowedKinds: [] });
+    const bomberBought: RecruitmentState = {
+      ...createRecruitment({ funds: 250, allowedKinds: ['bomber'] }),
+      purchased: { bomber: 1 },
+    };
+
+    expect(activeTutorialHint(tutorial, progress(base))?.title).toBe('PIERWSZY STRZAŁ');
+
+    const first = progress(base, 0, 1);
+    expect(activeTutorialHint(tutorial, first)?.title).toBe('DOCISNIJ CEL');
+    expect(pendingTutorialSpawns(tutorial, first, new Set())).toEqual([]);
+
+    const second = progress(base, 0, 2);
+    const secondSpawns = pendingTutorialSpawns(tutorial, second, new Set());
+    expect(activeTutorialHint(tutorial, second)?.title).toBe('JEDEN WOLUMEN');
+    expect(secondSpawns).toHaveLength(1);
+    expect(secondSpawns[0]?.units).toEqual([
+      { kind: 'infantry', faction: 'red', col: 9, row: 4 },
+      { kind: 'infantry', faction: 'red', col: 9, row: 6 },
+    ]);
+
+    const third = progress({ ...base, funds: 250, allowedKinds: ['bomber'] }, 0, 4);
+    expect(activeTutorialHint(tutorial, third)?.title).toBe('NALOT');
+    expect(pendingTutorialSpawns(tutorial, third, new Set([1]))).toEqual([
+      { index: 2, units: [{ kind: 'tank', faction: 'red', col: 12, row: 5 }] },
+    ]);
+    expect(applyTutorialRewards(base, tutorial, third, new Set()).recruitment).toMatchObject({
+      funds: 250,
+      allowedKinds: ['bomber'],
+    });
+    expect(tutorialComplete(tutorial, third)).toBe(false);
+
+    expect(tutorialComplete(tutorial, progress(bomberBought, 0, 8))).toBe(false);
+    expect(tutorialComplete(tutorial, progress(base, 0, 9))).toBe(false);
+    expect(tutorialComplete(tutorial, progress(bomberBought, 0, 9))).toBe(true);
   });
 });

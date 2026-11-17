@@ -4,7 +4,10 @@ import {
   applyAttackCost,
   ARTILLERY_AMMO,
   ARTILLERY_STATS,
+  BOMBER_AMMO,
+  BOMBER_STATS,
   createUnit,
+  FULL_MAP_RANGE,
   INFANTRY_STATS,
   TANK_AMMO,
   TANK_STATS,
@@ -17,6 +20,7 @@ describe('shotMoveCost', () => {
   it('dzieli zasięg ruchu przez liczbę pocisków', () => {
     expect(shotMoveCost(TANK_STATS)).toBe(TANK_STATS.moveRange / TANK_AMMO);
     expect(shotMoveCost(ARTILLERY_STATS)).toBe(ARTILLERY_STATS.moveRange / ARTILLERY_AMMO);
+    expect(shotMoveCost(BOMBER_STATS)).toBe(BOMBER_STATS.moveRange / BOMBER_AMMO);
   });
 
   it('zwraca 1 punkt dla jednostki bez pocisków', () => {
@@ -40,6 +44,15 @@ describe('applyAttackCost', () => {
 
     expect(after.movesLeft).toBe(0);
     expect(after.hasActed).toBe(true);
+  });
+
+  it('zużywa jedyny pocisk bombowca jednym atakiem', () => {
+    const bomber = createUnit('bomber', 'bomber', 'blue', { col: 0, row: 0 });
+    const after = applyAttackCost(bomber);
+
+    expect(after.movesLeft).toBe(0);
+    expect(after.hasActed).toBe(true);
+    expect(canAttackThisTurn(after)).toBe(false);
   });
 });
 
@@ -72,5 +85,12 @@ describe('shotsLeft', () => {
 
     expect(shotsLeft(infantry)).toBe(INFANTRY_STATS.moveRange);
     expect(canAttackThisTurn({ ...infantry, movesLeft: 0 })).toBe(false);
+  });
+
+  it('przyznaje bombowcowi jeden pocisk na całą mapę', () => {
+    const bomber = createUnit('bomber', 'bomber', 'blue', { col: 0, row: 0 });
+
+    expect(BOMBER_STATS.attackRange).toBe(FULL_MAP_RANGE);
+    expect(shotsLeft(bomber)).toBe(1);
   });
 });

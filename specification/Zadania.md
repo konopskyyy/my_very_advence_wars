@@ -115,3 +115,8 @@ zadań do wykonania.
 | [[Zadania-opisy#GRA-095: Dźwięk pojawienia się dymku samouczka\|GRA-095]] | Dźwięk pojawienia się dymku samouczka | ✅ | GRA-054, GRA-074, ADR-001, ADR-035, ADR-037, ZAL-011, INTERF-005 |
 | [[Zadania-opisy#GRA-096: Finał drugiej misji — powrót do bazy i bazooka\|GRA-096]] | Finał drugiej misji — powrót do bazy i bazooka | ✅ | GRA-088, ZAL-004, ZAL-011, INTERF-005 |
 | [[Zadania-opisy#GRA-097: Poprawki drugiej misji — zwiad w czołgu, dźwięki, wygląd i nazewnictwo\|GRA-097]] | Poprawki drugiej misji — zwiad w czołgu, dźwięki, wygląd i nazewnictwo | ✅ | GRA-088, GRA-096, ZAL-004, ZAL-005, ZAL-011, INTERF-005 |
+| [[Zadania-opisy#GRA-098: Trzeci akt samouczka — Walka\|GRA-098]] | Trzeci akt samouczka — Walka | ✅ | GRA-076, ZAL-011, INTERF-007 |
+| [[Zadania-opisy#GRA-099: Nalot jako jednorazowa jednostka\|GRA-099]] | Nalot jako jednorazowa jednostka | ✅ | GRA-098, ADR-049, ZAL-004, ZAL-006, INTERF-005 |
+| [[Zadania-opisy#GRA-100: Nowe hexy gór i dróg\|GRA-100]] | Nowe hexy gór i dróg | ✅ | GRA-007, INTERF-003 |
+| [[Zadania-opisy#GRA-101: Śmigłowiec jako jednostka\|GRA-101]] | Śmigłowiec jako jednostka | ✅ | GRA-097, ZAL-004, INTERF-005 |
+| [[Zadania-opisy#GRA-102: Replay animacji nalotu\|GRA-102]] | Replay animacji nalotu | ✅ | GRA-099, ADR-049 |

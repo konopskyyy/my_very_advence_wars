@@ -1,3 +1,4 @@
+import bombDropUrl from '../assets/ai/audio/bomb-drop.wav?url';
 import clickUrl from '../assets/ai/audio/click.wav?url';
 import deathUrl from '../assets/ai/audio/death.wav?url';
 import hitUrl from '../assets/ai/audio/hit.wav?url';
@@ -20,6 +21,7 @@ interface SoundPool {
 const POOL_SIZE = 3;
 const SOURCES: Record<SoundId, SoundSource> = {
   'rifle-shot': { url: shotUrl, volume: 0.6 },
+  'bomb-drop': { url: bombDropUrl, volume: 0.8 },
   hit: { url: hitUrl, volume: 0.7 },
   step: { url: stepUrl, volume: 0.9 },
   click: { url: clickUrl, volume: 0.35 },
