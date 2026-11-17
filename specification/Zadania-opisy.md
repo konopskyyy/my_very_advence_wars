@@ -985,3 +985,14 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
   - **Dane:** zapis tury i typy klipów nie zmieniają się; nalot używa istniejącego `TimelineAttackClip`.
   - **Widok:** animacja zależy wyłącznie od pozycji atakującego i celu oraz `delta`, więc działa też przy odtwarzaniu.
   - **Testy:** test replayu przechodzi w `make verify`.
+
+## GRA-103: Styl menu kampanii zgodny z menu głównym
+- **Kontekst:** Menu kampanii powstało wraz z GRA-042 w prostym stylu: czarne prostokąty, czcionka `monospace` i zielone akcenty. Menu główne po GRA-073 ma tło z heksów, dwubarwny znak, tytuł w `Trebuchet MS` z obrysem, panele z akcentem frakcji i cichą muzykę ambientową. Ekran kampanii wygląda jak z innej gry.
+- **Opis:** `CampaignMenuScene` dostaje to samo tło z heksów i znak co menu główne, tytuł „KAMPANIE" w tym samym kroju i kolorach oraz odnośnik powrotu w stylu podpowiedzi z menu głównego. Wstążki i kafelki przechodzą na paletę niebieskiej frakcji z `view/factionTheme.ts` i czcionkę `Trebuchet MS`. Ambient z `view/menuMusic.ts` gra także w menu kampanii i cichnie przy wyjściu ze sceny. Układ wstążek, kafelków i sterowanie pozostają bez zmian.
+- **Kryteria:**
+  - **Tło i tytuł:** heksy z niebieskim i czerwonym frontem, znak nad tytułem, tytuł z obrysem i rozstrzelonymi literami jak w menu głównym.
+  - **Wstążki i kafelki:** czcionka `Trebuchet MS`, niebieskie akcenty frakcji, spójne kolory nieaktywnych i zaznaczonych elementów; zachowane stany „GRAJ", „ZABLOKOWANA", „UKOŃCZONA" i „WKRÓTCE".
+  - **Sterowanie:** wybór wstążki i kafelka, `ESC` oraz powrót do menu głównego działają jak dotąd.
+  - **Muzyka:** ambient startuje wejściem do sceny i zatrzymuje się przy jej zamknięciu, bez nakładania się na muzykę menu głównego.
+  - **Testy:** `make verify` przechodzi.
+  - **Dokumentacja:** INTERF-001 i INTERF-007 opisują wspólny wygląd obu menu.

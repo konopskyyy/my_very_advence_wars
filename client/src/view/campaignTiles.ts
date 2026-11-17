@@ -7,6 +7,7 @@ import {
   type CampaignTile,
 } from '../core/campaign';
 import type { ScenarioDefinition } from '../core/scenario';
+import { FACTION_THEMES } from './factionTheme';
 
 export interface CampaignTilesOptions {
   readonly x: number;
@@ -22,12 +23,13 @@ const STATUS_SPACE = 46;
 const COLUMNS = 3;
 const GAP = 16;
 
-const TILE_FILL = 0x101820;
-const TILE_HOVER = 0x17252f;
-const TILE_SELECTED = 0x162b21;
-const TILE_LOCKED = 0x0c1116;
-const TILE_STROKE = 0x2c4437;
-const TILE_STROKE_SELECTED = 0x6fd08c;
+const theme = FACTION_THEMES.blue;
+const TILE_FILL = 0x111826;
+const TILE_HOVER = theme.accentDark;
+const TILE_SELECTED = theme.accentDark;
+const TILE_LOCKED = theme.barBackground;
+const TILE_STROKE = theme.divider;
+const TILE_STROKE_SELECTED = theme.accentBright;
 
 function statusLabel(preview: boolean, completed: boolean, blocked: boolean): string {
   if (preview) {
@@ -47,10 +49,10 @@ function statusColor(preview: boolean, completed: boolean, blocked: boolean): st
   }
 
   if (completed) {
-    return '#5fb3d4';
+    return theme.accentSoft;
   }
 
-  return blocked ? '#c47b7b' : '#6fd08c';
+  return blocked ? FACTION_THEMES.red.accentSoft : '#a6f4c5';
 }
 
 interface TileBackground {
@@ -85,15 +87,17 @@ export class CampaignTiles {
 
     const title = this.scene.add
       .text(x + PADDING, y + PADDING, campaign.title, {
-        fontFamily: 'monospace',
-        fontSize: '18px',
-        color: '#d8e2dc',
-      });
+        fontFamily: 'Trebuchet MS, Verdana, sans-serif',
+        fontSize: '20px',
+        fontStyle: 'bold',
+        color: '#e8eef5',
+      })
+      .setLetterSpacing(2);
     const description = this.scene.add
-      .text(x + PADDING, y + PADDING + 28, campaign.description, {
-        fontFamily: 'monospace',
-        fontSize: '12px',
-        color: '#9fb0a5',
+      .text(x + PADDING, y + PADDING + 30, campaign.description, {
+        fontFamily: 'Trebuchet MS, Verdana, sans-serif',
+        fontSize: '13px',
+        color: '#8fa3b8',
         wordWrap: { width: width - PADDING * 2 },
       });
     this.container.add([title, description]);
@@ -101,9 +105,9 @@ export class CampaignTiles {
     if (campaign.tiles.length === 0) {
       const empty = this.scene.add
         .text(x + width / 2, y + height / 2, 'Brak misji — kampania w przygotowaniu.', {
-          fontFamily: 'monospace',
+          fontFamily: 'Trebuchet MS, Verdana, sans-serif',
           fontSize: '14px',
-          color: '#7fa08b',
+          color: '#8fa3b8',
         })
         .setOrigin(0.5);
       this.container.add(empty);
@@ -126,9 +130,9 @@ export class CampaignTiles {
 
     this.status = this.scene.add
       .text(x + PADDING, y + height - 20, 'Kliknij gotowy kafelek, aby rozpocząć misję.', {
-        fontFamily: 'monospace',
+        fontFamily: 'Trebuchet MS, Verdana, sans-serif',
         fontSize: '12px',
-        color: '#7fa08b',
+        color: '#6b7d90',
       })
       .setOrigin(0, 0.5);
     this.container.add(this.status);
@@ -148,21 +152,25 @@ export class CampaignTiles {
       .setStrokeStyle(1, TILE_STROKE, 1)
       .setInteractive({ useHandCursor: true });
 
-    const number = this.scene.add.text(x + PADDING, y + 16, String(index + 1).padStart(2, '0'), {
-      fontFamily: 'monospace',
-      fontSize: '12px',
-      color: '#6fd08c',
-    });
+    const number = this.scene.add
+      .text(x + PADDING, y + 16, String(index + 1).padStart(2, '0'), {
+        fontFamily: 'Trebuchet MS, Verdana, sans-serif',
+        fontSize: '12px',
+        fontStyle: 'bold',
+        color: theme.accentSoft,
+      })
+      .setLetterSpacing(2);
     const title = this.scene.add.text(x + PADDING, y + 38, tile.title, {
-      fontFamily: 'monospace',
-      fontSize: '15px',
-      color: '#ffffff',
+      fontFamily: 'Trebuchet MS, Verdana, sans-serif',
+      fontSize: '16px',
+      fontStyle: 'bold',
+      color: '#e8eef5',
       wordWrap: { width: width - PADDING * 2 },
     });
     const description = this.scene.add.text(x + PADDING, y + 68, tile.description, {
-      fontFamily: 'monospace',
+      fontFamily: 'Trebuchet MS, Verdana, sans-serif',
       fontSize: '12px',
-      color: '#9fb0a5',
+      color: '#8fa3b8',
       wordWrap: { width: width - PADDING * 2 },
     });
     const preview = tile.mission === undefined;
@@ -173,11 +181,12 @@ export class CampaignTiles {
       y + height - 30,
       statusLabel(preview, completedMission, blocked),
       {
-        fontFamily: 'monospace',
+        fontFamily: 'Trebuchet MS, Verdana, sans-serif',
         fontSize: '11px',
+        fontStyle: 'bold',
         color: statusColor(preview, completedMission, blocked),
       },
-    );
+    ).setLetterSpacing(1);
 
     if (blocked) {
       for (const object of [background, number, title, description, badge]) {
