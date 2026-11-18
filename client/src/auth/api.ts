@@ -6,6 +6,7 @@ export interface AuthUser {
 
 export interface AuthSession {
   readonly token: string;
+  readonly refreshToken?: string;
   readonly user: AuthUser;
 }
 
@@ -42,9 +43,21 @@ async function readBody(response: Response): Promise<unknown> {
   }
 }
 
-function errorMessage(response: Response, body: unknown): string {
+function errorMessage(response: Response, body: unknown, path: string): string {
   if (response.status === 401) {
+    if (path === '/auth/google') {
+      return 'Logowanie Google nie powiodło się. Spróbuj ponownie.';
+    }
+
+    if (path === '/auth/refresh') {
+      return 'Sesja wygasła. Zaloguj się ponownie.';
+    }
+
     return 'Nieprawidłowy e-mail lub hasło.';
+  }
+
+  if (response.status === 403) {
+    return 'Nie udało się potwierdzić adresu e-mail w Google.';
   }
 
   if (response.status === 409) {
@@ -80,7 +93,7 @@ async function request(
   }
 
   if (!response.ok) {
-    throw new AuthError(errorMessage(response, await readBody(response)), response.status);
+    throw new AuthError(errorMessage(response, await readBody(response), path), response.status);
   }
 
   return response;
@@ -106,14 +119,20 @@ function parseUser(value: unknown): AuthUser {
 
 async function parseSession(response: Response): Promise<AuthSession> {
   const body = (await readBody(response)) as
-    | { token?: unknown; user?: unknown }
+    | { token?: unknown; refreshToken?: unknown; user?: unknown }
     | undefined;
 
   if (!body || typeof body.token !== 'string') {
     throw new AuthError(UNKNOWN_MESSAGE, 0);
   }
 
-  return { token: body.token, user: parseUser(body.user) };
+  const refreshToken = typeof body.refreshToken === 'string' ? body.refreshToken : undefined;
+
+  return {
+    token: body.token,
+    ...(refreshToken ? { refreshToken } : {}),
+    user: parseUser(body.user),
+  };
 }
 
 export async function login(
@@ -142,6 +161,43 @@ export async function register(
   );
 
   return parseSession(response);
+}
+
+export async function googleLogin(
+  credential: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<AuthSession> {
+  const response = await request(
+    '/auth/google',
+    { method: 'POST', body: JSON.stringify({ credential }) },
+    fetchImpl,
+  );
+
+  return parseSession(response);
+}
+
+export async function refreshSession(
+  refreshToken: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<AuthSession> {
+  const response = await request(
+    '/auth/refresh',
+    { method: 'POST', body: JSON.stringify({ refreshToken }) },
+    fetchImpl,
+  );
+
+  return parseSession(response);
+}
+
+export async function logoutSession(
+  refreshToken: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<void> {
+  await request(
+    '/auth/logout',
+    { method: 'POST', body: JSON.stringify({ refreshToken }) },
+    fetchImpl,
+  );
 }
 
 export async function fetchMe(

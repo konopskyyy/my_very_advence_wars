@@ -11,6 +11,7 @@ final readonly class AuthResult
     public function __construct(
         public User $user,
         public string $token,
+        public string $refreshToken = '',
     ) {
     }
 }

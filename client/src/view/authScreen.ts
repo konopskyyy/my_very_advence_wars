@@ -1,8 +1,10 @@
-import { AuthError, login, register } from '../auth/api';
+import { AuthError, googleLogin, login, register } from '../auth/api';
 import { formatAccountDate } from '../auth/format';
+import { mountGoogleSignIn } from '../auth/google';
 import { authStore } from '../auth/store';
 
 type AuthTab = 'login' | 'register';
+type BusyMode = AuthTab | 'google';
 type MessageKind = 'error' | 'success';
 
 interface AuthScreenOptions {
@@ -26,6 +28,7 @@ function requireElement<T extends HTMLElement>(id: string): T {
 
 export function mountAuthScreen({ onEnterGame }: AuthScreenOptions): void {
   const form = requireElement<HTMLFormElement>('auth-form');
+  const googleBox = requireElement<HTMLElement>('auth-google');
   const submit = requireElement<HTMLButtonElement>('auth-submit');
   const playButtons = [
     requireElement<HTMLButtonElement>('auth-play'),
@@ -52,19 +55,21 @@ export function mountAuthScreen({ onEnterGame }: AuthScreenOptions): void {
     message.dataset.kind = kind;
   };
 
-  const setBusy = (value: boolean): void => {
+  const setBusy = (value: boolean, mode: BusyMode = currentTab): void => {
     busy = value;
     submit.disabled = value;
     emailInput.disabled = value;
     passwordInput.disabled = value;
     confirmInput.disabled = value || currentTab !== 'register';
-    submit.textContent = value
-      ? currentTab === 'register'
-        ? 'Rejestracja…'
-        : 'Logowanie…'
-      : currentTab === 'register'
-        ? 'Zarejestruj się'
-        : 'Zaloguj się';
+    googleBox.classList.toggle('is-busy', value);
+    submit.textContent =
+      value && mode !== 'google'
+        ? mode === 'register'
+          ? 'Rejestracja…'
+          : 'Logowanie…'
+        : currentTab === 'register'
+          ? 'Zarejestruj się'
+          : 'Zaloguj się';
   };
 
   const selectTab = (tab: AuthTab): void => {
@@ -93,6 +98,7 @@ export function mountAuthScreen({ onEnterGame }: AuthScreenOptions): void {
     const logged = session !== null;
 
     form.hidden = logged;
+    googleBox.hidden = logged;
     tabsBox.hidden = logged;
     note.hidden = logged;
     account.hidden = !logged;
@@ -149,6 +155,21 @@ export function mountAuthScreen({ onEnterGame }: AuthScreenOptions): void {
     }
   };
 
+  const signInWithGoogle = async (credential: string): Promise<void> => {
+    setBusy(true, 'google');
+    setMessage('');
+
+    try {
+      authStore.set(await googleLogin(credential));
+      passwordInput.value = '';
+      confirmInput.value = '';
+    } catch (error) {
+      setMessage(error instanceof AuthError ? error.message : GENERIC_MESSAGE);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   for (const button of tabs) {
     button.addEventListener('click', () => {
       const tab = button.dataset.tab;
@@ -177,7 +198,7 @@ export function mountAuthScreen({ onEnterGame }: AuthScreenOptions): void {
   });
 
   logout.addEventListener('click', () => {
-    authStore.clear();
+    void authStore.logout();
     emailInput.value = '';
     passwordInput.value = '';
     confirmInput.value = '';
@@ -197,6 +218,14 @@ export function mountAuthScreen({ onEnterGame }: AuthScreenOptions): void {
       selectTab(currentTab);
     }
   });
+
+  void mountGoogleSignIn(
+    googleBox,
+    (credential) => {
+      void signInWithGoogle(credential);
+    },
+    (message) => setMessage(message),
+  );
 
   if (authStore.session) {
     void authStore.restore();

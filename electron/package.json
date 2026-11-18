@@ -6,6 +6,7 @@
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
+    "test": "node --test *.test.cjs",
     "build": "electron-builder --dir",
     "build:win": "electron-builder --win zip",
     "build:win:installer": "electron-builder --win"
@@ -20,7 +21,10 @@
     "files": [
       "main.cjs",
       "preload.cjs",
-      "distServer.cjs"
+      "distServer.cjs",
+      "googleConfig.cjs",
+      "googleLogin.cjs",
+      "googlePkce.cjs"
     ],
     "extraResources": [
       {

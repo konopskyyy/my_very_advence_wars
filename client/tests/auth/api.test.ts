@@ -1,5 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
-import { fetchMe, login, register } from '../../src/auth/api';
+import {
+  fetchMe,
+  googleLogin,
+  login,
+  logoutSession,
+  refreshSession,
+  register,
+} from '../../src/auth/api';
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -14,6 +21,7 @@ function asFetch(mock: ReturnType<typeof vi.fn>): typeof fetch {
 
 const SESSION_BODY = {
   token: 'token-1',
+  refreshToken: 'refresh-1',
   user: { id: 7, email: 'gracz@example.com', createdAt: '2026-10-31T12:00:00+00:00' },
 };
 
@@ -46,6 +54,31 @@ describe('auth api', () => {
     expect((fetchMock.mock.calls[0] as unknown as [string])[0]).toBe('/api/auth/register');
   });
 
+  it('loguje przez Google i zachowuje refresh token', async () => {
+    const fetchMock = vi.fn(async () => jsonResponse(SESSION_BODY));
+    const session = await googleLogin('google-credential', asFetch(fetchMock));
+
+    expect(session.token).toBe('token-1');
+    expect(session.refreshToken).toBe('refresh-1');
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe('/api/auth/google');
+    expect(JSON.parse(init.body as string)).toEqual({ credential: 'google-credential' });
+  });
+
+  it('odświeża sesję i wylogowuje refresh token', async () => {
+    const refresh = vi.fn(async () => jsonResponse(SESSION_BODY));
+    const logout = vi.fn(async () => new Response(null, { status: 204 }));
+
+    const session = await refreshSession('refresh-1', asFetch(refresh));
+    await logoutSession('refresh-1', asFetch(logout));
+
+    expect(session.refreshToken).toBe('refresh-1');
+    expect((refresh.mock.calls[0] as unknown as [string])[0]).toBe('/api/auth/refresh');
+    expect(JSON.parse(((logout.mock.calls[0] as unknown as [string, RequestInit])[1]).body as string)).toEqual({
+      refreshToken: 'refresh-1',
+    });
+  });
+
   it('pobiera konto z tokenem w nagłówku', async () => {
     const fetchMock = vi.fn(async () =>
       jsonResponse({ id: 7, email: 'gracz@example.com', createdAt: '2026-10-31T12:00:00+00:00' }),
@@ -69,6 +102,20 @@ describe('auth api', () => {
       message: 'Ten e-mail jest już zarejestrowany.',
       status: 409,
     });
+
+    const googleError = vi.fn(async () => jsonResponse({ error: 'Invalid Google credential.' }, 401));
+    const refreshError = vi.fn(async () => jsonResponse({ error: 'Invalid refresh token.' }, 401));
+    const unverified = vi.fn(async () => jsonResponse({ error: 'Google email cannot be verified.' }, 403));
+
+    await expect(googleLogin('bad', asFetch(googleError))).rejects.toMatchObject({
+      message: 'Logowanie Google nie powiodło się. Spróbuj ponownie.',
+      status: 401,
+    });
+    await expect(refreshSession('bad', asFetch(refreshError))).rejects.toMatchObject({
+      message: 'Sesja wygasła. Zaloguj się ponownie.',
+      status: 401,
+    });
+    await expect(googleLogin('bad', asFetch(unverified))).rejects.toMatchObject({ status: 403 });
   });
 
   it('mapuje 422 i brak sieci na komunikaty', async () => {

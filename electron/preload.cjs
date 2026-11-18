@@ -1,8 +1,9 @@
 'use strict';
 
-const { contextBridge } = require('electron');
+const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
+  googleLogin: () => ipcRenderer.invoke('google:login'),
   platform: process.platform,
   versions: {
     electron: process.versions.electron,

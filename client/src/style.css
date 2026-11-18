@@ -423,13 +423,14 @@ html[data-game] #app {
   top: 16px;
   right: 16px;
   z-index: 60;
-  padding: 8px 14px;
-  border: 1px solid var(--auth-panel-edge);
-  border-radius: 2px;
-  background: rgba(11, 17, 13, 0.82);
-  color: var(--auth-muted);
-  font: inherit;
-  font-size: 11px;
+  padding: 9px 16px;
+  border: 1px solid #2c4437;
+  border-radius: 4px;
+  background: rgba(11, 17, 24, 0.82);
+  color: #8fa3b8;
+  font-family: 'Trebuchet MS', Verdana, sans-serif;
+  font-size: 12px;
+  font-weight: 700;
   letter-spacing: 0.14em;
   cursor: pointer;
 }
@@ -444,7 +445,7 @@ html[data-game] #app {
 .account-overlay__trigger.is-authenticated::before {
   content: '●';
   margin-right: 6px;
-  color: var(--auth-accent);
+  color: #6fd08c;
 }
 
 .account-overlay {
@@ -468,15 +469,22 @@ html[data-game] #app {
 }
 
 .account-overlay__panel {
+  --auth-panel: #0b1118;
+  --auth-panel-edge: #2c4437;
+  --auth-text: #dbe7f0;
+  --auth-muted: #8fa3b8;
+  --auth-accent: #6fd08c;
+
   position: relative;
   width: min(420px, 100%);
   max-height: calc(100vh - 48px);
   overflow: auto;
   padding: 24px;
   border: 1px solid var(--auth-panel-edge);
-  border-radius: 4px;
+  border-radius: 6px;
   background: var(--auth-panel);
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.65);
+  font-family: 'Trebuchet MS', Verdana, sans-serif;
 }
 
 .account-overlay__header {
@@ -484,11 +492,31 @@ html[data-game] #app {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--auth-panel-edge);
 }
 
 .account-overlay__title {
   margin: 0;
-  font-size: 16px;
+  color: var(--auth-text);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.account-overlay__panel .auth__label {
+  color: var(--auth-muted);
+}
+
+.account-overlay__panel .auth__input {
+  border-color: var(--auth-panel-edge);
+  background: #0a1119;
+  color: var(--auth-text);
+  font-family: inherit;
+}
+
+.account-overlay__panel .auth__button {
+  font-family: inherit;
   letter-spacing: 0.08em;
 }
 
@@ -549,6 +577,44 @@ html[data-game] #app {
   margin: 0 0 8px;
   color: var(--auth-muted);
   font-size: 12px;
+}
+
+.account-overlay__google,
+.auth__google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--auth-panel-edge);
+}
+
+.account-overlay__google[hidden],
+.auth__google[hidden] {
+  display: none;
+}
+
+.account-overlay__google.is-busy,
+.auth__google.is-busy {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.auth__button--google {
+  width: 100%;
+  border: 1px solid var(--auth-panel-edge);
+  background: #111826;
+  color: var(--auth-text);
+  font-family: 'Trebuchet MS', Verdana, sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.auth__button--google:hover,
+.auth__button--google:focus-visible {
+  border-color: #6fd08c;
+  color: #6fd08c;
+  outline: none;
 }
 
 .auth__button {

@@ -11,6 +11,7 @@ use Symfony\Component\Security\Core\User\UserInterface;
 #[ORM\Entity]
 #[ORM\Table(name: 'app_user')]
 #[ORM\UniqueConstraint(name: 'uniq_app_user_email', columns: ['email'])]
+#[ORM\UniqueConstraint(name: 'uniq_app_user_google_sub', columns: ['google_sub'])]
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
     #[ORM\Id]
@@ -32,6 +33,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     #[ORM\Column]
     private \DateTimeImmutable $createdAt;
+
+    #[ORM\Column(name: 'google_sub', length: 255, nullable: true)]
+    private ?string $googleSub = null;
 
     /**
      * @param list<string> $roles
@@ -82,5 +86,23 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function createdAt(): \DateTimeImmutable
     {
         return $this->createdAt;
+    }
+
+    public static function forGoogle(Email $email, string $googleSub, string $passwordHash): self
+    {
+        $user = new self($email, $passwordHash);
+        $user->googleSub = $googleSub;
+
+        return $user;
+    }
+
+    public function linkGoogle(string $googleSub): void
+    {
+        $this->googleSub = $googleSub;
+    }
+
+    public function googleSub(): ?string
+    {
+        return $this->googleSub;
     }
 }

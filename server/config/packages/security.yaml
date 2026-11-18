@@ -34,7 +34,7 @@ security:
         - { path: ^/admin/login$, roles: PUBLIC_ACCESS }
         - { path: ^/admin, roles: ROLE_ADMIN }
         - { path: ^/api$, roles: PUBLIC_ACCESS }
-        - { path: ^/api/auth/(register|login)$, roles: PUBLIC_ACCESS }
+        - { path: ^/api/auth/(register|login|google|refresh|logout)$, roles: PUBLIC_ACCESS }
         - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
 
 when@test:

@@ -1,8 +1,9 @@
 'use strict';
 
 const path = require('node:path');
-const { app, BrowserWindow, Menu } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain } = require('electron');
 const { SCHEME, registerDistScheme, serveDist } = require('./distServer.cjs');
+const { requestGoogleIdToken } = require('./googleLogin.cjs');
 
 // Port zgodny z CLIENT_PORT w .env.
 const DEV_URL = process.env.VITE_DEV_SERVER_URL || 'http://localhost:18573';
@@ -58,6 +59,9 @@ function createWindow() {
 app.whenReady().then(() => {
   serveDist(distRoot());
   Menu.setApplicationMenu(null);
+
+  ipcMain.handle('google:login', () => requestGoogleIdToken());
+
   const win = createWindow();
 
   // Bez menu F11/Alt+Enter to jedyny sposób wyjścia z pełnego ekranu.

@@ -1,8 +1,9 @@
-import { AuthError, login, register } from '../auth/api';
+import { AuthError, googleLogin, login, register } from '../auth/api';
 import { formatAccountDate } from '../auth/format';
+import { mountGoogleSignIn } from '../auth/google';
 import { authStore } from '../auth/store';
 
-type AccountMode = 'login' | 'register';
+type AccountMode = 'login' | 'register' | 'google';
 
 export interface AccountOverlay {
   open(): void;
@@ -71,6 +72,7 @@ function createOverlay(): AccountOverlay {
           <button type="button" class="auth__button auth__button--ghost" data-register>Zarejestruj się</button>
         </div>
       </form>
+      <div class="account-overlay__google" data-google-box></div>
       <div class="account-overlay__session" data-session hidden>
         <p class="auth__label">Zalogowano jako</p>
         <p class="account-overlay__email" data-session-email></p>
@@ -83,6 +85,7 @@ function createOverlay(): AccountOverlay {
   document.body.append(trigger, modal);
 
   const form = query<HTMLFormElement>(modal, '[data-form]');
+  const googleBox = query<HTMLElement>(modal, '[data-google-box]');
   const emailInput = query<HTMLInputElement>(modal, '[data-email]');
   const passwordInput = query<HTMLInputElement>(modal, '[data-password]');
   const message = query<HTMLElement>(modal, '[data-message]');
@@ -107,6 +110,7 @@ function createOverlay(): AccountOverlay {
     registerButton.disabled = busy;
     emailInput.disabled = busy;
     passwordInput.disabled = busy;
+    googleBox.classList.toggle('is-busy', busy);
     loginButton.textContent = mode === 'login' ? 'Logowanie…' : 'Zaloguj się';
     registerButton.textContent = mode === 'register' ? 'Rejestracja…' : 'Zarejestruj się';
   };
@@ -159,12 +163,30 @@ function createOverlay(): AccountOverlay {
     }
   };
 
+  const signInWithGoogle = async (credential: string): Promise<void> => {
+    if (busy) {
+      return;
+    }
+
+    setBusy('google');
+    setMessage('');
+
+    try {
+      authStore.set(await googleLogin(credential));
+    } catch (caught) {
+      setMessage(caught instanceof AuthError ? caught.message : GENERIC_MESSAGE);
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const render = (): void => {
     const session = authStore.session;
 
     trigger.classList.toggle('is-authenticated', session !== null);
     trigger.title = session ? session.user.email : 'Otwórz panel konta';
     form.hidden = session !== null;
+    googleBox.hidden = session !== null;
     sessionBlock.hidden = session === null;
 
     if (session) {
@@ -211,7 +233,7 @@ function createOverlay(): AccountOverlay {
   });
 
   logoutButton.addEventListener('click', () => {
-    authStore.clear();
+    void authStore.logout();
     emailInput.value = '';
     passwordInput.value = '';
     setMessage('Wylogowano.', 'success');
@@ -224,6 +246,14 @@ function createOverlay(): AccountOverlay {
   });
 
   authStore.subscribe(render);
+
+  void mountGoogleSignIn(
+    googleBox,
+    (credential) => {
+      void signInWithGoogle(credential);
+    },
+    (message) => setMessage(message),
+  );
 
   if (authStore.session) {
     void authStore.restore();

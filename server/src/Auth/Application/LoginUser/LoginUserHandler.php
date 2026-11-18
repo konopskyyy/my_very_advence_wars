@@ -7,6 +7,7 @@ namespace App\Auth\Application\LoginUser;
 use App\Auth\Application\AuthResult;
 use App\Auth\Application\Port\PasswordHasher;
 use App\Auth\Application\Port\TokenIssuer;
+use App\Auth\Application\Refresh\RefreshTokenManager;
 use App\Auth\Domain\User\Email;
 use App\Auth\Domain\User\Exception\InvalidCredentialsException;
 use App\Auth\Domain\User\Exception\InvalidEmailException;
@@ -18,6 +19,7 @@ final readonly class LoginUserHandler
         private UserRepositoryInterface $users,
         private PasswordHasher $passwordHasher,
         private TokenIssuer $tokenIssuer,
+        private RefreshTokenManager $refreshTokens,
     ) {
     }
 
@@ -35,6 +37,10 @@ final readonly class LoginUserHandler
             throw InvalidCredentialsException::create();
         }
 
-        return new AuthResult($user, $this->tokenIssuer->issue($user));
+        return new AuthResult(
+            $user,
+            $this->tokenIssuer->issue($user),
+            $this->refreshTokens->issue($user),
+        );
     }
 }

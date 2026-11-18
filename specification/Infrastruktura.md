@@ -105,6 +105,12 @@ Domyślne wartości z `docker-compose.yml`:
 | adminer | `18081`               | `ADMINER_PORT`  | 8080           | Panel do bazy (profil `tools`)          |
 | server  | —                     | —               | 9000           | php-fpm — wewnątrz sieci, nieexponowany |
 
+Logowanie Google w Electronie używa dodatkowego, **losowego portu loopbacku**
+`127.0.0.1:<port>/callback`. Port jest wybierany przez system w momencie
+kliknięcia „Zaloguj się z Google" i zamykany po wymianie kodu, więc nie wpisuje
+się go do `.env` ani do listy autoryzowanych URI w konsoli Google — wystarczy
+`http://127.0.0.1` z „dowolnym portem".
+
 > [!tip] Dlaczego niestandardowe porty?
 > Typowe porty (8080, 3306, 5173) są masowo skanowane przez boty. Jeśli apka
 > trafi do sieci, niestandardowy port to pierwsza, najtańsza bariera — nie chroni
@@ -280,6 +286,12 @@ i `DATABASE_URL` potrzebuje:
 | `JWT_PUBLIC_KEY`    | `%kernel.project_dir%/config/jwt/public.pem`  | Klucz publiczny JWT.      |
 | `JWT_PASSPHRASE`    | dowolne hasło dev             | Hasło klucza; nie commituj produkcji.      |
 | `CORS_ALLOW_ORIGIN` | regex localhost/127.0.0.1 + `app://bundle` | Origin klienta Vite (`18573`), buildu z nginx (`18080`) i spakowanego Electrona (`app://bundle`). |
+| `GOOGLE_CLIENT_IDS` | pusty | Lista publicznych ID klientów web i desktop, rozdzielona przecinkami. Bez nich endpoint `/api/auth/google` odrzuca każdy token. |
+
+Klient Vite czyta `VITE_GOOGLE_CLIENT_ID` z `client/.env` (skopiuj
+`client/.env.example`). Electron czyta `MVAW_GOOGLE_DESKTOP_CLIENT_ID` ze
+środowiska hosta przed `make electron`. Obie wartości są publiczne — to nie są
+sekrety; `client_secret` nie jest używany w ogóle.
 
 > [!tip]
 > Skopiuj `.env.example` na `.env` i dopisz własne hasła. Plik `.env` jest
@@ -321,9 +333,14 @@ npm run build:win:installer --prefix electron  # NSIS/portable (wymaga wine)
 ```
 
 Pliki: `electron/main.cjs` (okno — pełne ekran, bez menu, F11/Alt+Enter
-przełącza fullscreen), `electron/preload.cjs` (contextIsolation + sandbox) i
-`electron/distServer.cjs` (serwowanie `server/public/game` pod schematem
-`app://`).
+przełącza fullscreen — oraz handler IPC `google:login`),
+`electron/preload.cjs` (contextIsolation + sandbox, wystawia tylko
+`electronAPI.googleLogin()`), `electron/distServer.cjs` (serwowanie
+`server/public/game` pod schematem `app://`), `electron/googleConfig.cjs`
+(konfiguracja i ID klienta), `electron/googlePkce.cjs` (PKCE S256 i `state`)
+oraz `electron/googleLogin.cjs` (loopback, przeglądarka systemowa, wymiana kodu
+na ID token). Wszystkie pliki `google*.cjs` są dodane do `files` w
+`electron/package.json`, żeby trafiły do spakowanej aplikacji.
 
 Domyślnie Electron (także niepackowany) ładuje statyczny build przez własny
 schemat `app://bundle/`, a nie przez `file://`. Dzięki temu względne ścieżki
@@ -481,6 +498,8 @@ Compose bezpośrednio też działa — poniżej oba warianty.
 | Uruchom Electrona (build + okno)         | `make electron`       | `npm start --prefix electron`                             |
 | Uruchom Electrona (alias)                | `make run`            | `npm start --prefix electron`                             |
 | Build gry + paczka Electrona             | `make electron-build` | `npm run build --prefix electron`                         |
+| Electron z logowaniem Google             | `MVAW_GOOGLE_DESKTOP_CLIENT_ID=<id> make electron` | `MVAW_GOOGLE_DESKTOP_CLIENT_ID=<id> npm start --prefix electron` |
+| Testy PKCE logowania Google              | —                     | `npm test --prefix electron`                      |
 | Paczka ZIP dla Windows (WSL)             | `make electron-win`   | `npm run build:win --prefix electron`                     |
 | Instalator Windows (wymaga wine)         | `make electron-win-installer` | `npm run build:win:installer --prefix electron`   |
 | Przebuduj klienta do `server/public/game` | `make client-build`  | `docker compose run --rm --no-deps client sh -c 'npm install && npm run build'` |
@@ -520,6 +539,23 @@ częścią CI; progi i tabele porównawcze opisuje [[Jakosc-kodu]].
 ---
 
 ## Rozwiązywanie problemów
+
+> [!question]- Google pokazuje `redirect_uri_mismatch` w Electronie
+> **Przyczyna:** w kliencie typu „Desktop app" wpisano konkretny port zamiast
+> `http://127.0.0.1` z dowolnym portem, albo zmieniono klienta na „Web application".
+>
+> **Rozwiązanie:** w konsoli Google dla klienta desktopowego zostaw
+> `http://127.0.0.1` (bez portu i bez `/callback`) i upewnij się, że
+> `MVAW_GOOGLE_DESKTOP_CLIENT_ID` wskazuje na tego klienta. W www autoryzowanymi
+> originami są `http://localhost:18573` i `http://localhost:18080`.
+
+> [!question]- `POST /api/auth/google` zwraca 401 mimo poprawnego konta Google
+> **Przyczyna:** backend nie ma `GOOGLE_CLIENT_IDS` albo token pochodzi z innego
+> klienta Google niż ten wpisany na liście.
+>
+> **Rozwiązanie:** dopisz oba publiczne ID (web i desktop) do ignorowanego
+`server/.env`, wyczyść cache (`make cache-clear`) i sprawdź `make console
+debug:container App\\Auth\\Infrastructure\\Google\\GoogleIdTokenVerifier`.
 
 > [!question]- `GET http://localhost:18080/api` zwraca 500 o brakującym `autoload_runtime.php`
 > **Przyczyna:** wymianowy wolumin `server_vendor` nadpisał katalog `vendor/`,

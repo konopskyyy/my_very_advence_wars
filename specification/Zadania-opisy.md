@@ -996,3 +996,50 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
   - **Muzyka:** ambient startuje wejściem do sceny i zatrzymuje się przy jej zamknięciu, bez nakładania się na muzykę menu głównego.
   - **Testy:** `make verify` przechodzi.
   - **Dokumentacja:** INTERF-001 i INTERF-007 opisują wspólny wygląd obu menu.
+
+## SRV-003: Weryfikacja ID tokenu Google w API
+- **Kontekst:** Logowanie hasłowe działa (`SRV-002`), ale gracz ma też móc użyć konta Google na www i w Electronie. Backend nie może ufać e-mailowi czytanemu w przeglądarce i nie powinien trzymać `client_secret`.
+- **Opis:** Nowy publiczny `POST /api/auth/google` (API-002) przyjmuje `credential`, weryfikuje ID token kluczami Google przez `lcobucci/jwt` i `symfony/http-client` (cache JWK wg `Cache-Control`), sprawdza `aud` z `GOOGLE_CLIENT_IDS`, `iss`, `exp`, `sub` i `email_verified`. Encja `User` dostaje unikalne, nullable `googleSub`; repozytorium dostaje `findByGoogleSub()`. Nowy handler w `Application` szuka użytkownika po `sub`, opcjonalnie łączy po autorytatywnym e-mailu, w przeciwnym razie tworzy konto z losowym hashem hasła i tym samym `AuthResponse` co logowanie hasłem. Wyjątki mapują się na `401`/`403`/`422`.
+- **Kryteria:**
+  - **Weryfikacja:** poprawne tokeny web i desktop dają `200` z tokenem gry; zły podpis, obcy `aud`, `iss` spoza listy, wygasły `exp` i brak `sub` dają `401`.
+  - **Konto:** istniejący `googleSub` loguje bez łączenia; autorytatywny e-mail łączy konto hasłowe; `@example.com` bez `hd` daje `403`; nowe konto ma `googleSub` i nie loguje się hasłem.
+  - **Izolacja:** Lexik i `TokenIssuer` bez zmian; `GET /api/auth/me` działa z wydanym tokenem.
+  - **Testy:** `make test-server` pokrywa przypadki z API-002 na fixturowych JWK, bez kontaktu z Google.
+  - **Dokumentacja:** ADR-050 i API-002 opisują przepływ i konfigurację.
+
+## SRV-004: Odświeżanie sesji JWT
+- **Kontekst:** `ADR-029` nie odświeża tokenu — sesja wygasa po godzinie. Zapisy postępów i osiągnięcia wymagają sesji przetrwającej dni; Google ID token ani refresh token z przepływu desktopowego nie nadają się do tego celu.
+- **Opis:** W module `App\Auth` powstaje własny, nieprzezroczysty refresh token: migracja Doctrine z hashem SHA-256, `user_id`, `expires_at`, `revoked_at`, `family_id`, oraz port i handler rotacji (30 dni, `family_id` przy ponownym użyciu). Endpointy `POST /api/auth/refresh` i `POST /api/auth/logout` według API-003. `AuthResponse` i `AuthResult` dostają `refreshToken`; `login`, `register` i Google zwracają nową parę tokenów. Lexik nadal wystawia token dostępu. Nie używamy `gesdinet/jwt-refresh-token-bundle`, żeby zachować warstwy z ADR-029.
+- **Kryteria:**
+  - **Rotacja:** `refresh` zwraca nowy JWT i nowy refresh token; stary przestaje działać; ponowne użycie starego unieważnia rodzinę.
+  - **Ważność:** wygasły i nieznany token dają `401`; brak pola daje `422`; `logout` unieważnia token i zawsze zwraca `204`.
+  - **Ciągłość:** nowy JWT działa na `GET /api/auth/me`; `POST /api/auth/login` i Google też wystawiają refresh token.
+  - **Testy:** `server/tests/Auth/RefreshTokenTest.php` działa w `APP_ENV=test` na SQLite przez `make test-server`.
+  - **Dokumentacja:** ADR-051 i API-003 opisują decyzję, endpointy i rezygnację z cookie HttpOnly.
+
+## GRA-104: Przycisk logowania Google w www
+- **Kontekst:** Formularz z `GRA-078` zapisuje sesję, ale wymaga hasła. `SRV-003` wystawia endpoint Google, więc strona startowa i panel konta muszą z niego skorzystać.
+- **Opis:** `client/src/auth/google.ts` ładuje GIS raz, inicjalizuje go z publicznym ID web i `use_fedcm_for_button: true`, renderuje przycisk i w callbacku wywołuje `googleLogin(credential)` z `client/src/auth/api.ts`. `authScreen.ts` i `accountOverlay.ts` dodają kontener przycisku, stan `busy` i polskie komunikaty dla `401`/`403`/braku sieci. Sukces zapisuje sesję przez `authStore.set()`, więc dalszy UI bez zmian. ID klienta pochodzi z `VITE_GOOGLE_CLIENT_ID` (`client/.env.example`).
+- **Kryteria:**
+  - **Logowanie:** kliknięcie i zgoda Google zapisują sesję i pokazują e-mail zamiast formularza; hasło nadal działa.
+  - **Błędy:** `403`, `401` i brak sieci mają komunikaty po polsku; przycisk i formularz nie wysyłają dwóch żądań naraz.
+  - **Testy:** `client/tests/auth/google.test.ts` z fake GIS i rozszerzony `api.test.ts` przechodzą w `make verify`.
+  - **Dokumentacja:** INTERF-008, INTERF-009 i INTERF-012 opisują przycisk i komunikaty.
+
+## GRA-105: Logowanie Google w Electronie
+- **Kontekst:** Electron pomija stronę startową (`?desktop=1`), więc jedynym ekranem logowania jest panel konta w grze. Origin `app://bundle` nie może być autoryzowanym originem Google, a okno nie powinno nawigować do strony Google.
+- **Opis:** W `electron/main.cjs` powstaje handler IPC `google:login`: generowanie `code_verifier` i wyzwania S256 oraz `state`, lokalny serwer HTTP na `127.0.0.1` z losowym portem, otwarcie systemowej przeglądarki z klientem typu „Desktop app", sprawdzenie `state`, wymiana kodu na ID token przez `code_verifier` i zwrócenie tokenu rendererowi. `preload.cjs` wystawia tylko tę jedną metodę. `client/src/auth/googleDesktop.ts` wybiera adapter Electrona i wywołuje ten sam `/api/auth/google` co www.
+- **Kryteria:**
+  - **Przepływ:** systemowa przeglądarka otwiera Google; po zgodzie okno gry wraca do panelu konta z zapisaną sesją; `state` niezgodny kończy się błędem.
+  - **Izolacja:** brak `nodeIntegration`, `contextIsolation` włączone, listener loopbacku zamykany w `finally` i po timeoutcie; `app://bundle` nie jest rejestrowany jako origin Google.
+  - **Testy:** `node --test` dla PKCE/state/URL oraz manualna checklista na Windowsie i WSL (`make electron-build`).
+  - **Dokumentacja:** INTERF-009 i INTERF-012 opisują ścieżkę desktopową.
+
+## INFRA-008: Klienci Google i konfiguracja środowisk
+- **Kontekst:** Logowanie Google wymaga dwóch klientów w Google Cloud i publicznych ID w aplikacji; dokumentacja infrastruktury musi opisywać faktyczny stan po wdrożeniu `SRV-003`, `GRA-104` i `GRA-105`.
+- **Opis:** W konsoli Google tworzymy klienta „Web application" (originy `http://localhost:18573` i `http://localhost:18080`) oraz „Desktop app" (loopback `http://127.0.0.1` z dowolnym portem), ekran zgody ze scope'ami `openid email profile` i użytkowników testowych. Publiczne ID trafiają do `client/.env.example` (`VITE_GOOGLE_CLIENT_ID`) i konfiguracji Electrona (`MVAW_GOOGLE_DESKTOP_CLIENT_ID`); backend dostaje `GOOGLE_CLIENT_IDS` w ignorowanym `server/.env`. W tym samym commicie aktualizujemy `specification/Infrastruktura.md` (sekcje „Mapa sieci i portów", „Zmienne środowiskowe", „Electron (poza Compose)", „Codzienna praca") — bez wpisywania jeszcze nieistniejących zmiennych do opisu stanu obecnego.
+- **Kryteria:**
+  - **Google Console:** oba klienci istnieją, a tryb testowy ma użytkowników testowych; żaden secret nie trafia do repo.
+  - **Środowiska:** lokalne `.env` zawierają listę ID; `client/.env.example` jest w repozytorium; `CORS_ALLOW_ORIGIN` bez zmian.
+  - **Testy:** `make verify` i `make test-server` przechodzą po wdrożeniu zadań zależnych.
+  - **Dokumentacja:** `Infrastruktura.md` opisuje nowe zmienne i losowy port loopbacku; callouty w „Rozwiązywaniu problemów" nie zostawiają starych instrukcji.
