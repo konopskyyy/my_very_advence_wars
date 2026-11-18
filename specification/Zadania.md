@@ -121,3 +121,8 @@ zadań do wykonania.
 | [[Zadania-opisy#GRA-101: Śmigłowiec jako jednostka\|GRA-101]] | Śmigłowiec jako jednostka | ✅ | GRA-097, ZAL-004, INTERF-005 |
 | [[Zadania-opisy#GRA-102: Replay animacji nalotu\|GRA-102]] | Replay animacji nalotu | ✅ | GRA-099, ADR-049 |
 | [[Zadania-opisy#GRA-103: Styl menu kampanii zgodny z menu głównym\|GRA-103]] | Styl menu kampanii zgodny z menu głównym | ✅ | GRA-042, GRA-073, INTERF-001, INTERF-007 |
+| [[Zadania-opisy#SRV-003: Weryfikacja ID tokenu Google w API\|SRV-003]] | Weryfikacja ID tokenu Google w API | ✅ | SRV-002, ADR-029, ADR-050, API-002 |
+| [[Zadania-opisy#SRV-004: Odświeżanie sesji JWT\|SRV-004]] | Odświeżanie sesji JWT | ✅ | SRV-002, ADR-029, ADR-051, API-003, INTERF-008, INTERF-009 |
+| [[Zadania-opisy#GRA-104: Przycisk logowania Google w www\|GRA-104]] | Przycisk logowania Google w www | ✅ | GRA-078, SRV-003, INTERF-008, INTERF-012 |
+| [[Zadania-opisy#GRA-105: Logowanie Google w Electronie\|GRA-105]] | Logowanie Google w Electronie | ✅ | GRA-078, SRV-003, INTERF-009, INTERF-012, INFRA-004 |
+| [[Zadania-opisy#INFRA-008: Klienci Google i konfiguracja środowisk\|INFRA-008]] | Klienci Google i konfiguracja środowisk | ⬜ | SRV-003, GRA-104, GRA-105, `specification/Infrastruktura.md` |

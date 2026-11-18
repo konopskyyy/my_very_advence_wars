@@ -10,5 +10,7 @@ interface UserRepositoryInterface
 
     public function findByEmail(Email $email): ?User;
 
+    public function findByGoogleSub(string $googleSub): ?User;
+
     public function save(User $user): void;
 }

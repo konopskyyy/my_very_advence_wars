@@ -1,4 +1,10 @@
-import { AuthError, fetchMe, type AuthSession } from './api';
+import {
+  AuthError,
+  fetchMe,
+  logoutSession,
+  refreshSession,
+  type AuthSession,
+} from './api';
 
 const STORAGE_KEY = 'mvaw.auth';
 
@@ -44,6 +50,9 @@ function readSession(): AuthSession | null {
 
     return {
       token: parsed.token,
+      ...(typeof parsed.refreshToken === 'string' && parsed.refreshToken
+        ? { refreshToken: parsed.refreshToken }
+        : {}),
       user: {
         id: parsed.user.id,
         email: parsed.user.email,
@@ -89,20 +98,46 @@ class AuthStore {
     this.notify();
   }
 
+  async logout(fetchImpl: typeof fetch = fetch): Promise<void> {
+    const refreshToken = this.current?.refreshToken;
+
+    if (refreshToken) {
+      try {
+        await logoutSession(refreshToken, fetchImpl);
+      } catch {
+        // Wylogowanie lokalne i tak musi się udać, nawet gdy serwer jest niedostępny.
+      }
+    }
+
+    this.clear();
+  }
+
   async restore(fetchImpl: typeof fetch = fetch): Promise<AuthSession | null> {
     if (!this.current) {
       return null;
     }
 
-    const token = this.current.token;
+    const current = this.current;
 
     try {
-      const user = await fetchMe(token, fetchImpl);
-      this.set({ token, user });
+      const user = await fetchMe(current.token, fetchImpl);
+      this.set({ ...current, user });
 
       return this.current;
     } catch (error) {
-      if (error instanceof AuthError && error.status === 401) {
+      if (!(error instanceof AuthError) || error.status !== 401) {
+        return this.current;
+      }
+
+      if (!current.refreshToken) {
+        this.clear();
+        return this.current;
+      }
+
+      try {
+        const session = await refreshSession(current.refreshToken, fetchImpl);
+        this.set(session);
+      } catch {
         this.clear();
       }
 

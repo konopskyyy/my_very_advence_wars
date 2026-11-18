@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace App\Auth\Presentation\Api;
 
+use App\Auth\Domain\RefreshToken\Exception\InvalidRefreshTokenException;
 use App\Auth\Domain\User\Exception\EmailAlreadyTakenException;
 use App\Auth\Domain\User\Exception\InvalidCredentialsException;
 use App\Auth\Domain\User\Exception\InvalidEmailException;
+use App\Auth\Domain\User\Exception\InvalidGoogleCredentialException;
+use App\Auth\Domain\User\Exception\UnverifiedGoogleEmailException;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -30,8 +33,18 @@ final class ApiExceptionListener
             return;
         }
 
-        if ($exception instanceof InvalidCredentialsException) {
+        if (
+            $exception instanceof InvalidCredentialsException
+            || $exception instanceof InvalidGoogleCredentialException
+            || $exception instanceof InvalidRefreshTokenException
+        ) {
             $event->setResponse(new JsonResponse(['error' => $exception->getMessage()], Response::HTTP_UNAUTHORIZED));
+
+            return;
+        }
+
+        if ($exception instanceof UnverifiedGoogleEmailException) {
+            $event->setResponse(new JsonResponse(['error' => $exception->getMessage()], Response::HTTP_FORBIDDEN));
 
             return;
         }

@@ -35,6 +35,14 @@ final readonly class DoctrineUserRepository implements UserRepositoryInterface
     }
 
     #[\Override]
+    public function findByGoogleSub(string $googleSub): ?User
+    {
+        return $this->entityManager
+            ->getRepository(User::class)
+            ->findOneBy(['googleSub' => $googleSub]);
+    }
+
+    #[\Override]
     public function save(User $user): void
     {
         $this->entityManager->persist($user);

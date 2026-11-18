@@ -7,6 +7,11 @@ const SESSION: AuthSession = {
   user: { id: 7, email: 'gracz@example.com', createdAt: '2026-10-31T12:00:00+00:00' },
 };
 
+const REFRESH_SESSION: AuthSession = {
+  ...SESSION,
+  refreshToken: 'refresh-1',
+};
+
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -60,6 +65,48 @@ describe('auth store', () => {
 
     expect(restored).toBeNull();
     expect(authStore.isAuthenticated).toBe(false);
+  });
+
+  it('odnawia sesję, gdy me zwraca 401 i jest refresh token', async () => {
+    authStore.set(REFRESH_SESSION);
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url === '/api/auth/me') {
+        return jsonResponse({ error: 'Expired.' }, 401);
+      }
+
+      return jsonResponse({
+        token: 'token-2',
+        refreshToken: 'refresh-2',
+        user: { id: 7, email: 'gracz@example.com', createdAt: '2026-10-31T12:00:00+00:00' },
+      });
+    });
+
+    const restored = await authStore.restore(asFetch(fetchMock));
+
+    expect(restored?.token).toBe('token-2');
+    expect(restored?.refreshToken).toBe('refresh-2');
+    expect((fetchMock.mock.calls[1] as unknown as [string])[0]).toBe('/api/auth/refresh');
+    expect(authStore.session?.refreshToken).toBe('refresh-2');
+  });
+
+  it('czyści sesję, gdy odnowienie nie działa', async () => {
+    authStore.set(REFRESH_SESSION);
+    const fetchMock = vi.fn(async () => jsonResponse({ error: 'Expired.' }, 401));
+
+    const restored = await authStore.restore(asFetch(fetchMock));
+
+    expect(restored).toBeNull();
+    expect(authStore.isAuthenticated).toBe(false);
+  });
+
+  it('wylogowanie zdejmuje token z serwera i czyści sesję', async () => {
+    authStore.set(REFRESH_SESSION);
+    const fetchMock = vi.fn(async () => new Response(null, { status: 204 }));
+
+    await authStore.logout(asFetch(fetchMock));
+
+    expect((fetchMock.mock.calls[0] as unknown as [string])[0]).toBe('/api/auth/logout');
+    expect(authStore.session).toBeNull();
   });
 
   it('zachowuje sesję przy błędzie sieci', async () => {

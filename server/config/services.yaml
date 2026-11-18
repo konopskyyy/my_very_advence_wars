@@ -8,6 +8,7 @@
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
     cors_allow_origin: '^(https?://(localhost|127\.0\.0\.1)(:[0-9]+)?|app://bundle)$'
+    google_client_ids: ''
 
 services:
     # default configuration for services in *this* file

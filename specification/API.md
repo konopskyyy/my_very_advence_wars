@@ -158,3 +158,126 @@ tylko w dev/test.
 walidacja, logowanie, `me` z tokenem i bez). Uruchamianie: `make test-server`.
 W `APP_ENV=test` Doctrine korzysta z SQLite (`server/var/test.db`), więc testy
 nie potrzebują uruchomionego MySQL.
+
+## API-002: Logowanie Google
+
+- **Status:** Zaimplementowane
+- **Moduł:** `server/src/Auth/`
+- **Zależność:** ADR-050; token gry pozostaje taki jak w API-001 (Lexik, `RS256`, 3600 s).
+
+Google ID token jest tylko jednorazowym dowodem tożsamości. Backend weryfikuje
+go kluczami Google i sam wystawia token gry — klient nie dostaje `client_secret`.
+
+### `POST /api/auth/google`
+
+Żądanie:
+
+```json
+{
+  "credential": "eyJhbGciOiJSUzI1NiIsImtpZCI6..."
+}
+```
+
+Odpowiedź `200 OK` — ten sam kształt co `POST /api/auth/login` (`token` + `user`).
+Po wdrożeniu API-003 odpowiedź dostaje też `refreshToken`.
+
+Błędy:
+
+| Kod | Kiedy | Ciało |
+| --- | --- | --- |
+| `401` | zły podpis, nieznany `kid`, `aud` spoza listy, `iss` inny niż `accounts.google.com` / `https://accounts.google.com`, wygasły `exp` | `{"error": "Invalid Google credential."}` |
+| `403` | `email_verified` jest `false` albo e-mail nie jest autorytatywny (nie `@gmail.com` i brak `hd`) | `{"error": "Google email cannot be verified."}` |
+| `422` | brak pola `credential` | standardowy JSON walidacji Symfony |
+
+Weryfikacja obejmuje podpis `RS256` przez klucze z
+`https://www.googleapis.com/oauth2/v3/certs` (cache zgodnie z `Cache-Control`),
+`aud` z listy `GOOGLE_CLIENT_IDS`, `iss`, `exp`, niepusty `sub` i `email`.
+Do parsowania i walidacji używamy `lcobucci/jwt`; certyfikaty `x5c` są
+konwertowane do PEM w adapterze infrastrukturalnym.
+
+### Klienty i łączenie kont
+
+- Dwa publiczne clienty Google: `web` (JavaScript origin `http://localhost:18573`
+  i `http://localhost:18080`) oraz `desktop` (typ „Desktop app", loopback
+  `http://127.0.0.1` na losowym porcie, PKCE S256).
+- `GOOGLE_CLIENT_IDS` przyjmuje oba ID rozdzielone przecinkami — obsługujemy
+  logowanie z przeglądarki i z Electrona jednym endpointem.
+- Jeśli `sub` nie istnieje, szukamy użytkownika po e-mailu. Auto-link następuje
+  tylko dla e-maila autorytatywnego; w przeciwnym razie `403`.
+- Nowe konto Google-only ma unikalne `googleSub` i losowy hash hasła, więc
+  `POST /api/auth/login` nie pozwala się na nie zalogować.
+
+### Testy
+
+`server/tests/Auth/GoogleLoginTest.php` pokrywa poprawny token web i desktop,
+zły podpis, obcy `aud`, wygasły token, `email_verified: false`, e-mail
+nieautorytatywny, link do istniejącego konta i utworzenie nowego konta.
+Testy nie używają prawdziwego Google — JWK i credential są fixturami.
+Uruchamianie: `make test-server`.
+
+## API-003: Odświeżanie sesji
+
+- **Status:** Zaimplementowane
+- **Moduł:** `server/src/Auth/`
+- **Zależność:** ADR-051; nie zmienia tokenu wystawianego przez Lexika.
+
+### `POST /api/auth/refresh`
+
+Żądanie:
+
+```json
+{
+  "refreshToken": "opaque-random-string"
+}
+```
+
+Odpowiedź `200 OK`:
+
+```json
+{
+  "token": "nowy-jwt-gry",
+  "refreshToken": "nowy-opaque-random-string",
+  "user": {
+    "id": 1,
+    "email": "gracz@example.com",
+    "createdAt": "2026-10-31T12:00:00+00:00"
+  }
+}
+```
+
+Stary refresh token zostaje unieważniony (rotacja). Jego ponowne użycie
+unieważnia całą rodzinę tokenów tego użytkownika.
+
+Błędy:
+
+| Kod | Kiedy | Ciało |
+| --- | --- | --- |
+| `401` | token nieznany, wygasł, unieważniony albo użyty ponownie | `{"error": "Invalid refresh token."}` |
+| `422` | brak pola `refreshToken` | standardowy JSON walidacji Symfony |
+
+### `POST /api/auth/logout`
+
+Żądanie:
+
+```json
+{
+  "refreshToken": "opaque-random-string"
+}
+```
+
+Odpowiedź `204 No Content` niezależnie od tego, czy token był znany — klient
+i tak czyści lokalną sesję. Endpoint jest publiczny, więc nie wymaga
+ważnego tokenu gry.
+
+### Zmiany w pozostałych endpointach
+
+Po wdrożeniu API-003 odpowiedzi `POST /api/auth/register`, `POST /api/auth/login`
+i `POST /api/auth/google` mają dodatkowe pole `refreshToken`. `GET /api/auth/me`
+pozostaje bez zmian. Klient przechowuje oba tokeny w `mvaw.auth` i przy `401`
+z `me` próbuje najpierw odświeżenia.
+
+### Testy
+
+`server/tests/Auth/RefreshTokenTest.php` sprawdza rotację, ponowne użycie,
+wygasły token, wylogowanie oraz to, że nowy token gry działa na `GET /api/auth/me`.
+Testy działają na SQLite w `APP_ENV=test`; uruchamianie: `make test-server`.

@@ -10,12 +10,13 @@ final readonly class AuthResponse
 {
     public function __construct(
         public string $token,
+        public string $refreshToken,
         public UserResponse $user,
     ) {
     }
 
     public static function fromResult(AuthResult $result): self
     {
-        return new self($result->token, UserResponse::fromUser($result->user));
+        return new self($result->token, $result->refreshToken, UserResponse::fromUser($result->user));
     }
 }

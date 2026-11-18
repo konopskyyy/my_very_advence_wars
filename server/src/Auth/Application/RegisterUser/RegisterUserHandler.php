@@ -7,6 +7,7 @@ namespace App\Auth\Application\RegisterUser;
 use App\Auth\Application\AuthResult;
 use App\Auth\Application\Port\PasswordHasher;
 use App\Auth\Application\Port\TokenIssuer;
+use App\Auth\Application\Refresh\RefreshTokenManager;
 use App\Auth\Domain\User\Email;
 use App\Auth\Domain\User\Exception\EmailAlreadyTakenException;
 use App\Auth\Domain\User\User;
@@ -18,6 +19,7 @@ final readonly class RegisterUserHandler
         private UserRepositoryInterface $users,
         private PasswordHasher $passwordHasher,
         private TokenIssuer $tokenIssuer,
+        private RefreshTokenManager $refreshTokens,
     ) {
     }
 
@@ -30,9 +32,12 @@ final readonly class RegisterUserHandler
         }
 
         $user = new User($email, $this->passwordHasher->hash($command->password));
-        $token = $this->tokenIssuer->issue($user);
         $this->users->save($user);
 
-        return new AuthResult($user, $token);
+        return new AuthResult(
+            $user,
+            $this->tokenIssuer->issue($user),
+            $this->refreshTokens->issue($user),
+        );
     }
 }
