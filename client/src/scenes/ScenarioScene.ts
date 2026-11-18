@@ -18,6 +18,7 @@ import {
 import { attackTiles } from '../core/ranges';
 import {
   addAttack,
+  attackIntent,
   buildTimeline,
   boardingTarget,
   buildTurnLog,
@@ -30,13 +31,15 @@ import {
   removeActionFrom,
   removeLastAction,
   sampleTimeline,
-  setBoard,
   setMove,
   setUnload,
+  transportClick,
+  transportIntent,
   unitActions,
   type PlanError,
   type TimelineAttackClip,
   type TurnLog,
+  type TransportIntent,
   type TurnPlan,
   type TurnTimeline,
 } from '../core/plan';
@@ -65,7 +68,7 @@ import {
   type TutorialProgress,
   type TutorialScript,
 } from '../core/tutorial';
-import { boardingPath, canBoard, cargoOf, unloadTargets } from '../core/transport';
+import { boardingPath, canBoard, cargoOf } from '../core/transport';
 import { HexMapView, HEX_SIZE, outlineHex } from '../view/hexGrid';
 import { MapViewport } from '../view/mapViewport';
 import { MissionResult } from '../view/missionResult';
@@ -134,6 +137,7 @@ export class ScenarioScene extends Phaser.Scene {
   private hover: HexCoord | null = null;
   private hoverUnitId: string | null = null;
   private selected: Unit | null = null;
+  private armedTransport: TransportIntent | null = null;
   private plan: TurnPlan = createTurnPlan(this.turn);
   private pendingMove: {
     readonly unitId: string;
@@ -143,11 +147,6 @@ export class ScenarioScene extends Phaser.Scene {
   private pendingAttack: {
     readonly unitId: string;
     readonly targetId: string;
-  } | null = null;
-  private pendingBoard: {
-    readonly unitId: string;
-    readonly vehicleId: string;
-    readonly plan: TurnPlan;
   } | null = null;
   private timeline: TurnTimeline = { durationMs: 0, clips: [] };
   private previewMs: number | null = null;
@@ -260,7 +259,7 @@ export class ScenarioScene extends Phaser.Scene {
     this.playback = null;
     this.pendingMove = null;
     this.pendingAttack = null;
-    this.pendingBoard = null;
+    this.armedTransport = null;
     this.hoverUnitId = null;
     this.recruitment = createRecruitment(this.scenario.recruitment);
     this.recruitKind = this.recruitment.allowedKinds[0] ?? 'infantry';
@@ -585,19 +584,95 @@ export class ScenarioScene extends Phaser.Scene {
       return;
     }
 
+    if (pointer.button === 2) {
+      this.handleRightClick(pointer);
+      return;
+    }
+
     if (pointer.button !== 0) {
       return;
     }
 
-    this.refreshTransportIcons();
-    const badge = this.transportIcons.hitAt(pointer.x, pointer.y);
-
-    if (badge) {
-      this.applyTransportBadge(badge);
+    if (this.armedTransport && this.transportIcons.hitAt(pointer.x, pointer.y)) {
+      this.applyArmedTransport();
       return;
     }
 
+    this.armedTransport = null;
+    this.refreshTransportIcons();
     this.handleMapClick(this.viewport.hexAt(pointer));
+  }
+
+  private handleRightClick(pointer: Phaser.Input.Pointer): void {
+    const coord = this.viewport.hexAt(pointer);
+    let unit = this.selectedUnit();
+    const target = visibleUnitAt(
+      this.state,
+      coord,
+      this.turn.faction,
+      this.visionFor(this.turn.faction),
+    );
+
+    if (unit && target && target.faction !== unit.faction) {
+      if (this.pendingMove?.unitId === unit.id) {
+        this.applyPlan(this.pendingMove.plan);
+        unit = this.selectedUnit();
+      }
+
+      const intent = attackIntent(this.plan, this.state, unit, target);
+
+      if (!intent) {
+        this.clearSelection();
+        return;
+      }
+
+      this.armedTransport = null;
+      this.transportIcons.hide();
+      this.pendingAttack = intent;
+      this.drawPath();
+      this.planner.notice('Prawy przycisk wyznaczył cel — kliknij wroga lewym, aby potwierdzić atak');
+      return;
+    }
+
+    const intent = transportIntent(this.plan, this.state, unit, coord);
+    const result = intent ? transportClick(this.plan, this.state, unit, coord) : null;
+
+    if (!intent || !result?.ok) {
+      this.clearSelection();
+      return;
+    }
+
+    this.armedTransport = intent;
+    this.refreshTransportIcons();
+    this.planner.notice(
+      intent.kind === 'board'
+        ? 'Kliknij ikonę ↓, aby potwierdzić wsiadanie'
+        : 'Kliknij ikonę ↑, aby potwierdzić wysiadanie',
+    );
+  }
+
+  private applyArmedTransport(): void {
+    const intent = this.armedTransport;
+
+    if (!intent) {
+      return;
+    }
+
+    const result = transportClick(this.plan, this.state, this.selectedUnit(), intent.coord);
+
+    this.armedTransport = null;
+    this.refreshTransportIcons();
+
+    if (!result?.ok) {
+      this.planner.notice(
+        result?.reason === 'unreachable'
+          ? 'Piechur nie dojdzie do czołgu w tej turze. Przybliż piechura do pojazdu'
+          : describePlanError(result?.reason ?? 'invalid-action'),
+      );
+      return;
+    }
+
+    this.applyPlan(result.plan);
   }
 
   private handleMapClick(coord: HexCoord): void {
@@ -615,20 +690,14 @@ export class ScenarioScene extends Phaser.Scene {
           this.applyPlan(this.pendingMove.plan);
         }
 
-        this.pendingBoard = null;
         const result = addAttack(this.plan, this.state, unit.id, target.id);
 
         if (!result.ok) {
-          this.pendingAttack = null;
-          this.drawPath();
-          this.planner.notice(describePlanError(result.reason));
+          this.clearSelection();
           return;
         }
 
-        if (
-          this.pendingAttack?.unitId === unit.id &&
-          this.pendingAttack.targetId === target.id
-        ) {
+        if (this.pendingAttack?.unitId === unit.id && this.pendingAttack.targetId === target.id) {
           this.applyPlan(result.plan);
           return;
         }
@@ -639,78 +708,32 @@ export class ScenarioScene extends Phaser.Scene {
         return;
       }
 
-      const ontoOwnUnit = target !== undefined && target.id !== unit.id;
-
-      if (ontoOwnUnit) {
-        const carrierFirst = canBoard(unit, target);
-        const passengerId = carrierFirst ? target.id : unit.id;
-        const vehicleId = carrierFirst ? unit.id : target.id;
-        const boarded = setBoard(this.plan, this.state, passengerId, vehicleId);
-
-        if (boarded.ok) {
-          if (
-            this.pendingBoard?.unitId === passengerId &&
-            this.pendingBoard.vehicleId === vehicleId
-          ) {
-            this.applyPlan(boarded.plan);
-            return;
-          }
-
-          this.pendingMove = null;
-          this.pendingAttack = null;
-          this.pendingBoard = { unitId: passengerId, vehicleId, plan: boarded.plan };
-          this.drawPath();
-          this.planner.notice('Kliknij pojazd ponownie, aby potwierdzić wsiadanie');
-          return;
-        }
-
-        if (boarded.reason !== 'not-carrier' && boarded.reason !== 'not-carried') {
-          this.pendingMove = null;
-          this.pendingAttack = null;
-          this.pendingBoard = null;
-          this.drawPath();
-          this.planner.notice(
-            boarded.reason === 'unreachable'
-              ? 'Piechur nie dojdzie do czołgu w tej turze. Przybliż piechura do pojazdu'
-              : describePlanError(boarded.reason),
-          );
-          return;
-        }
-      }
-
-      if (!target || ontoOwnUnit) {
-        const result = setMove(this.plan, this.state, unit.id, coord);
-
-        if (!result.ok) {
-          if (ontoOwnUnit) {
-            this.selectAt(coord);
-            return;
-          }
-
-          this.pendingMove = null;
-          this.pendingAttack = null;
-          this.pendingBoard = null;
-          this.drawPath();
-          this.planner.notice(describePlanError(result.reason));
-          return;
-        }
-
-        if (
-          this.pendingMove?.unitId === unit.id &&
-          this.pendingMove.coord.col === coord.col &&
-          this.pendingMove.coord.row === coord.row
-        ) {
-          this.applyPlan(result.plan);
-          return;
-        }
-
-        this.pendingAttack = null;
-        this.pendingBoard = null;
-        this.pendingMove = { unitId: unit.id, coord, plan: result.plan };
-        this.drawPath();
-        this.planner.notice('Kliknij ten heks ponownie, aby potwierdzić ruch');
+      if (target) {
+        this.selectAt(coord);
         return;
       }
+
+      const result = setMove(this.plan, this.state, unit.id, coord);
+
+      if (!result.ok) {
+        this.clearSelection();
+        return;
+      }
+
+      if (
+        this.pendingMove?.unitId === unit.id &&
+        this.pendingMove.coord.col === coord.col &&
+        this.pendingMove.coord.row === coord.row
+      ) {
+        this.applyPlan(result.plan);
+        return;
+      }
+
+      this.pendingAttack = null;
+      this.pendingMove = { unitId: unit.id, coord, plan: result.plan };
+      this.drawPath();
+      this.planner.notice('Kliknij ten heks ponownie, aby potwierdzić ruch');
+      return;
     }
 
     this.selectAt(coord);
@@ -786,25 +809,41 @@ export class ScenarioScene extends Phaser.Scene {
     return path ? { passenger, vehicle, path } : null;
   }
 
-  private refreshBoardingHint(): void {
+  private refreshTransportHint(): void {
     const candidate = this.boardingCandidate();
 
-    if (!candidate) {
+    if (candidate) {
+      this.planner.notice(
+        `${UNIT_DEFS[candidate.vehicle.kind].label} może zabrać ${UNIT_DEFS[
+          candidate.passenger.kind
+        ].label.toLowerCase()} — PPM na pojazd, aby pokazać ikonę wsiadania`,
+      );
       return;
     }
 
-    this.planner.notice(
-      `${UNIT_DEFS[candidate.vehicle.kind].label} może zabrać ${UNIT_DEFS[
-        candidate.passenger.kind
-      ].label.toLowerCase()} — kliknij pojazd, aby zaplanować`,
-    );
+    const selected = this.selectedUnit();
+
+    if (!selected || !this.hover || unitActions(this.plan, selected.id).length > 0) {
+      return;
+    }
+
+    const passenger = cargoOf(selected)[0];
+
+    if (!passenger) {
+      return;
+    }
+
+    if (setUnload(this.plan, this.state, selected.id, passenger.id, this.hover).ok) {
+      this.planner.notice('PPM na ten heks, aby pokazać ikonę wysiadania');
+    }
   }
 
   private applyPlan(plan: TurnPlan): void {
     this.plan = plan;
     this.pendingMove = null;
     this.pendingAttack = null;
-    this.pendingBoard = null;
+    this.armedTransport = null;
+    this.transportIcons.hide();
     this.timeline = buildTimeline(this.plan, this.state);
     this.clearPreview();
     this.refreshPlan();
@@ -871,10 +910,11 @@ export class ScenarioScene extends Phaser.Scene {
       return;
     }
 
-    if (this.pendingMove || this.pendingAttack || this.pendingBoard) {
+    if (this.pendingMove || this.pendingAttack || this.armedTransport) {
       this.pendingMove = null;
       this.pendingAttack = null;
-      this.pendingBoard = null;
+      this.armedTransport = null;
+      this.transportIcons.hide();
       this.drawPath();
     }
 
@@ -924,7 +964,7 @@ export class ScenarioScene extends Phaser.Scene {
     this.timeline = buildTimeline(this.plan, this.state);
     this.pendingMove = null;
     this.pendingAttack = null;
-    this.pendingBoard = null;
+    this.armedTransport = null;
     this.clearPreview();
     this.selected = null;
     this.selection.clear();
@@ -1118,7 +1158,7 @@ export class ScenarioScene extends Phaser.Scene {
     this.previewMs = null;
     this.pendingMove = null;
     this.pendingAttack = null;
-    this.pendingBoard = null;
+    this.armedTransport = null;
     this.selected = null;
     this.hover = null;
     this.hoverUnitId = null;
@@ -1270,80 +1310,26 @@ export class ScenarioScene extends Phaser.Scene {
   }
 
   private refreshTransportIcons(): void {
-    const unit = this.selectedUnit();
+    const intent = this.armedTransport;
 
-    if (
-      !unit ||
-      this.playing ||
-      this.replayMode ||
-      this.finished ||
-      this.pauseMenu.isOpen ||
-      unit.faction !== this.turn.faction ||
-      this.turn.faction !== this.playerFaction
-    ) {
+    if (!intent || this.playing || this.replayMode || this.finished || this.pauseMenu.isOpen) {
       this.transportIcons.hide();
       return;
     }
 
-    const badges: TransportBadge[] = [];
     const camera = this.cameras.main;
-    const toScreen = (coord: HexCoord): { x: number; y: number } => {
-      const center = this.mapView.center(coord);
-
-      return {
-        x: (center.x - camera.worldView.x) * camera.zoom,
-        y: (center.y - camera.worldView.y) * camera.zoom,
-      };
+    const center = this.mapView.center(intent.coord);
+    const badge: TransportBadge = {
+      kind: intent.kind,
+      x: (center.x - camera.worldView.x) * camera.zoom,
+      y: (center.y - camera.worldView.y) * camera.zoom,
+      label: intent.kind === 'board' ? '↓' : '↑',
+      passengerId: intent.passengerId,
+      vehicleId: intent.vehicleId,
+      target: intent.kind === 'unload' ? intent.target : undefined,
     };
-    const passenger = cargoOf(unit)[0];
 
-    if (passenger && unitActions(this.plan, unit.id).length === 0) {
-      for (const target of unloadTargets(this.state, unit)) {
-        if (setUnload(this.plan, this.state, unit.id, passenger.id, target).ok) {
-          badges.push({
-            kind: 'unload',
-            ...toScreen(target),
-            label: '↑',
-            passengerId: passenger.id,
-            vehicleId: unit.id,
-            target,
-          });
-        }
-      }
-    }
-
-    for (const vehicle of this.state.units) {
-      if (
-        vehicle.id !== unit.id &&
-        vehicle.faction === unit.faction &&
-        canBoard(vehicle, unit) &&
-        setBoard(this.plan, this.state, unit.id, vehicle.id).ok
-      ) {
-        badges.push({
-          kind: 'board',
-          ...toScreen(vehicle.pos),
-          label: '↓',
-          passengerId: unit.id,
-          vehicleId: vehicle.id,
-        });
-      }
-    }
-
-    this.transportIcons.show(badges);
-  }
-
-  private applyTransportBadge(badge: TransportBadge): void {
-    const result =
-      badge.kind === 'unload' && badge.target
-        ? setUnload(this.plan, this.state, badge.vehicleId, badge.passengerId, badge.target)
-        : setBoard(this.plan, this.state, badge.passengerId, badge.vehicleId);
-
-    if (!result.ok) {
-      this.planner.notice(describePlanError(result.reason));
-      return;
-    }
-
-    this.applyPlan(result.plan);
+    this.transportIcons.show([badge]);
   }
 
   private refreshHiddenUnits(ms?: number): void {
@@ -1442,6 +1428,8 @@ export class ScenarioScene extends Phaser.Scene {
     this.turn = { faction: entry.faction, turn: entry.turn };
     this.plan = entry.plan;
     this.timeline = buildTimeline(this.plan, this.state);
+    this.armedTransport = null;
+    this.transportIcons.hide();
     this.selected = null;
     this.hover = null;
     this.hoverUnitId = null;
@@ -1549,7 +1537,7 @@ export class ScenarioScene extends Phaser.Scene {
       this.drawRangeHints();
     }
 
-    this.refreshBoardingHint();
+    this.refreshTransportHint();
   }
 
   private onPointerUp(): void {
@@ -1660,16 +1648,26 @@ export class ScenarioScene extends Phaser.Scene {
   }
 
   private selectAt(coord: HexCoord): void {
-    this.selected =
+    this.selectUnit(
       visibleUnitAt(
         this.state,
         coord,
         this.turn.faction,
         this.visionFor(this.turn.faction),
-      ) ?? null;
+      ) ?? null,
+    );
+  }
+
+  private clearSelection(): void {
+    this.selectUnit(null);
+  }
+
+  private selectUnit(unit: Unit | null): void {
+    this.selected = unit;
+    this.armedTransport = null;
     this.pendingMove = null;
     this.pendingAttack = null;
-    this.pendingBoard = null;
+    this.transportIcons.hide();
     this.clearPreview();
     this.refreshSelection();
   }
@@ -1855,40 +1853,6 @@ export class ScenarioScene extends Phaser.Scene {
     this.drawShotLines(selectedId);
     this.drawPendingMove();
     this.drawPendingAttack();
-    this.drawPendingBoard();
-  }
-
-  private drawPendingBoard(): void {
-    const pending = this.pendingBoard;
-
-    if (!pending) {
-      return;
-    }
-
-    const unit = this.state.units.find((candidate) => candidate.id === pending.unitId);
-    const vehicle = planningState(this.state, pending.plan).units.find(
-      (candidate) => candidate.id === pending.vehicleId,
-    );
-
-    if (!unit || !vehicle) {
-      return;
-    }
-
-    const action = unitActions(pending.plan, pending.unitId).find(
-      (candidate) => candidate.kind === 'board',
-    );
-
-    if (!action || action.kind !== 'board') {
-      return;
-    }
-
-    for (const coord of action.path) {
-      outlineHex(this.pathHints, this.mapView.center(coord), BOARD_HINT_COLOR, 2);
-    }
-
-    this.drawMovementArrows(unit.pos, action.path, BOARD_HINT_COLOR, 2);
-    outlineHex(this.pathHints, this.mapView.center(vehicle.pos), BOARD_HINT_COLOR, 5);
-    outlineHex(this.pathHints, this.mapView.center(vehicle.pos), 0xffffff, 2);
   }
 
   private drawPendingMove(): void {

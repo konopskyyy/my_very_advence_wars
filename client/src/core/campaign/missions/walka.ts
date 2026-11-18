@@ -53,7 +53,7 @@ export const WALKA: CampaignTile = {
         {
           hint: {
             title: 'PIERWSZY STRZAŁ',
-            text: 'Wybierz jednostkę i kliknij czerwonego piechura na (6, 5). Pierwszy klik pokazuje zasięg, drugi zatwierdza atak. Piechur ma 10 HP, więc potrzebne są dwa trafienia po 5 obrażeń. Wykonań turę, żeby strzał doszedł do celu.',
+            text: 'Wybierz jednostkę i kliknij czerwonego piechura na (6, 5) prawym przyciskiem — pojawi się podgląd strzału. Kliknij go lewym, aby zatwierdzić atak. Piechur ma 10 HP, więc potrzebne są dwa trafienia po 5 obrażeń. Wykonań turę, żeby strzał doszedł do celu.',
           },
           until: { attacks: 1 },
         },
