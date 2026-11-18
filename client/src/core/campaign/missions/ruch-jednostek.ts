@@ -59,7 +59,7 @@ export const RUCH_JEDNOSTEK: CampaignTile = {
         {
           hint: {
             title: 'KOSZT TERENU',
-            text: 'Droga kosztuje 0,5 punktu ruchu, miasto 1, bagno 2, a góry 3. Podgląd trasy przed zatwierdzeniem pokazuje jej koszt i pozostałe punkty.',
+            text: 'Droga kosztuje 0,5 punktu ruchu, miasto 1, bagno 2, a góry 3. Wejście na górę zabiera piechurowi 3 z 4 punktów, więc zostaje za mało ruchu, by cokolwiek zaplanować — potraktuj to jako koniec tury. Podgląd trasy pokazuje koszt i pozostałe punkty.',
           },
           until: { moves: 2 },
         },
@@ -88,7 +88,7 @@ export const RUCH_JEDNOSTEK: CampaignTile = {
         {
           hint: {
             title: 'TRANSPORT',
-            text: 'Piechur albo zwiadowca może wsiąść do czołgu: wybierz jednostkę, kliknij czołg i potwierdź drugim klikiem. Potem zaplanuj jazdę czołgu w prawo — zabierze pasażera ze sobą.',
+            text: 'Piechur albo zwiadowca może wsiąść do czołgu: wybierz jednostkę, kliknij czołg prawym przyciskiem, a potem kliknij pojawiającą się ikonę ↓. Potem zaplanuj jazdę czołgu w prawo — zabierze pasażera ze sobą.',
           },
           until: { boarded: 1 },
         },

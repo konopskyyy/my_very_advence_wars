@@ -84,9 +84,7 @@ export class TransportIcons {
   }
 
   hitAt(x: number, y: number): TransportBadge | null {
-    for (let index = this.active.length - 1; index >= 0; index -= 1) {
-      const badge = this.active[index]!;
-
+    for (const badge of this.active) {
       if (
         Math.abs(x - badge.x) <= BADGE_WIDTH / 2 &&
         Math.abs(y - badge.y) <= BADGE_HEIGHT / 2

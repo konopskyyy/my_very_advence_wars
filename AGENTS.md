@@ -82,7 +82,10 @@ usuń komentarze, które przestały być prawdą.
 - Nie resetuj i nie usuwaj historii `master` (`git reset --hard`, `git push --force`).
 - Commity po polsku, styl conventional (`feat:`, `fix:`, `chore:`).
 - W temacie commita podawaj numery zadań z `specification/Zadania.md`,
-  np. `feat: opis zmian (GRA-096, GRA-097)`.
+  np. `feat: opis zmian (GRA-096, GRA-097)`. Planuj większe zadania tak, żeby
+  powiązane zmiany mieściły się w jednym zadaniu; w temacie zwykle **1–3 ID**,
+  nie długa lista. Drobnej poprawki nie wyłączaj jako osobnego zadania, jeśli
+  mieści się w już otwartym.
 - Opis commita mówi **co zostało zrobione**, a nie co należy zrobić —
   rzeczownikowo, nie w trybie rozkazującym. Dotyczy całej treści po typie.
   - dobrze: `chore: wydzielenie testów klienta do tests/ z lustrzanym drzewem`,

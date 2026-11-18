@@ -126,3 +126,5 @@ zadań do wykonania.
 | [[Zadania-opisy#GRA-104: Przycisk logowania Google w www\|GRA-104]] | Przycisk logowania Google w www | ✅ | GRA-078, SRV-003, INTERF-008, INTERF-012 |
 | [[Zadania-opisy#GRA-105: Logowanie Google w Electronie\|GRA-105]] | Logowanie Google w Electronie | ✅ | GRA-078, SRV-003, INTERF-009, INTERF-012, INFRA-004 |
 | [[Zadania-opisy#INFRA-008: Klienci Google i konfiguracja środowisk\|INFRA-008]] | Klienci Google i konfiguracja środowisk | ⬜ | SRV-003, GRA-104, GRA-105, `specification/Infrastruktura.md` |
+| [[Zadania-opisy#GRA-106: Interakcja transportu prawym przyciskiem myszy\|GRA-106]] | Interakcja transportu prawym przyciskiem myszy | ✅ | GRA-085, GRA-091, GRA-094, ZAL-005, INTERF-005 |
+| [[Zadania-opisy#GRA-107: Celowanie prawym przyciskiem i wskazówka o górach\|GRA-107]] | Celowanie prawym przyciskiem i wskazówka o górach | ✅ | GRA-106, ZAL-005, INTERF-005 |

@@ -1043,3 +1043,26 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
   - **Środowiska:** lokalne `.env` zawierają listę ID; `client/.env.example` jest w repozytorium; `CORS_ALLOW_ORIGIN` bez zmian.
   - **Testy:** `make verify` i `make test-server` przechodzą po wdrożeniu zadań zależnych.
   - **Dokumentacja:** `Infrastruktura.md` opisuje nowe zmienne i losowy port loopbacku; callouty w „Rozwiązywaniu problemów" nie zostawiają starych instrukcji.
+
+## GRA-106: Interakcja transportu prawym przyciskiem myszy
+- **Kontekst:** Lewy przycisk na mapie pełnił zbyt wiele ról — trafiał w małe ikony `↓`/`↑`, a kliknięcie własnego czołgu przy wybranym piechurze automatycznie inicjowało wsiadanie. Nie dało się po prostu zaznaczyć pojazdu bez ryzyka zaplanowania transportu. Prawy przycisk na mapie nie był używany, a menu kontekstowe i tak jest wyłączone.
+- **Opis:** `core/plan/transportClick.ts` dostaje `transportIntent()` — czystą decyzję, który heks i którą akcję transportu obsługuje — oraz `transportClick()` walidujące ją przez `setBoard()` i `setUnload()`. Prawy klik na osiągalny czołg albo wolny sąsiedni heks odsłania jedną ikonę `↓`/`↑`; dopiero lewy klik w ikonę planuje akcję. Ikony nie pokazują się same po zaznaczeniu jednostki. Lewy przycisk na mapie nadal wybiera jednostkę, planuje ruch albo atak. Kliknięcie lewym lub prawym poza ważny cel transportu, ruchu albo ataku czyści zaznaczenie. Hover podpowiada PPM, a tekst drugiej misji i INTERF-005 opisują nową obsługę.
+- **Kryteria:**
+  - **Wsiadanie:** przy wybranym piechurze prawy klik na osiągalny czołg odsłania `↓`; lewy klik w ikonę dodaje `board` do planu. Działa też zaznaczenie czołgu i prawy klik na piechura.
+  - **Wysiadanie:** przy wybranym czołgu z pasażerem i bez planu prawy klik na wolny przechodni heks obok odsłania `↑`; lewy klik w ikonę dodaje `unload` z wybranym celem.
+  - **Ikony:** brak ikon po samym zaznaczeniu; ikona znika przy zmianie zaznaczenia, kliknięciu poza nią, zastosowaniu planu i scrubie osi czasu.
+  - **Odznaczanie:** kliknięcie LPM albo PPM poza ważny cel — na przykład pusty heks poza zasięgiem ruchu — wyłącza zaznaczenie jednostki.
+  - **Podpowiedzi:** hover nad czołgiem lub heksem wysiadania komunikuje PPM i konieczność kliknięcia ikony.
+  - **Testy:** `client/tests/core/plan/transportClick.test.ts` pokrywa intencje i decyzje transportu, `make verify` przechodzi.
+  - **Dokumentacja:** ZAL-005 i INTERF-005 opisują prawy przycisk jako odsłonięcie ikony transportu.
+
+## GRA-107: Celowanie prawym przyciskiem i wskazówka o górach
+- **Kontekst:** Prawy przycisk został już użyty do transportu, ale atak nadal wymagał dwóch kliknięć lewym. W drugiej misji samouczka tekst o kosztach terenu nie wyjaśniał, że wejście na górę wyczerpuje prawie cały budżet piechura, więc gracz nie rozumiał, dlaczego nie może już nic zaplanować.
+- **Opis:** `core/plan/attackIntent.ts` dostaje czystą decyzję celowania, walidowaną przez `addAttack()`. Prawy klik na widocznego wroga ustawia podgląd ataku tak samo jak pierwszy lewy klik — lewy klik w tego samego wroga zatwierdza strzał. Kliknięcie PPM poza ważny cel czyści zaznaczenie; nieprawidłowy atak LPM też je czyści. Jeśli przed celowaniem był niepotwierdzony ruch, prawy klik zatwierdza go najpierw, więc atak liczy się z docelowego heksa. W drugiej misji dymek o kosztach terenu wyjaśnia, że góra kosztuje 3 z 4 punktów piechura i zostaje za mało ruchu. W tekstach pierwszej i trzeciej misji atak opisuje PPM + LPM, a INTERF-005 aktualizuje opis ataku i sterowania.
+- **Kryteria:**
+  - **Celowanie:** PPM na widocznego wroga w zasięgu ustawia pomarańczowy podgląd strzału; LPM na tego samego wroga dodaje atak do planu.
+  - **Spójność:** podgląd z PPM zachowuje się jak dotychczasowy pierwszy klik LPM, w tym zatwierdzenie niepotwierdzonego ruchu przed atakiem.
+  - **Odznaczanie:** PPM poza ważnym celem ataku lub transportu oraz LPM z nieprawidłowym atakiem wyłączają zaznaczenie jednostki.
+  - **Samouczek:** dymek „KOSZT TERENU” w „Ruchu jednostek” mówi o 3 z 4 punktów i braku ruchu po wejściu na górę; dymki ataku w pierwszej i trzeciej misji opisują PPM + LPM.
+  - **Testy:** `client/tests/core/plan/attackIntent.test.ts` pokrywa intencje ataku, a `make verify` przechodzi.
+  - **Dokumentacja:** INTERF-005 opisuje celowanie prawym przyciskiem i nowe teksty samouczka.

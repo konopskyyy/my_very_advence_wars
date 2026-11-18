@@ -73,7 +73,7 @@ export const PIERWSZE_KROKI: CampaignTile = {
         {
           hint: {
             title: 'ATAK',
-            text: 'Aby zaatakować, wybierz jednostkę i kliknij wroga w zasięgu, potem kliknij go ponownie, aby potwierdzić. Atak trafi do planu w panelu planera — rozwiń go przyciskiem PLANUJ, jeśli jest zwinięty. Po ataku możesz jeszcze zaplanować ruch; obie akcje wykonają się po WYKONAJ TURĘ.',
+            text: 'Aby zaatakować, wybierz jednostkę i kliknij wroga w zasięgu prawym przyciskiem, potem kliknij go lewym, aby potwierdzić strzał. Atak trafi do planu w panelu planera — rozwiń go przyciskiem PLANUJ, jeśli jest zwinięty. Po ataku możesz jeszcze zaplanować ruch; obie akcje wykonają się po WYKONAJ TURĘ.',
           },
           until: { attacks: 1 },
         },
