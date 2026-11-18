@@ -141,6 +141,16 @@ export function tutorialStepStates(
   }));
 }
 
+export function tutorialObjectiveStates(
+  script: TutorialScript | undefined,
+  progress: TutorialProgress,
+): TutorialStepState[] {
+  const states = tutorialStepStates(script, progress);
+  const currentIndex = states.findIndex((state) => !state.reached);
+
+  return currentIndex === -1 ? states : states.slice(0, currentIndex + 1);
+}
+
 export function tutorialComplete(
   script: TutorialScript | undefined,
   progress: TutorialProgress,
