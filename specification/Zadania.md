@@ -128,3 +128,5 @@ zadań do wykonania.
 | [[Zadania-opisy#INFRA-008: Klienci Google i konfiguracja środowisk\|INFRA-008]] | Klienci Google i konfiguracja środowisk | ⬜ | SRV-003, GRA-104, GRA-105, `specification/Infrastruktura.md` |
 | [[Zadania-opisy#GRA-106: Interakcja transportu prawym przyciskiem myszy\|GRA-106]] | Interakcja transportu prawym przyciskiem myszy | ✅ | GRA-085, GRA-091, GRA-094, ZAL-005, INTERF-005 |
 | [[Zadania-opisy#GRA-107: Celowanie prawym przyciskiem i wskazówka o górach\|GRA-107]] | Celowanie prawym przyciskiem i wskazówka o górach | ✅ | GRA-106, ZAL-005, INTERF-005 |
+| [[Zadania-opisy#GRA-108: Suwaki i porządki w oprawie kampanii\|GRA-108]] | Suwaki i porządki w oprawie kampanii | ✅ | GRA-083, GRA-093, GRA-103, ZAL-011, INTERF-005, INTERF-007 |
+| [[Zadania-opisy#GRA-111: Replay bez powtarzania ruchu na końcu tury\|GRA-111]] | Replay bez powtarzania ruchu na końcu tury | ✅ | GRA-081, GRA-086, INTERF-005 |

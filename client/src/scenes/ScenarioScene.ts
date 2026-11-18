@@ -63,8 +63,8 @@ import {
   pendingTutorialRetirements,
   pendingTutorialSpawns,
   tutorialComplete,
+  tutorialObjectiveStates,
   tutorialProgress,
-  tutorialStepStates,
   type TutorialProgress,
   type TutorialScript,
 } from '../core/tutorial';
@@ -1305,7 +1305,7 @@ export class ScenarioScene extends Phaser.Scene {
     this.objectivesPanel.show({
       name: this.scenario.name,
       description: this.scenario.description,
-      steps: tutorialStepStates(this.tutorialScript, this.tutorialProgressNow()),
+      steps: tutorialObjectiveStates(this.tutorialScript, this.tutorialProgressNow()),
     });
   }
 
@@ -1463,7 +1463,6 @@ export class ScenarioScene extends Phaser.Scene {
 
     this.playing = false;
     this.playback = null;
-    this.unitLayer.resetPositions();
 
     if (entry) {
       this.state = entry.stateAfter;
@@ -1570,6 +1569,14 @@ export class ScenarioScene extends Phaser.Scene {
     if (this.turnLogPanel.isOpen) {
       if (event.key === 'Escape') {
         this.turnLogPanel.hide();
+      }
+
+      return;
+    }
+
+    if (this.objectivesPanel.isOpen) {
+      if (event.key === 'Escape') {
+        this.objectivesPanel.hide();
       }
 
       return;
@@ -2089,7 +2096,8 @@ export class ScenarioScene extends Phaser.Scene {
       this.pauseMenu?.isOpen === true ||
       (this.turnLogPanel?.isOpen ?? false) ||
       (this.recruitDialog?.isOpen ?? false) ||
-      (this.tutorialConfirm?.isOpen ?? false)
+      (this.tutorialConfirm?.isOpen ?? false) ||
+      (this.objectivesPanel?.isOpen ?? false)
     );
   }
 

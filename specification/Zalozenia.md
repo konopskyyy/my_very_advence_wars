@@ -236,8 +236,12 @@
 
 - Menu główne prowadzi do ekranu „Kampanie”.
 - Ekran ma trzy wstążki: „Samouczek”, „Kampania 1”, „Kampania 2”.
-- Samouczek ma sześć kafelków misji: „To był zwykły spacer na grzyby”,
+- Samouczek ma sześć misji: „To był zwykły spacer na grzyby”,
   „Ruch jednostek”, „Walka”, „Mgła wojny”, „Amunicja”, „Artyleria”.
+  Menu kampanii pokazuje tylko misje aktywne — świeży gracz widzi samą
+  pierwszą, a kolejne pojawiają się po ukończeniu poprzedniej; ukończone
+  zostają widoczne. Zablokowane i zapowiedzi „WKRÓTCE” są ukryte, a pełną
+  listę ze statusami daje menu „Zadania” (INTERF-011).
 - Każda kampania i każda misja ma osobny plik w `client/src/core/campaign/`;
   `index.ts` tylko scala dane.
 - Pierwsza misja (plik `pierwsze-kroki.ts`) jest grywalna i prowadzi gracza
@@ -271,9 +275,9 @@
   `(6, 5)`. Cztery dymki prowadzą od pierwszego strzału przez dwóch nowych
   piechurów i wspólny wolumen do zakupu bombera i nalotu. Po trzecim kroku gracz
   dostaje 250 kredytów i dostęp do bombera; misja kończy się po skrypcie, bez
-  osobnego modalu. Kafelek „Mgła wojny” odblokowuje się po ukończeniu aktu 3.
-- Kafelki „Amunicja” i „Artyleria” są zapowiedziami — kliknięcie pokazuje
-  komunikat „wkrótce”; nie mają jeszcze scenariusza ani uruchomienia.
+  osobnego modalu.
+- Misje „Mgła wojny”, „Amunicja” i „Artyleria” są zapowiedziami — nie mają
+  jeszcze scenariusza ani uruchomienia, więc w menu kampanii są ukryte.
 - „Kampania 1” i „Kampania 2” nie mają kafelków do czasu dodania misji.
 
 ## ZAL-012: SI wroga

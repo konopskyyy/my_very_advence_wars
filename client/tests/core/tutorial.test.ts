@@ -12,6 +12,7 @@ import {
   pendingTutorialRetirements,
   pendingTutorialSpawns,
   tutorialComplete,
+  tutorialObjectiveStates,
   tutorialProgress,
   type TutorialProgress,
   type TutorialScript,
@@ -101,6 +102,36 @@ describe('podpowiedzi samouczka', () => {
     expect(activeTutorialHint(tutorial, progress(recruitment))?.title).toBe('PLANER');
     expect(activeTutorialHint(tutorial, progress(recruitment, 1))?.title).toBe('ATAK');
     expect(activeTutorialHint(tutorial, progress(recruitment, 1, 1))).toBeUndefined();
+  });
+
+  it('cele pokazują ukończone kroki i bieżący, bez przyszłych', () => {
+    const before = tutorialObjectiveStates(script, progress(createRecruitment()));
+
+    expect(before.map((state) => [state.hint.title, state.reached])).toEqual([['PIERWSZY', false]]);
+
+    const afterScout = purchaseUnit(
+      createRecruitment(PIERWSZE_KROKI.mission?.recruitment),
+      'scout',
+    );
+    const second = tutorialObjectiveStates(script, progress(afterScout!));
+
+    expect(second.map((state) => [state.hint.title, state.reached])).toEqual([
+      ['PIERWSZY', true],
+      ['DRUGI', false],
+    ]);
+
+    const all = tutorialObjectiveStates(script, {
+      purchased: { scout: 1, infantry: 3 },
+      moves: 1,
+      attacks: 1,
+      boarded: 0,
+      tankCol: 0,
+      survived: 0,
+      returned: false,
+      bazookaHits: 0,
+    });
+
+    expect(all.map((state) => state.reached)).toEqual([true, true, true, true]);
   });
 
   it('liczy ruchy, wsiadanie i ataki z planu tury', () => {

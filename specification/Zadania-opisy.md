@@ -1066,3 +1066,24 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
   - **Samouczek:** dymek „KOSZT TERENU” w „Ruchu jednostek” mówi o 3 z 4 punktów i braku ruchu po wejściu na górę; dymki ataku w pierwszej i trzeciej misji opisują PPM + LPM.
   - **Testy:** `client/tests/core/plan/attackIntent.test.ts` pokrywa intencje ataku, a `make verify` przechodzi.
   - **Dokumentacja:** INTERF-005 opisuje celowanie prawym przyciskiem i nowe teksty samouczka.
+
+## GRA-108: Suwaki i porządki w oprawie kampanii
+- **Kontekst:** Nowa oprawa graficzna kafelków misji (`GRA-103`) i panelu celów (`GRA-093`) zakłada stałą wysokość panelu. Długa kampania ściskała kafelki tak, że tytuł i opis się nie mieściły, długi opis scenariusza albo lista kroków wychodziła poza panel celów i zasłaniała `ZAMKNIJ`, a menu pokazywało od razu wszystkie kafelki — także zablokowane i zapowiedzi „WKRÓTCE”. Panel celów wypisywał z kolei cały skrypt samouczka, zdradzając przyszłe lekcje.
+- **Opis:** `view/campaignTiles.ts` dostaje minimalną wysokość kafelka i pionowy suwak (maskowana siatka, pasek pozycji, kółko myszy) oraz rysuje wyłącznie misje aktywne — status `ready` albo `completed` z `tileStatus()`; zablokowane i zapowiedzi są pomijane, a kafelek traci opis, więc zostaje numer, tytuł i status `GRAJ`/`UKOŃCZONA`. `view/objectivesPanel.ts` zamienia sztywne pozycje opisu i kroków na jeden przewijany kontener z maską i paskiem pozycji, a `ScenarioScene` traktuje otwarty panel jak modal (`pointerOverModal()`), więc kółko przewija treść zamiast zoomować mapę, a `ESC` zamyka panel. `core/tutorial.ts` dostaje `tutorialObjectiveStates()`, który zwraca ukończone kroki `[x]` i bieżący `[ ]`, ukrywając przyszłe; `openObjectives()` używa go zamiast `tutorialStepStates()`. Pełną listę kafelków ze statusami nadal pokazuje menu „Zadania” (INTERF-011).
+- **Kryteria:**
+  - **Kafelki:** przy wielu wierszach kafelek nie kurczy się poniżej czytelnego rozmiaru, a nadmiar przewija się pionowym suwakiem; krótkie kampanie wyglądają jak dotąd bez suwaka.
+  - **Widoczność:** w menu kampanii widać tylko kafelki grywalne i ukończone; zablokowane i zapowiedzi znikają, a kolejny kafelek pojawia się po odblokowaniu.
+  - **Cele:** panel pokazuje ukończone kroki i bieżący cel, a długi opis i lista kroków przewijają się pionowym suwakiem, więc `ZAMKNIJ` i tytuł są zawsze widoczne.
+  - **Sterowanie:** kółko myszy nad siatką kafelków i nad panelem celów przewija treść; otwarty panel celów blokuje mapę i pasek dowodzenia, a `ESC` go zamyka.
+  - **Testy:** `tutorialObjectiveStates()` ma test jednostkowy, a `make verify` przechodzi.
+  - **Dokumentacja:** ZAL-011 oraz INTERF-005 i INTERF-007 opisują suwaki, filtrowanie kafelków i bieżący cel.
+
+## GRA-111: Replay bez powtarzania ruchu na końcu tury
+- **Kontekst:** Pod koniec każdej tury replaya jednostki, które właśnie wykonały ruch, wracały na pozycję startową i przesuwały się jeszcze raz. `finishReplayTurn()` wołał `unitLayer.resetPositions()` **przed** przełączeniem `this.state` na `entry.stateAfter`, a `resetPositions()` ustawia tokeny na pozycje z `unitLayer.units`, czyli ze stanu sprzed tury. Dopiero potem `refreshUnits()` animował je od nowa do końca tury, więc odtworzony ruch biegł drugi raz (widoczne w turach z ruchem, nie na końcu replaya — stąd „czasami”).
+- **Opis:** `finishReplayTurn()` przestaje resetować pozycje. Ustawia `this.state = entry.stateAfter` i odświeża jednostki jak dotąd; tokeny są już na końcowych pozycjach tury (ostatnia klatka `setFramePositions`), więc `unitLayer.setUnits()` nie tworzy ruchu. Zachowanie jest teraz zgodne ze zwykłym `finishTurn()`, który również nie resetuje pozycji po zatwierdzeniu planu. `finishReplayPlayback()` zachowuje `resetPositions()` jako wyrównanie do stanu końcowego.
+- **Kryteria:**
+  - **Bez powtórki:** tura replaya odtwarza ruch dokładnie raz; tokeny nie wracają na pozycję startową po zakończeniu ruchu.
+  - **Kolejność:** następna tura startuje ze stanu `stateAfter` poprzedniej, a banner `TURA x/y` działa jak dotąd.
+  - **Bez regresji:** ostatnia tura i `REPLAY ZAKOŃCZONY` wyglądają jak wcześniej, a spawny i wycofania z samouczka nadal pojawiają się na końcu tury.
+  - **Testy:** `make verify` przechodzi.
+  - **Dokumentacja:** INTERF-005 opisuje odtwarzanie każdej tury bez powtarzania ruchu.

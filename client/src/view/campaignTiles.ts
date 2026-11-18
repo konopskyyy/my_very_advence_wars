@@ -1,8 +1,7 @@
 import Phaser from 'phaser';
 import {
   isMissionCompleted,
-  isTileUnlocked,
-  prerequisiteTile,
+  tileStatus,
   type Campaign,
   type CampaignTile,
 } from '../core/campaign';
@@ -22,66 +21,73 @@ const HEADER_HEIGHT = 88;
 const STATUS_SPACE = 46;
 const COLUMNS = 3;
 const GAP = 16;
+const MIN_TILE_HEIGHT = 152;
+const SCROLLBAR_WIDTH = 4;
+const SCROLLBAR_MIN_THUMB = 32;
+const WHEEL_STEP = 56;
 
 const theme = FACTION_THEMES.blue;
 const TILE_FILL = 0x111826;
 const TILE_HOVER = theme.accentDark;
-const TILE_SELECTED = theme.accentDark;
-const TILE_LOCKED = theme.barBackground;
 const TILE_STROKE = theme.divider;
-const TILE_STROKE_SELECTED = theme.accentBright;
 
-function statusLabel(preview: boolean, completed: boolean, blocked: boolean): string {
-  if (preview) {
-    return 'WKRÓTCE';
-  }
-
-  if (completed) {
-    return 'UKOŃCZONA';
-  }
-
-  return blocked ? 'ZABLOKOWANA' : 'GRAJ';
+interface TileEntry {
+  readonly top: number;
+  readonly height: number;
+  readonly objects: (Phaser.GameObjects.GameObject & Phaser.GameObjects.Components.Visible)[];
 }
 
-function statusColor(preview: boolean, completed: boolean, blocked: boolean): string {
-  if (preview) {
-    return '#c4a85f';
-  }
+function isActive(tile: CampaignTile, completed: ReadonlySet<string>): boolean {
+  const status = tileStatus(tile, completed);
 
-  if (completed) {
-    return theme.accentSoft;
-  }
-
-  return blocked ? FACTION_THEMES.red.accentSoft : '#a6f4c5';
-}
-
-interface TileBackground {
-  readonly id: string;
-  readonly background: Phaser.GameObjects.Rectangle;
+  return status === 'ready' || status === 'completed';
 }
 
 export class CampaignTiles {
   private readonly container: Phaser.GameObjects.Container;
-  private backgrounds: TileBackground[] = [];
+  private readonly grid: Phaser.GameObjects.Container;
+  private readonly scrollbar: Phaser.GameObjects.Graphics;
+  private readonly mask: Phaser.Display.Masks.GeometryMask;
+  private tiles: TileEntry[] = [];
   private status: Phaser.GameObjects.Text | null = null;
-  private selected: string | null = null;
-  private campaign?: Campaign;
   private completed: ReadonlySet<string> = new Set();
+  private scroll = 0;
+  private contentHeight = 0;
 
   constructor(
     private readonly scene: Phaser.Scene,
     private readonly options: CampaignTilesOptions,
   ) {
+    const { x, y, width, height } = options;
+    const viewportTop = y + HEADER_HEIGHT;
+    const viewportHeight = height - HEADER_HEIGHT - STATUS_SPACE;
+
     this.container = scene.add.container(0, 0);
+    this.grid = scene.add.container(0, 0);
+
+    const maskShape = scene.make.graphics();
+    maskShape.fillStyle(0xffffff, 1);
+    maskShape.fillRect(x, viewportTop, width, viewportHeight);
+    this.mask = maskShape.createGeometryMask();
+    this.grid.setMask(this.mask);
+
+    this.scrollbar = scene.add.graphics();
+
+    scene.input.on('wheel', this.onWheel, this);
+    scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      scene.input.off('wheel', this.onWheel, this);
+      this.mask.destroy();
+    });
   }
 
   show(campaign: Campaign, completed: ReadonlySet<string> = new Set()): void {
     this.container.removeAll(true);
-    this.backgrounds = [];
+    this.grid.removeAll(true);
+    this.tiles = [];
     this.status = null;
-    this.selected = null;
-    this.campaign = campaign;
     this.completed = completed;
+    this.scroll = 0;
+    this.contentHeight = 0;
 
     const { x, y, width, height } = this.options;
 
@@ -93,49 +99,55 @@ export class CampaignTiles {
         color: '#e8eef5',
       })
       .setLetterSpacing(2);
-    const description = this.scene.add
-      .text(x + PADDING, y + PADDING + 30, campaign.description, {
-        fontFamily: 'Trebuchet MS, Verdana, sans-serif',
-        fontSize: '13px',
-        color: '#8fa3b8',
-        wordWrap: { width: width - PADDING * 2 },
-      });
-    this.container.add([title, description]);
+    this.container.add(title);
 
-    if (campaign.tiles.length === 0) {
+    const tiles = campaign.tiles.filter((tile) => isActive(tile, completed));
+
+    if (tiles.length === 0) {
+      const message =
+        campaign.tiles.length === 0
+          ? 'Brak misji — kampania w przygotowaniu.'
+          : 'Ukończ poprzednie misje, aby odblokować kolejne.';
       const empty = this.scene.add
-        .text(x + width / 2, y + height / 2, 'Brak misji — kampania w przygotowaniu.', {
+        .text(x + width / 2, y + height / 2, message, {
           fontFamily: 'Trebuchet MS, Verdana, sans-serif',
           fontSize: '14px',
           color: '#8fa3b8',
         })
         .setOrigin(0.5);
       this.container.add(empty);
+      this.refresh();
       return;
     }
 
-    const gridTop = y + HEADER_HEIGHT;
+    const viewportTop = y + HEADER_HEIGHT;
+    const viewportHeight = height - HEADER_HEIGHT - STATUS_SPACE;
     const tileWidth = (width - PADDING * 2 - GAP * (COLUMNS - 1)) / COLUMNS;
-    const rows = Math.ceil(campaign.tiles.length / COLUMNS);
-    const tileHeight = (height - HEADER_HEIGHT - STATUS_SPACE - GAP * (rows - 1)) / rows;
+    const rows = Math.ceil(tiles.length / COLUMNS);
+    const available = viewportHeight - GAP * (rows - 1);
+    const tileHeight = Math.max(MIN_TILE_HEIGHT, available / rows);
 
-    campaign.tiles.forEach((tile, index) => {
+    tiles.forEach((tile, index) => {
       const column = index % COLUMNS;
       const row = Math.floor(index / COLUMNS);
       const tileX = x + PADDING + column * (tileWidth + GAP);
-      const tileY = gridTop + row * (tileHeight + GAP);
+      const tileY = viewportTop + row * (tileHeight + GAP);
 
       this.createTile(tile, index, tileX, tileY, tileWidth, tileHeight);
     });
 
+    this.contentHeight = rows * tileHeight + GAP * (rows - 1);
+
     this.status = this.scene.add
-      .text(x + PADDING, y + height - 20, 'Kliknij gotowy kafelek, aby rozpocząć misję.', {
+      .text(x + PADDING, y + height - 20, 'Kliknij kafelek, aby rozpocząć misję.', {
         fontFamily: 'Trebuchet MS, Verdana, sans-serif',
         fontSize: '12px',
         color: '#6b7d90',
       })
       .setOrigin(0, 0.5);
     this.container.add(this.status);
+
+    this.refresh();
   }
 
   private createTile(
@@ -167,88 +179,101 @@ export class CampaignTiles {
       color: '#e8eef5',
       wordWrap: { width: width - PADDING * 2 },
     });
-    const description = this.scene.add.text(x + PADDING, y + 68, tile.description, {
-      fontFamily: 'Trebuchet MS, Verdana, sans-serif',
-      fontSize: '12px',
-      color: '#8fa3b8',
-      wordWrap: { width: width - PADDING * 2 },
-    });
-    const preview = tile.mission === undefined;
-    const completedMission = isMissionCompleted(tile, this.completed);
-    const blocked = !preview && !isTileUnlocked(tile, this.completed);
-    const badge = this.scene.add.text(
-      x + PADDING,
-      y + height - 30,
-      statusLabel(preview, completedMission, blocked),
-      {
+    const completed = isMissionCompleted(tile, this.completed);
+    const badge = this.scene.add
+      .text(x + PADDING, y + height - 30, completed ? 'UKOŃCZONA' : 'GRAJ', {
         fontFamily: 'Trebuchet MS, Verdana, sans-serif',
         fontSize: '11px',
         fontStyle: 'bold',
-        color: statusColor(preview, completedMission, blocked),
-      },
-    ).setLetterSpacing(1);
-
-    if (blocked) {
-      for (const object of [background, number, title, description, badge]) {
-        object.setAlpha(0.55);
-      }
-
-      background.setFillStyle(TILE_LOCKED, 1);
-    }
+        color: completed ? theme.accentSoft : '#a6f4c5',
+      })
+      .setLetterSpacing(1);
 
     background.on('pointerover', () => {
-      if (this.selected === tile.id || blocked) {
-        return;
-      }
-
       background.setFillStyle(TILE_HOVER, 1);
     });
     background.on('pointerout', () => {
-      if (this.selected === tile.id || blocked) {
-        return;
-      }
-
       background.setFillStyle(TILE_FILL, 1);
     });
     background.on('pointerdown', () => {
-      if (preview) {
-        this.select(tile);
-        return;
-      }
-
-      if (blocked) {
-        this.reportBlocked(tile);
-        return;
-      }
-
       if (tile.mission) {
         this.options.onLaunch(tile.mission);
       }
     });
 
-    this.backgrounds.push({ id: tile.id, background });
-    this.container.add([background, number, title, description, badge]);
+    this.tiles.push({ top: y, height, objects: [background, number, title, badge] });
+    this.grid.add([background, number, title, badge]);
   }
 
-  private select(tile: CampaignTile): void {
-    this.selected = tile.id;
+  private onWheel(
+    pointer: Phaser.Input.Pointer,
+    _over: Phaser.GameObjects.GameObject[],
+    _deltaX: number,
+    deltaY: number,
+  ): void {
+    const { x, y, width, height } = this.options;
+    const viewportTop = y + HEADER_HEIGHT;
+    const viewportHeight = height - HEADER_HEIGHT - STATUS_SPACE;
 
-    for (const entry of this.backgrounds) {
-      const isSelected = entry.id === tile.id;
-
-      entry.background.setFillStyle(isSelected ? TILE_SELECTED : TILE_FILL, 1);
-      entry.background.setStrokeStyle(1, isSelected ? TILE_STROKE_SELECTED : TILE_STROKE, 1);
+    if (
+      this.contentHeight <= viewportHeight ||
+      pointer.x < x ||
+      pointer.x > x + width ||
+      pointer.y < viewportTop ||
+      pointer.y > viewportTop + viewportHeight
+    ) {
+      return;
     }
 
-    this.status?.setText(`Misja „${tile.title}” jest w przygotowaniu.`);
+    this.scrollBy(deltaY > 0 ? WHEEL_STEP : -WHEEL_STEP);
   }
 
-  private reportBlocked(tile: CampaignTile): void {
-    const requirement = this.campaign ? prerequisiteTile(this.campaign, tile) : undefined;
-    const title = requirement?.title ?? tile.requiresMission ?? 'wcześniejszą misję';
+  private scrollBy(amount: number): void {
+    const viewportHeight = this.options.height - HEADER_HEIGHT - STATUS_SPACE;
+    const maxScroll = Math.max(0, this.contentHeight - viewportHeight);
 
-    this.status?.setText(
-      `Misja „${tile.title}” odblokuje się po ukończeniu „${title}”.`,
+    this.scroll = Phaser.Math.Clamp(this.scroll + amount, 0, maxScroll);
+    this.refresh();
+  }
+
+  private refresh(): void {
+    const { y, height } = this.options;
+    const viewportTop = y + HEADER_HEIGHT;
+    const viewportHeight = height - HEADER_HEIGHT - STATUS_SPACE;
+    const maxScroll = Math.max(0, this.contentHeight - viewportHeight);
+
+    this.scroll = Phaser.Math.Clamp(this.scroll, 0, maxScroll);
+    this.grid.setY(-this.scroll);
+
+    for (const tile of this.tiles) {
+      const top = tile.top - this.scroll;
+      const visible = top < viewportTop + viewportHeight && top + tile.height > viewportTop;
+
+      for (const object of tile.objects) {
+        object.setVisible(visible);
+      }
+    }
+
+    this.drawScrollbar(maxScroll, viewportTop, viewportHeight);
+  }
+
+  private drawScrollbar(maxScroll: number, viewportTop: number, viewportHeight: number): void {
+    this.scrollbar.clear();
+
+    if (maxScroll <= 0) {
+      return;
+    }
+
+    const trackX = this.options.x + this.options.width - PADDING + 8;
+    const thumbHeight = Math.max(
+      SCROLLBAR_MIN_THUMB,
+      (viewportHeight / this.contentHeight) * viewportHeight,
     );
+    const thumbY = viewportTop + (this.scroll / maxScroll) * (viewportHeight - thumbHeight);
+
+    this.scrollbar.fillStyle(theme.divider, 0.9);
+    this.scrollbar.fillRect(trackX, viewportTop, SCROLLBAR_WIDTH, viewportHeight);
+    this.scrollbar.fillStyle(theme.accentBright, 0.9);
+    this.scrollbar.fillRect(trackX, thumbY, SCROLLBAR_WIDTH, thumbHeight);
   }
 }
