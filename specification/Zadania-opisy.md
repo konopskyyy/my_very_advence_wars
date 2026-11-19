@@ -1219,3 +1219,12 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
   - **Pomiar:** `make metrics` pokazuje MI klienta w konsoli, w `client/reports/metrics.md` i w gotowym wierszu do JAK-005; gdy raport brakuje, wartość to `—`.
   - **Zgodność:** `npm run quality`, `make lint-client` i `make verify` przechodzą bez zmian; nie zmieniono progów Biome.
   - **Dokumentacja:** JAK-001, JAK-003, JAK-004, JAK-005 i `Infrastruktura.md` opisują narzędzie, brak bramki i nową kolumnę.
+
+## GRA-112: Pionowe karty w oknie KUP
+- **Kontekst:** Lewa lista okna rekrutacji składała się z szerokich, płytkich wierszy z portretem z boku, więc zdjęcie jednostki było małe, a kafelki dominowały szerokością.
+- **Opis:** Lista w `view/recruitDialog.ts` staje się siatką pionowych kart: portret w górnej części, nazwa i cena z limitem pod spodem. Liczba kolumn dostosowuje się do szerokości panelu, a kółko myszy nadal przewija siatkę pionowo. Wybór, podgląd i zakup działają jak dotąd.
+- **Kryteria:**
+  - **Układ:** karty są wyższe niż szersze, a zdjęcie jest nad nazwą i ceną.
+  - **Siatka:** karty układają się w kilku kolumnach i mieszczą się w lewej połowie okna przy 1280×720.
+  - **Interakcja:** kliknięcie karty zmienia podgląd, przewijanie kółkiem działa, a zakup i komunikaty zostają bez zmian.
+  - **Dokumentacja:** INTERF-005 opisuje pionowe karty w oknie KUP.

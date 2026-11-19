@@ -23,8 +23,11 @@ const PANEL_MARGIN = 24;
 const DEPTH = 40;
 const HEADER_HEIGHT = 54;
 const FOOTER_HEIGHT = 58;
-const CARD_HEIGHT = 128;
+const CARD_WIDTH = 184;
+const CARD_HEIGHT = 236;
 const CARD_GAP = 10;
+const CARD_PORTRAIT_TOP = 12;
+const CARD_PORTRAIT_SIZE = 148;
 
 interface EquipmentOption {
   readonly label: string;
@@ -309,6 +312,12 @@ export class RecruitDialog {
   private readonly listY: number;
   private readonly listWidth: number;
   private readonly listHeight: number;
+  private readonly cardWidth: number;
+  private readonly cardPortraitSize: number;
+  private readonly cardColumns: number;
+  private readonly cardStepX: number;
+  private readonly cardStepY: number;
+  private readonly cardOffsetX: number;
   private scrollY = 0;
   private scrollMax = 0;
   private readonly nameText: Phaser.GameObjects.Text;
@@ -365,6 +374,16 @@ export class RecruitDialog {
     this.listY = listY;
     this.listWidth = listWidth;
     this.listHeight = listHeight;
+    this.cardWidth = Math.min(CARD_WIDTH, listWidth - 8);
+    this.cardPortraitSize = Math.min(CARD_PORTRAIT_SIZE, this.cardWidth - 20);
+    this.cardColumns = Math.max(
+      1,
+      Math.floor((listWidth + CARD_GAP) / (this.cardWidth + CARD_GAP)),
+    );
+    this.cardStepX = this.cardWidth + CARD_GAP;
+    this.cardStepY = CARD_HEIGHT + CARD_GAP;
+    this.cardOffsetX =
+      (listWidth - (this.cardColumns * this.cardWidth + (this.cardColumns - 1) * CARD_GAP)) / 2;
 
     this.overlay = this.register(
       scene.add
@@ -439,32 +458,46 @@ export class RecruitDialog {
         .setVisible(false),
     );
 
+    const cardNameY = CARD_PORTRAIT_TOP + this.cardPortraitSize + 10;
+    const cardPriceY = cardNameY + 28;
+
     UNIT_KINDS.forEach((kind, index) => {
+      const cardColumn = index % this.cardColumns;
+      const cardRow = Math.floor(index / this.cardColumns);
       const container = scene.add
-        .container(listX, listY + index * (CARD_HEIGHT + CARD_GAP))
+        .container(
+          listX + this.cardOffsetX + cardColumn * this.cardStepX,
+          listY + cardRow * this.cardStepY,
+        )
         .setScrollFactor(0)
         .setDepth(DEPTH + 2)
         .setMask(mask);
       const background = scene.add
-        .rectangle(0, 0, listWidth, CARD_HEIGHT, 0x0f1114, 0.5)
+        .rectangle(0, 0, this.cardWidth, CARD_HEIGHT, 0x0f1114, 0.5)
         .setOrigin(0, 0)
         .setStrokeStyle(1, this.theme.divider, 1)
         .setInteractive({ useHandCursor: true });
       const portrait = scene.add
-        .image(64, CARD_HEIGHT / 2, recruitPortraitKey(kind))
-        .setDisplaySize(96, 96);
-      const name = scene.add.text(124, 30, UNIT_DEFS[kind].label, {
-        fontFamily: 'monospace',
-        fontSize: '16px',
-        color: '#d8e2dc',
-      });
+        .image(this.cardWidth / 2, CARD_PORTRAIT_TOP, recruitPortraitKey(kind))
+        .setDisplaySize(this.cardPortraitSize, this.cardPortraitSize)
+        .setOrigin(0.5, 0);
+      const name = scene.add
+        .text(this.cardWidth / 2, cardNameY, UNIT_DEFS[kind].label, {
+          fontFamily: 'monospace',
+          fontSize: '14px',
+          color: '#d8e2dc',
+          align: 'center',
+          wordWrap: { width: this.cardWidth - 12 },
+        })
+        .setOrigin(0.5, 0);
       const price = scene.add
-        .text(listWidth - 14, 30, '', {
+        .text(this.cardWidth / 2, cardPriceY, '', {
           fontFamily: 'monospace',
           fontSize: '13px',
           color: '#f2d35c',
+          align: 'center',
         })
-        .setOrigin(1, 0);
+        .setOrigin(0.5, 0);
 
       container.add([background, portrait, name, price]);
       this.register(container);
@@ -765,20 +798,25 @@ export class RecruitDialog {
   }
 
   private renderRows(): void {
-    const step = CARD_HEIGHT + CARD_GAP;
-    const totalHeight = this.rows.length * step - CARD_GAP;
+    const rowCount = Math.ceil(this.rows.length / this.cardColumns);
+    const totalHeight = rowCount * this.cardStepY - CARD_GAP;
 
     this.scrollMax = Math.max(0, totalHeight - this.listHeight);
     this.scrollY = Math.min(this.scrollY, this.scrollMax);
 
     this.rows.forEach((row, index) => {
+      const cardColumn = index % this.cardColumns;
+      const cardRow = Math.floor(index / this.cardColumns);
       const selected = row.kind === this.selectedKind;
       const remaining = this.recruitment
         ? remainingPurchases(this.recruitment, row.kind)
         : undefined;
       const available = this.isAllowed(row.kind) && !(remaining !== undefined && remaining <= 0);
 
-      row.container.setY(this.listY + index * step - this.scrollY);
+      row.container.setPosition(
+        this.listX + this.cardOffsetX + cardColumn * this.cardStepX,
+        this.listY + cardRow * this.cardStepY - this.scrollY,
+      );
       row.background.setFillStyle(selected ? this.theme.accentDark : 0x0f1114, selected ? 1 : 0.5);
       row.background.setStrokeStyle(
         1,
