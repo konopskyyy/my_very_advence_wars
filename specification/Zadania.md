@@ -128,7 +128,7 @@ zadań do wykonania.
 | [[Zadania-opisy#INFRA-008: Klienci Google i konfiguracja środowisk\|INFRA-008]] | Klienci Google i konfiguracja środowisk | ⬜ | SRV-003, GRA-104, GRA-105, `specification/Infrastruktura.md` |
 | [[Zadania-opisy#INFRA-009: Pokrycie testami klienta i egzekwowanie progów jakości\|INFRA-009]] | Pokrycie testami klienta i egzekwowanie progów jakości | ✅ | INFRA-006, GRA-034, `specification/Jakosc-kodu.md` |
 | [[Zadania-opisy#INFRA-010: Lint i złożoność poznawcza klienta\|INFRA-010]] | Lint i złożoność poznawcza klienta | ✅ | INFRA-006, INFRA-009, `specification/Jakosc-kodu.md` |
-| [[Zadania-opisy#INFRA-011: Budżet bundla klienta w CI\|INFRA-011]] | Budżet bundla klienta w CI | ✅ | INFRA-007, INFRA-006, `specification/Jakosc-kodu.md` |
+| [[Zadania-opisy#INFRA-011: Budżet bundla klienta w pomiarze jakości\|INFRA-011]] | Budżet bundla klienta w pomiarze jakości | ✅ | INFRA-007, INFRA-006, `specification/Jakosc-kodu.md` |
 | [[Zadania-opisy#INFRA-012: Porządki CI, Dependabot i wersja Node\|INFRA-012]] | Porządki CI, Dependabot i wersja Node | ✅ | INFRA-002, INFRA-003, `specification/Infrastruktura.md` |
 | [[Zadania-opisy#INFRA-013: Lint backendu z Psalm i php-cs-fixer\|INFRA-013]] | Lint backendu z Psalm i php-cs-fixer | ✅ | INFRA-006, SRV-001, `specification/Infrastruktura.md` |
 | [[Zadania-opisy#INFRA-014: Audyt zależności backendu w CI\|INFRA-014]] | Audyt zależności backendu w CI | ✅ | INFRA-013, `specification/Infrastruktura.md` |
@@ -145,3 +145,5 @@ zadań do wykonania.
 | [[Zadania-opisy#GRA-108: Suwaki i porządki w oprawie kampanii\|GRA-108]] | Suwaki i porządki w oprawie kampanii | ✅ | GRA-083, GRA-093, GRA-103, ZAL-011, INTERF-005, INTERF-007 |
 | [[Zadania-opisy#GRA-111: Replay bez powtarzania ruchu na końcu tury\|GRA-111]] | Replay bez powtarzania ruchu na końcu tury | ✅ | GRA-081, GRA-086, INTERF-005 |
 | [[Zadania-opisy#GRA-112: Pionowe karty w oknie KUP\|GRA-112]] | Pionowe karty w oknie KUP | ✅ | GRA-077, INTERF-005 |
+| [[Zadania-opisy#INFRA-023: Naprawa pipeline'u po aktualizacji zależności\|INFRA-023]] | Naprawa pipeline'u po aktualizacji zależności | ✅ | INFRA-003, INFRA-018, `specification/Infrastruktura.md` |
+| [[Zadania-opisy#INFRA-024: Kolejna część aktualizacji zależności\|INFRA-024]] | Kolejna część aktualizacji zależności | ✅ | INFRA-023, `specification/Infrastruktura.md` |

@@ -1,4 +1,9 @@
 #!/usr/bin/env php
 <?php
 
+if (!defined('__PHPSTAN_RUNNING__')) {
+    define('__PHPSTAN_RUNNING__', true);
+}
+
+require dirname(__DIR__).'/vendor/autoload.php';
 require dirname(__DIR__).'/vendor/phpunit/phpunit/phpunit';

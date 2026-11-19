@@ -13,6 +13,10 @@
     "mutators": {
         "@default": true,
     },
+    "phpUnit": {
+        // Ten wrapper wczytuje autoload przed preloadem php-parsera z Rectora.
+        "customPath": "bin/phpunit",
+    },
     "minMsi": 80,
     "minCoveredMsi": 90,
 }
