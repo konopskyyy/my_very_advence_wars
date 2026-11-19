@@ -16,6 +16,7 @@ use Symfony\Component\HttpKernel\KernelInterface;
 
 final class GoogleLoginTest extends WebTestCase
 {
+    #[\Override]
     public static function setUpBeforeClass(): void
     {
         self::deleteDatabase();
@@ -135,7 +136,10 @@ final class GoogleLoginTest extends WebTestCase
             content: json_encode(['email' => $email, 'password' => 'tajne-haslo'], \JSON_THROW_ON_ERROR),
         );
 
-        return $this->decode($client->getResponse()->getContent());
+        /** @var array{token: string, refreshToken: string, user: array{id: int, email: string}} $payload */
+        $payload = $this->decode($client->getResponse()->getContent());
+
+        return $payload;
     }
 
     private static function fakeVerifier(

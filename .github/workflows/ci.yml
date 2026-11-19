@@ -9,10 +9,15 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  typecheck:
-    name: TypeScript
+  build-client:
+    name: Build klienta (TS + Vite)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: client
@@ -29,31 +34,18 @@ jobs:
         run: npm ci
       - name: Typy
         run: npx tsc --noEmit
-
-  build-client:
-    name: Build klienta (TS + Vite)
-    runs-on: ubuntu-latest
-    needs: [typecheck]
-    defaults:
-      run:
-        working-directory: client
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-      - name: Node
-        uses: actions/setup-node@v5
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: client/package-lock.json
-      - name: Zależności
-        run: npm ci
+      - name: Martwe eksporty i zależności
+        run: npm run unused
       - name: Build
         run: npm run build
+      - name: Budżet bundla
+        working-directory: ${{ github.workspace }}
+        run: node scripts/check-bundle-size.mjs
 
   test:
     name: Testy jednostkowe
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: client
@@ -68,8 +60,16 @@ jobs:
           cache-dependency-path: client/package-lock.json
       - name: Zależności
         run: npm ci
-      - name: Vitest
-        run: npm test
+      - name: Vitest z pokryciem
+        run: npm run coverage
+      - name: Raport pokrycia
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-report
+          path: client/reports/coverage
+          if-no-files-found: ignore
+          retention-days: 14
 
   mutation:
     name: Testy mutacyjne
@@ -103,6 +103,7 @@ jobs:
   server-test:
     name: Testy backendu
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: server
@@ -188,3 +189,50 @@ jobs:
           path: server/var/infection
           if-no-files-found: ignore
           retention-days: 14
+
+  server-quality:
+    name: Jakość backendu
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: ctype, iconv, pdo_sqlite, sqlite3, mbstring, dom, libxml
+          coverage: none
+          tools: composer:v2
+      - name: Cache Composera
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: composer-${{ hashFiles('server/composer.lock') }}
+          restore-keys: composer-
+      - name: Plik .env
+        run: |
+          cat > .env <<'EOF'
+          APP_SECRET=ci-secret
+          DEFAULT_URI=https://example.test
+          DATABASE_URL="sqlite:///%kernel.project_dir%/var/data.db"
+          JWT_SECRET_KEY=%kernel.project_dir%/config/jwt/private.pem
+          JWT_PUBLIC_KEY=%kernel.project_dir%/config/jwt/public.pem
+          JWT_PASSPHRASE=ci-passphrase
+          CORS_ALLOW_ORIGIN='^(https?://(localhost|127\.0\.0\.1)(:[0-9]+)?|app://bundle)$'
+          EOF
+      - name: Zależności
+        run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Walidacja composer.json
+        run: composer validate --strict --no-check-publish
+      - name: Audyt zależności
+        run: composer audit --locked --no-interaction --abandoned=report
+      - name: Psalm
+        run: composer lint
+      - name: Styl
+        run: composer lint:style
+      - name: Złożoność (PHPMD)
+        run: composer mess

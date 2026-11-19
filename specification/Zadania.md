@@ -126,6 +126,20 @@ zadań do wykonania.
 | [[Zadania-opisy#GRA-104: Przycisk logowania Google w www\|GRA-104]] | Przycisk logowania Google w www | ✅ | GRA-078, SRV-003, INTERF-008, INTERF-012 |
 | [[Zadania-opisy#GRA-105: Logowanie Google w Electronie\|GRA-105]] | Logowanie Google w Electronie | ✅ | GRA-078, SRV-003, INTERF-009, INTERF-012, INFRA-004 |
 | [[Zadania-opisy#INFRA-008: Klienci Google i konfiguracja środowisk\|INFRA-008]] | Klienci Google i konfiguracja środowisk | ⬜ | SRV-003, GRA-104, GRA-105, `specification/Infrastruktura.md` |
+| [[Zadania-opisy#INFRA-009: Pokrycie testami klienta i egzekwowanie progów jakości\|INFRA-009]] | Pokrycie testami klienta i egzekwowanie progów jakości | ✅ | INFRA-006, GRA-034, `specification/Jakosc-kodu.md` |
+| [[Zadania-opisy#INFRA-010: Lint i złożoność poznawcza klienta\|INFRA-010]] | Lint i złożoność poznawcza klienta | ✅ | INFRA-006, INFRA-009, `specification/Jakosc-kodu.md` |
+| [[Zadania-opisy#INFRA-011: Budżet bundla klienta w CI\|INFRA-011]] | Budżet bundla klienta w CI | ✅ | INFRA-007, INFRA-006, `specification/Jakosc-kodu.md` |
+| [[Zadania-opisy#INFRA-012: Porządki CI, Dependabot i wersja Node\|INFRA-012]] | Porządki CI, Dependabot i wersja Node | ✅ | INFRA-002, INFRA-003, `specification/Infrastruktura.md` |
+| [[Zadania-opisy#INFRA-013: Lint backendu z Psalm i php-cs-fixer\|INFRA-013]] | Lint backendu z Psalm i php-cs-fixer | ✅ | INFRA-006, SRV-001, `specification/Infrastruktura.md` |
+| [[Zadania-opisy#INFRA-014: Audyt zależności backendu w CI\|INFRA-014]] | Audyt zależności backendu w CI | ✅ | INFRA-013, `specification/Infrastruktura.md` |
+| [[Zadania-opisy#INFRA-015: Psalm poziom 3 i analiza martwego kodu\|INFRA-015]] | Psalm poziom 3 i analiza martwego kodu | ✅ | INFRA-013, `specification/Jakosc-kodu.md` |
+| [[Zadania-opisy#INFRA-016: Knip zamiast ts-prune\|INFRA-016]] | Knip zamiast ts-prune | ✅ | INFRA-006, `specification/Jakosc-kodu.md` |
+| [[Zadania-opisy#INFRA-017: Composer-unused w przeglądzie okresowym\|INFRA-017]] | Composer-unused w przeglądzie okresowym | ✅ | INFRA-014, `specification/Jakosc-kodu.md` |
+| [[Zadania-opisy#INFRA-018: Rector przed aktualizacjami PHP i Symfony\|INFRA-018]] | Rector przed aktualizacjami PHP i Symfony | ⬜ | INFRA-013, `specification/Jakosc-kodu.md` |
+| [[Zadania-opisy#INFRA-019: Spłata baseline Psalma\|INFRA-019]] | Spłata baseline Psalma | ⬜ | INFRA-015, `specification/Jakosc-kodu.md` |
+| [[Zadania-opisy#INFRA-020: Detekcja złożoności funkcji w kliencie i backendzie\|INFRA-020]] | Detekcja złożoności funkcji w kliencie i backendzie | ✅ | INFRA-010, INFRA-015, `specification/Jakosc-kodu.md` |
+| [[Zadania-opisy#INFRA-021: Metryki backendu z PhpMetrics w raporcie jakości\|INFRA-021]] | Metryki backendu z PhpMetrics w raporcie jakości | ✅ | INFRA-006, INFRA-020, `specification/Jakosc-kodu.md` |
+| [[Zadania-opisy#INFRA-022: Agregaty jakości klienta z code-multivitals\|INFRA-022]] | Agregaty jakości klienta z code-multivitals | ✅ | INFRA-006, INFRA-021, `specification/Jakosc-kodu.md` |
 | [[Zadania-opisy#GRA-106: Interakcja transportu prawym przyciskiem myszy\|GRA-106]] | Interakcja transportu prawym przyciskiem myszy | ✅ | GRA-085, GRA-091, GRA-094, ZAL-005, INTERF-005 |
 | [[Zadania-opisy#GRA-107: Celowanie prawym przyciskiem i wskazówka o górach\|GRA-107]] | Celowanie prawym przyciskiem i wskazówka o górach | ✅ | GRA-106, ZAL-005, INTERF-005 |
 | [[Zadania-opisy#GRA-108: Suwaki i porządki w oprawie kampanii\|GRA-108]] | Suwaki i porządki w oprawie kampanii | ✅ | GRA-083, GRA-093, GRA-103, ZAL-011, INTERF-005, INTERF-007 |

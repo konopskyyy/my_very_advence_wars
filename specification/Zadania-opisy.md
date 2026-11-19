@@ -1087,3 +1087,135 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
   - **Bez regresji:** ostatnia tura i `REPLAY ZAKOŃCZONY` wyglądają jak wcześniej, a spawny i wycofania z samouczka nadal pojawiają się na końcu tury.
   - **Testy:** `make verify` przechodzi.
   - **Dokumentacja:** INTERF-005 opisuje odtwarzanie każdej tury bez powtarzania ruchu.
+
+## INFRA-009: Pokrycie testami klienta i egzekwowanie progów jakości
+- **Kontekst:** Audyt `INFRA-006` wskazał `@vitest/coverage-v8` jako must-have, ale pakietu nie ma w `client/package.json`, więc kolumna pokrycia w `JAK-005` pozostaje pusta. Równocześnie progi jscpd (`30`) i Strykera (`break 50`, `high 80`) są łagodniejsze niż wartości z `JAK-004` (5% i `break 70`, `high 85`), więc nie wykrywają regresji.
+- **Opis:** Dodajemy `@vitest/coverage-v8`, konfigurację pokrycia w `client/vite.config.ts` (zakres `src/core/**/*.ts`, próg 80% linii) oraz skrypt `npm run coverage`; `scripts/metrics.sh` sam wykryje pakiet i wypełni kolumnę. jscpd dostaje `threshold: 5`, a Stryker `break: 70`, `low: 75`, `high: 85`. `make check` nadal uruchamia szybkie testy bez pokrycia, a CI w jobie testowym uruchamia wariant z pokryciem i publikuje podsumowanie.
+- **Kryteria:**
+  - **Pokrycie:** `npm run coverage` kończy się sukcesem przy pokryciu linii `src/core` wynoszącym co najmniej 80%; raport trafia do `client/reports/coverage`.
+  - **Progi:** jscpd odrzuca duplikaty powyżej 5%, a Stryker ma `break 70` i `high 85`.
+  - **Pomiar:** `make metrics` pokazuje wartość w kolumnie „Pokrycie core (%)” zamiast `—`.
+  - **CI:** job testowy klienta uruchamia pokrycie i nie wydłuża pipeline'u poza limit joba.
+  - **Dokumentacja:** JAK-002, JAK-004 i JAK-005 opisują nowe progi i źródło pokrycia.
+
+## INFRA-010: Lint i złożoność poznawcza klienta
+- **Kontekst:** Klient nie ma lintera ani miary złożoności. ESLint z typescript-eslint jest odrzucony, bo TypeScript 7 nie udostępnia API JS, a Biome ma własny parser i jest rekomendowany w JAK-003. Bez tego limitu funkcje mogą rosnąć niezauważenie, mimo progu 15 w JAK-004.
+- **Opis:** Dodajemy `@biomejs/biome` i `client/biome.json` z włączonym linterem, regułą `complexity/noExcessiveCognitiveComplexity` (limit 15) i zestawem reguł bezpiecznych dla istniejącego kodu. Formatter pozostaje wyłączony, żeby nie wywołać jednorazowego diffu w całym `src`. Skrypt `npm run lint` obejmuje `src` i `tests`, a `make quality-client` oraz CI uruchamiają go obok typów.
+- **Kryteria:**
+  - **Lint:** `npm run lint` przechodzi na istniejącym kodzie bez wyciszania reguł poza świadomymi wyjątkami.
+  - **Złożoność:** funkcja przekraczająca 15 punktów złożoności poznawczej kończy lint błędem.
+  - **Obieg:** `make quality-client` uruchamia Biome, a CI ma osobny krok lintera.
+  - **Bez formatowania:** `biome.json` nie włącza formattera, więc zmiana nie przepisuje istniejących plików.
+  - **Dokumentacja:** JAK-002 i JAK-004 opisują Biome jako wdrożony linter.
+
+## INFRA-011: Budżet bundla klienta w CI
+- **Kontekst:** Bundle JS osiągnął 1598,4 KiB przy progu 1600 KiB z JAK-004, a pomiar jest ręczny (`make metrics`). Jedna nowa zależność runtime może przekroczyć limit bez żadnego sygnału w CI.
+- **Opis:** Dodajemy `scripts/check-bundle-size.mjs`, który sumuje pliki `.js` w `server/public/game` po buildzie i kończy się błędem powyżej 1600 KiB. Skrypt jest wołany przez `make bundle-check` oraz po kroku build w CI; wynik wypisuje zajętość i zapas do budżetu. Próg pozostaje w jednym miejscu w skrypcie i jest opisany w JAK-004.
+- **Kryteria:**
+  - **Pomiar:** skrypt wypisuje sumę KiB plików `.js` bez gzip i różnicę do progu.
+  - **Egzekwowanie:** przekroczenie 1600 KiB kończy CI błędem po buildzie.
+  - **Lokalnie:** `make bundle-check` działa po `make client-build`.
+  - **Dokumentacja:** JAK-004 i Infrastruktura opisują cel `make bundle-check` oraz krok CI.
+
+## INFRA-012: Porządki CI, Dependabot i wersja Node
+- **Kontekst:** `typecheck` i `build-client` wykonują to samo `npm ci` i `tsc`, żaden job poza mutacjami nie ma timeoutu, a równoległe push-e nie anulują starszych przebiegów. Brak też Dependabota i deklaracji wersji Node w `package.json`, mimo że CI używa Node 22.
+- **Opis:** Job `typecheck` jest scalony z `build-client` (jedno `npm ci`, potem `tsc` i `vite build`), wszystkie joby dostają `timeout-minutes`, a workflow — `concurrency` z anulowaniem starszych przebiegów. Dodajemy `.github/dependabot.yml` dla npm, Composera i GitHub Actions oraz `engines.node >= 22` w `client/package.json`.
+- **Kryteria:**
+  - **CI:** pipeline ma o jeden job mniej, a `tsc` i build nadal są osobnymi krokami z czytelnym błędem.
+  - **Stabilność:** każdy job ma timeout, a nowy push anuluje poprzedni przebieg tego samego brancha.
+  - **Aktualizacje:** Dependabot otwiera PR-y dla npm, Composera i akcji.
+  - **Wersja:** `npm install` ostrzega poza Node 22, a CI pozostaje na 22.
+  - **Dokumentacja:** Infrastruktura opisuje nowy kształt workflow i Dependabota.
+
+## INFRA-013: Lint backendu z Psalm i php-cs-fixer
+- **Kontekst:** `server/psalm.xml` i `server/.php-cs-fixer.dist.php` istnieją, ale nie ma dla nich celu w `Makefile` ani joba w CI. Równolegle w repo jest phpcs z rulesetem PSR-12, który dubluje standard `@Symfony` z php-cs-fixera i może dawać sprzeczne wskazania.
+- **Opis:** Dodajemy skrypty Composera `lint` (Psalm) i `lint:style` (php-cs-fixer `--dry-run --diff`) oraz cel `make lint-server`, który uruchamia je w kontenerze. php-cs-fixer zostaje jedynym narzędziem stylu (`@Symfony`), a phpcs i `phpcs.xml.dist` są usuwane. CI dostaje job `server-quality` po testach backendu, z tymi samymi krokami instalacji i kluczy JWT co `server-test`.
+- **Kryteria:**
+  - **Psalm:** `vendor/bin/psalm --no-progress` przechodzi na poziomie 4 bez baseline.
+  - **Styl:** `vendor/bin/php-cs-fixer fix --dry-run --diff` nie zgłasza zmian.
+  - **Make:** `make lint-server` uruchamia oba sprawdzenia i kończy się błędem przy naruszeniu.
+  - **Jedno narzędzie:** phpcs nie jest już zależnością ani plikiem konfiguracyjnym.
+  - **Dokumentacja:** Infrastruktura i JAK-002 opisują cel `make lint-server` i job CI.
+
+## INFRA-014: Audyt zależności backendu w CI
+- **Kontekst:** Pipeline backendu sprawdza testy i mutacje, ale nie waliduje `composer.json` ani nie szuka znanych podatności w zainstalowanych pakietach. Błąd w pliku lub podatna wersja przechodzi więc niezauważone.
+- **Opis:** Job backendu dostaje kroki `composer validate --strict --no-check-publish` oraz `composer audit --locked --no-interaction`. Lokalnie te same komendy uruchamia `make audit-server`. Audyt nie blokuje pracy przy podatnościach bez poprawki (np. brak nowej wersji) — wtedy wpisujemy świadomą decyzję w opisie PR, a nie wyciszamy krok.
+- **Kryteria:**
+  - **Walidacja:** `composer validate --strict` przechodzi na obecnym `composer.json`.
+  - **Audyt:** `composer audit --locked` kończy CI błędem przy podatności z poprawką.
+  - **Lokalnie:** `make audit-server` uruchamia oba kroki w kontenerze.
+  - **Dokumentacja:** Infrastruktura opisuje nowe kroki i cel Makefile.
+
+## INFRA-015: Psalm poziom 3 i analiza martwego kodu
+- **Kontekst:** Psalm działa na poziomie 4 z `findUnusedCode=false`. Po wdrożeniu `INFRA-013` będzie egzekwowany, ale poziom 4 przepuszcza część błędów typów, a martwe funkcje i klasy pozostają niewidoczne.
+- **Opis:** Po ustabilizowaniu poziomu 4 podnosimy `errorLevel` do 3 i włączamy `findUnusedCode`, najpierw lokalnie (`make lint-server`), potem w CI. Błędy naprawiamy partiami; jeśli baseline jest konieczny, dodajemy go z datą i zadaniem na spłatę, a nie wyłączamy reguł.
+- **Kryteria:**
+  - **Poziom:** `psalm.xml` ma `errorLevel="3"`, a `make lint-server` przechodzi bez nowych błędów.
+  - **Martwy kod:** `findUnusedCode` jest włączone, a zgłoszenia są naprawione albo mają baseline z terminem.
+  - **CI:** job `server-quality` egzekwuje nowy poziom.
+  - **Dokumentacja:** JAK-002 i JAK-004 opisują poziom 3.
+
+## INFRA-016: Knip zamiast ts-prune
+- **Kontekst:** `ts-prune` jest w `make quality-client`, ale z TypeScript 7 nie działa (brak API JS). Martwe eksporty i nieużywane zależności nie są więc wykrywane, a `tsc` z `noUnusedLocals` łapie tylko lokalne zmienne.
+- **Opis:** Sprawdzamy Knip z obecnym TypeScriptem 7; jeśli działa, zastępuje `ts-prune` w `package.json` i `make quality-client`, a wynik trafia do CI. Jeśli Knip też wymaga API TS, zostawiamy wpis w JAK-008 jako ograniczenie i nie dodajemy narzędzia na siłę.
+- **Kryteria:**
+  - **Zgodność:** Knip uruchamia się na `client/src` z TypeScript 7 bez błędów parsera.
+  - **Zakres:** raport pokrywa martwe eksporty, pliki i nieużywane zależności.
+  - **Obieg:** `make quality-client` nie woła już `ts-prune`.
+  - **Dokumentacja:** JAK-002 i JAK-003 opisują wynik próby oraz decyzję.
+
+## INFRA-017: Composer-unused w przeglądzie okresowym
+- **Kontekst:** `server/composer.json` zawiera pakiety, których użycie nie jest oczywiste z kodu (np. `phpdocumentor/reflection-docblock`). Ręczne sprawdzanie, które zależności są zbędne, jest kosztowne i łatwe do przeoczenia.
+- **Opis:** Dodajemy `composer-unused/composer-unused` jako zależność deweloperską i cel `make unused-server`. Narzędzie uruchamiamy okresowo (przed aktualizacją zależności), a nie na każdym PR, bo analiza wymaga pełnego `vendor`. Wynik zapisujemy w opisie zadania lub PR, a usunięcie pakietu wymaga zielonych testów i Infection.
+- **Kryteria:**
+  - **Uruchomienie:** `make unused-server` wypisuje nieużywane pakiety bez błędów konfiguracji.
+  - **Decyzja:** każdy zgłoszony pakiet jest usunięty albo ma uzasadnienie w dokumentacji.
+  - **Testy:** po usunięciu zależności `make test-server` i Infection przechodzą.
+  - **Dokumentacja:** JAK-003 opisuje narzędzie jako okresowe, nie blokujące PR.
+
+## INFRA-018: Rector przed aktualizacjami PHP i Symfony
+- **Kontekst:** Projekt używa PHP 8.4 i Symfony 8.1; kolejne podniesienie wersji będzie wymagało wielu mechanicznych zmian w kodzie. Ręczne migracje są wolne i podatne na pominięcia.
+- **Opis:** Dodajemy Rectora jako zależność deweloperską z regułami dla PHP 8.4 i Symfony 8.1. Uruchamiamy go wyłącznie przed planowaną aktualizacją (`make rector-dry`), a wynik przeglądamy i commitujemy partiami. Nie dodajemy Rectora do CI, żeby nie blokować pracy propozycjami zmian.
+- **Stan (2026-11-18):** Rector 2.8 i reguły PHP 8.4 działają (`make rector-dry` pokazuje 8 plików do zmiany). Reguły Symfony 8.1 czekają na zgodną wersję `rector/rector-symfony`, która obecnie wspiera tylko Rector 1.x. Do tego czasu zadanie zostaje otwarte.
+- **Kryteria:**
+  - **Dry-run:** `make rector-dry` pokazuje propozycje bez zapisu plików.
+  - **Zakres:** reguły obejmują PHP 8.4 i Symfony 8.1, a katalog `vendor` jest wykluczony.
+  - **Bez CI:** Rector nie jest krokiem pipeline'u.
+  - **Dokumentacja:** JAK-003 opisuje Rectora jako narzędzie aktualizacyjne.
+
+## INFRA-019: Spłata baseline Psalma
+- **Kontekst:** Po podniesieniu Psalma do poziomu 3 i włączeniu `findUnusedCode` (`INFRA-015`, 2026-11-18) do `server/psalm-baseline.xml` trafiło 46 wpisów. To głównie `UnusedClass` i `PossiblyUnusedMethod` dla serwisów Symfony tworzonych przez kontener, klas testów uruchamianych przez PHPUnit oraz właściwości DTO wypełnianych przez Serializer. Psalm nie widzi tych wywołań, więc bez baseline poziom 3 blokowałby każdy PR.
+- **Opis:** Baseline traktujemy jak dług do spłaty, nie jak trwałe wyciszenie. Dla każdego wpisu ustalamy, czy kod jest naprawdę martwy (wtedy usuwamy), czy tylko niewidoczny dla Psalma (wtedy przenosimy wyjątek do `issueHandlers` z komentarzem albo adnotacją). Baseline nie może rosnąć: nowe zgłoszenia naprawiamy od razu, a `findUnusedBaselineEntry=true` pilnuje, żeby wpisy po naprawie znikały.
+- **Kryteria:**
+  - **Malejący dług:** liczba wpisów w `psalm-baseline.xml` spada przy każdej zmianie, która dotyka zgłoszonego pliku.
+  - **Martwy kod:** potwierdzone nieużywane klasy, metody i właściwości są usunięte, a testy i Infection przechodzą.
+  - **Fałszywe trafienia:** wyjątki dla kontenera, PHPUnit i Serializera są w `issueHandlers` albo w adnotacjach, nie w baseline.
+  - **CI:** `make lint-server` na poziomie 3 przechodzi bez nowych wpisów w baseline.
+  - **Dokumentacja:** JAK-005 opisuje aktualny rozmiar baseline i postęp spłaty.
+
+## INFRA-020: Detekcja złożoności funkcji w kliencie i backendzie
+- **Kontekst:** Po pomiarze #2 (`INFRA-006`) widać było, że Biome pilnuje tylko złożoności poznawczej, a backend nie ma odpowiednika mess detectora: Psalm sprawdza typy i martwy kod, ale nie cyklomatyczną, NPath, długość metod ani coupling. `GoogleIdTokenVerifier` miał metodę `verify()` o złożoności 18 i NPath 2882.
+- **Opis:** W Biome włączono `useMaxParams` (6) i `noExcessiveLinesPerFunction` (100 linii, tylko `src/`), a istniejące funkcje ponad limit trafiły do override z tym zadaniem na rozbicie. W backendzie dodano PHPMD 3 z rulesetem `codesize` i `design` (`server/phpmd.xml.dist`), cel `composer mess` oraz krok w `make lint-server` i CI. `GoogleIdTokenVerifier` rozbito na parser, walidację claims i `GoogleJwksProvider`, więc PHPMD przechodzi bez baseline. Coupling podniesiono z 13 do 14, bo weryfikator nadal orkiestruje JWT.
+- **Kryteria:**
+  - **Klient:** `make lint-client` przechodzi; nowa funkcja z 7 parametrami albo ponad 100 linii w pliku spoza override kończy się błędem.
+  - **Backend:** `make lint-server` uruchamia Psalm, php-cs-fixer i PHPMD; `composer mess` nie zgłasza naruszeń i nie tworzy baseline.
+  - **Zachowanie:** logowanie Google przechodzi testy (`GoogleLoginTest`, `AuthApiTest`) po rozbiciu weryfikatora.
+  - **Dokumentacja:** JAK-002, JAK-003, JAK-004 i `Infrastruktura.md` opisują nowe progi i cel `make lint-server`.
+
+## INFRA-021: Metryki backendu z PhpMetrics w raporcie jakości
+- **Kontekst:** `make metrics` mierzył czasy, bundle i pokrycie klienta oraz MSI z raportów, ale nie miał żadnego agregatu dla backendu. PHPMD pilnuje progów złożoności i couplingu, lecz nie pokazuje trendu utrzymywalności. Stabilny PhpMetrics 2.11 (wymaga `ext-dom`, `ext-tokenizer`, `nikic/php-parser`) wypełnia tę lukę raportem JSON.
+- **Opis:** PhpMetrics 2.11 dodano jako zależność dev Composera i skrypt `composer metrics`, który zapisuje `server/var/phpmetrics/metrics.json`. `scripts/metrics.sh` uruchamia ten skrypt przez `docker compose exec`, wyciąga z raportu średni Maintainability Index i dopisuje kolumnę `MI backendu` do `client/reports/metrics.md` oraz wiersza do tabeli w `specification/Jakosc-kodu.md`. PhpMetrics nie wchodzi do CI ani do `make lint-server` — pozostaje pomiarem na żądanie, bez progów.
+- **Kryteria:**
+  - **Backend:** `composer metrics` tworzy raport JSON w `server/var/phpmetrics/metrics.json` bez błędów; `make lint-server` nadal przechodzi.
+  - **Pomiar:** `make metrics` pokazuje w konsoli i w raporcie MI backendu; gdy raport jest niedostępny, wartość to `—`.
+  - **Zgodność:** `phpmetrics/phpmetrics:^2.11` jest w `require-dev` i w `composer.lock`; nie zmieniono progów PHPMD.
+  - **Dokumentacja:** JAK-001, JAK-003 i `Infrastruktura.md` opisują skrypt, lokalizację raportu i nową kolumnę.
+
+## INFRA-022: Agregaty jakości klienta z code-multivitals
+- **Kontekst:** `make metrics` miał już MI backendu z PhpMetrics, ale dla klienta zbierał tylko czasy, bundle, pokrycie `core/`, MSI, duplikaty i lint. Warstwy `view/` i `scenes/` pozostawały poza pokryciem i nie miały agregatu strukturalnego. ESLint z `typescript-eslint` odrzucono w JAK-003 z powodu braku wsparcia TS 7; code-multivitals 1.6.2 analizuje źródła przez `typescript-estree`, ale wymaga TypeScript 6 jako parsera, więc dostaje własny katalog instalacyjny.
+- **Opis:** `code-multivitals` zainstalowano w izolowanym `client/tools/code-metrics/` razem z TypeScript 6, bo główny TypeScript 7 nie udostępnia `TypeFlags` wymaganego przez `ts-api-utils`. Skrypt `npm run metrics` zapisuje `client/reports/multivitals.json` w profilu `default`; progi służą wyłącznie do raportowania — wysokie `--max-errors`/`--max-warnings` gwarantują kod wyjścia 0. `scripts/metrics.sh` wyciąga średni MI, Health Score oraz liczbę błędów i ostrzeżeń, dodaje kolumnę `MI klienta` do tabeli pomiarów i linię podsumowania do raportu. `make client-install` instaluje oba katalogi; narzędzie nie wchodzi do CI ani do `npm run quality`.
+- **Kryteria:**
+  - **Klient:** `npm run metrics` tworzy raport JSON dla `src/**/*.ts` mimo zgłoszonych naruszeń i kończy się kodem 0.
+  - **Pomiar:** `make metrics` pokazuje MI klienta w konsoli, w `client/reports/metrics.md` i w gotowym wierszu do JAK-005; gdy raport brakuje, wartość to `—`.
+  - **Zgodność:** `npm run quality`, `make lint-client` i `make verify` przechodzą bez zmian; nie zmieniono progów Biome.
+  - **Dokumentacja:** JAK-001, JAK-003, JAK-004, JAK-005 i `Infrastruktura.md` opisują narzędzie, brak bramki i nową kolumnę.

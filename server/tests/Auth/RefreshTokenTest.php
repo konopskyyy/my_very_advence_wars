@@ -12,6 +12,7 @@ use Symfony\Component\HttpKernel\KernelInterface;
 
 final class RefreshTokenTest extends WebTestCase
 {
+    #[\Override]
     public static function setUpBeforeClass(): void
     {
         self::deleteDatabase();

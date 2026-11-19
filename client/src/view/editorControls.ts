@@ -86,7 +86,9 @@ export class EditorControls {
 
   releaseKeys(): void {
     this.shiftDown = false;
-    this.keys.forEach((key) => key.reset());
+    this.keys.forEach((key) => {
+      key.reset();
+    });
   }
 
   clearHover(): void {

@@ -10,6 +10,6 @@ export default {
   reporters: ['clear-text', 'progress', 'json', 'html'],
   jsonReporter: { fileName: 'reports/mutation.json' },
   htmlReporter: { fileName: 'reports/mutation/index.html' },
-  thresholds: { high: 80, low: 60, break: 50 },
+  thresholds: { high: 85, low: 75, break: 70 },
   timeoutMS: 30000,
 };

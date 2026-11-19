@@ -1,0 +1,8 @@
+{
+  "name": "@my-very-advance-wars/code-metrics",
+  "private": true,
+  "devDependencies": {
+    "code-multivitals": "^1.6.2",
+    "typescript": "6.0.3"
+  }
+}

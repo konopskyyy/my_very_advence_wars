@@ -159,14 +159,14 @@ export class ScenarioCommandBar {
       ),
     );
 
-    this.logButton = this.makeBarButton(
-      '',
-      LOG_X,
-      barY + BUTTON_Y,
-      LOG_WIDTH,
-      BUTTON_HEIGHT,
-      this.handlers.onLog,
-    );
+    this.logButton = this.makeBarButton({
+      label: '',
+      x: LOG_X,
+      y: barY + BUTTON_Y,
+      width: LOG_WIDTH,
+      height: BUTTON_HEIGHT,
+      action: this.handlers.onLog,
+    });
     this.logLabel = this.register(
       this.scene.add
         .text(LOG_X + LOG_WIDTH / 2, barY + BUTTON_Y + BUTTON_HEIGHT / 2, 'DZIENNIK', {
@@ -179,23 +179,23 @@ export class ScenarioCommandBar {
         .setDepth(22),
     );
 
-    this.objectivesButton = this.makeBarButton(
-      'CELE',
-      OBJECTIVES_X,
-      barY + BUTTON_Y,
-      OBJECTIVES_WIDTH,
-      BUTTON_HEIGHT,
-      this.handlers.onObjectives,
-    );
+    this.objectivesButton = this.makeBarButton({
+      label: 'CELE',
+      x: OBJECTIVES_X,
+      y: barY + BUTTON_Y,
+      width: OBJECTIVES_WIDTH,
+      height: BUTTON_HEIGHT,
+      action: this.handlers.onObjectives,
+    });
 
-    this.airstrikeButton = this.makeBarButton(
-      'NALOT',
-      AIRSTRIKE_X,
-      barY + BUTTON_Y,
-      AIRSTRIKE_WIDTH,
-      BUTTON_HEIGHT,
-      this.handlers.onAirstrike,
-    );
+    this.airstrikeButton = this.makeBarButton({
+      label: 'NALOT',
+      x: AIRSTRIKE_X,
+      y: barY + BUTTON_Y,
+      width: AIRSTRIKE_WIDTH,
+      height: BUTTON_HEIGHT,
+      action: this.handlers.onAirstrike,
+    });
 
     this.recruitButton = this.register(
       this.scene.add
@@ -249,14 +249,14 @@ export class ScenarioCommandBar {
 
     const turnWidth = this.scene.scale.width - TURN_COLUMN_X - 16;
 
-    this.endTurnButton = this.makeBarButton(
-      'WYKONAJ TURĘ',
-      TURN_COLUMN_X,
-      barY + BUTTON_Y,
-      turnWidth,
-      BUTTON_HEIGHT,
-      this.handlers.onEndTurn,
-    );
+    this.endTurnButton = this.makeBarButton({
+      label: 'WYKONAJ TURĘ',
+      x: TURN_COLUMN_X,
+      y: barY + BUTTON_Y,
+      width: turnWidth,
+      height: BUTTON_HEIGHT,
+      action: this.handlers.onEndTurn,
+    });
 
     this.unitCard = new UnitCard(this.scene);
   }
@@ -398,15 +398,16 @@ export class ScenarioCommandBar {
     return link;
   }
 
-  private makeBarButton(
-    label: string,
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    action: () => void,
-    trigger: 'pointerdown' | 'pointerup' = 'pointerdown',
-  ): Phaser.GameObjects.Rectangle {
+  private makeBarButton(options: {
+    label: string;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    action: () => void;
+    trigger?: 'pointerdown' | 'pointerup';
+  }): Phaser.GameObjects.Rectangle {
+    const { label, x, y, width, height, action, trigger = 'pointerdown' } = options;
     const background = this.register(
       this.scene.add
         .rectangle(x, y, width, height, this.theme.accentDark, 1)

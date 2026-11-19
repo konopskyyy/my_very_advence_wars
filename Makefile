@@ -17,7 +17,7 @@ ADMINER_PORT ?= 18081
         shell console composer cache-clear migrate fixtures jwt-keys test-server \
         db-shell build rebuild client-install \
         install hooks electron electron-build electron-win electron-win-installer clean clean-all test mutation lint env run quality quality-client \
-        check client-build verify metrics metrics-mutation
+        check client-build verify metrics metrics-mutation coverage lint-client lint-server unused-server audit-server bundle-check rector-dry
 
 ## ——— Pomoc ————————————————————————————————————————————————
 
@@ -99,7 +99,7 @@ rebuild: ## Przebuduj bez cache i podnieś od nowa
 	$(COMPOSE) build --no-cache && $(COMPOSE) up -d
 
 client-install: ## Zainstaluj zależności klienta na hoście (opcjonalne)
-	cd client && npm install
+	cd client && npm install && npm install --prefix tools/code-metrics
 
 install: hooks ## Skopiuj .env.example -> .env (jeśli brak) i zainstaluj hooki git
 	@test -f .env || cp .env.example .env
@@ -129,8 +129,14 @@ electron-win-installer: client-build ## Zbuduj instalator NSIS dla Windows (wyma
 test: ## Testy klienta (Vitest, krótka końcówka)
 	@scripts/compact-run.sh --label test bash -c 'cd client && npm test'
 
+coverage: ## Pokrycie testów klienta (próg 80% dla core)
+	@scripts/compact-run.sh --label coverage bash -c 'cd client && npm run coverage'
+
 check: ## Typy i testy klienta (krótkie końcówki, pełny log w tmp)
 	@scripts/compact-run.sh --label check bash -c 'cd client && npx tsc --noEmit && npm test'
+
+lint-client: ## Lint klienta (Biome)
+	cd client && npm run lint
 
 client-build: ## Zbuduj klienta do server/public/game (kontener Node)
 	@scripts/compact-run.sh --label build -- $(COMPOSE) run --rm --no-deps client sh -c 'npm install && npm run build && chown -R $(HOST_UID):$(HOST_GID) /server/public/game'
@@ -143,7 +149,23 @@ mutation: ## Testy mutacyjne klienta (Stryker)
 lint: ## Sprawdź typy klienta (krótka końcówka)
 	@scripts/compact-run.sh --label lint bash -c 'cd client && npx tsc --noEmit'
 
-quality-client: ## Ocena jakości kodu klienta (typy, zależności, martwy kod, duplikaty)
+lint-server: ## Typy i styl backendu (Psalm + php-cs-fixer)
+	@scripts/compact-run.sh --label lint-server bash -c '$(COMPOSE) exec -T server composer lint && $(COMPOSE) exec -T server composer lint:style && $(COMPOSE) exec -T server composer mess'
+
+audit-server: ## Walidacja composer.json i audyt podatności
+	@$(COMPOSE) exec -T server composer validate --strict --no-check-publish
+	@$(COMPOSE) exec -T server composer audit --locked --no-interaction --abandoned=report
+
+unused-server: ## Nieużywane zależności Composera (przegląd okresowy)
+	@$(COMPOSE) exec -T server composer unused
+
+rector-dry: ## Propozycje Rectora bez zapisu (przed aktualizacją PHP/Symfony)
+	@$(COMPOSE) exec -T server composer rector:dry
+
+bundle-check: ## Budżet bundla JS (1600 KiB, po make client-build)
+	@node scripts/check-bundle-size.mjs
+
+quality-client: ## Ocena jakości kodu klienta (typy, lint, zależności, martwy kod, duplikaty)
 	cd client && npm run quality
 
 quality: quality-client ## Ocena jakości (alias)

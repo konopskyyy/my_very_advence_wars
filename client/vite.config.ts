@@ -31,6 +31,13 @@ export default defineConfig(({ command, mode }) => {
     },
     test: {
       include: ['tests/**/*.test.ts'],
+      coverage: {
+        provider: 'v8',
+        include: ['src/core/**/*.ts'],
+        reporter: ['text', 'json-summary'],
+        reportsDirectory: 'reports/coverage',
+        thresholds: { lines: 80 },
+      },
     },
   };
 });

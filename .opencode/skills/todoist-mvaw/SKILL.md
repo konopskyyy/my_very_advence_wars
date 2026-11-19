@@ -44,6 +44,7 @@ Używaj tylko istniejących etykiet:
 | `szybkie` | drobna poprawka do zrobienia od ręki |
 | `przeczytać` | lektura/analiza, nie implementacja |
 | `ai zrobione` | tylko gdy praca została już wykonana przez agenta |
+| `czeka` | zadanie odłożone: czeka na zewnętrzne wydanie, decyzję albo wolne moce |
 | `fastapp-user` | sprawy zewnętrznego narzędzia, nie kod gry |
 
 Nowej etykiety nie twórz bez wyraźnego polecenia.
