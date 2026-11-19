@@ -144,3 +144,4 @@ zadań do wykonania.
 | [[Zadania-opisy#GRA-107: Celowanie prawym przyciskiem i wskazówka o górach\|GRA-107]] | Celowanie prawym przyciskiem i wskazówka o górach | ✅ | GRA-106, ZAL-005, INTERF-005 |
 | [[Zadania-opisy#GRA-108: Suwaki i porządki w oprawie kampanii\|GRA-108]] | Suwaki i porządki w oprawie kampanii | ✅ | GRA-083, GRA-093, GRA-103, ZAL-011, INTERF-005, INTERF-007 |
 | [[Zadania-opisy#GRA-111: Replay bez powtarzania ruchu na końcu tury\|GRA-111]] | Replay bez powtarzania ruchu na końcu tury | ✅ | GRA-081, GRA-086, INTERF-005 |
+| [[Zadania-opisy#GRA-112: Pionowe karty w oknie KUP\|GRA-112]] | Pionowe karty w oknie KUP | ✅ | GRA-077, INTERF-005 |
