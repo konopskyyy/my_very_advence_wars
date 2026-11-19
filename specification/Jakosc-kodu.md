@@ -29,7 +29,7 @@ progi i procedurę; wdrożenie to osobne zadania.
 | Złożoność backendu | PHPMD 3 (`codesize`, `design`; CBO ≤ 14) | `server/src` | `make lint-server` | ✅ |
 | Agregaty backendu | PhpMetrics 2.11 (MI, Halstead, LOC, CBO) | `server/src` | `make metrics` | ❌ |
 | Agregaty klienta | code-multivitals 1.6 (MI, Health Score, CC, Halstead) | `client/src` | `make metrics` | ❌ |
-| Czasy i bundle | `scripts/check-bundle-size.mjs` (1600 KiB) | `server/public/game` | `make bundle-check` | ✅ |
+| Czasy i bundle | `scripts/check-bundle-size.mjs` (1600 KiB) | `server/public/game` | `make bundle-check` | ❌ |
 | Typy backendu | Psalm (poziom 3, `findUnusedCode`, baseline 46) | `server/src`, `tests` | `make lint-server` | ✅ |
 | Styl backendu | php-cs-fixer (`@Symfony`) | `server/src`, `tests`, `config` | `make lint-server` | ✅ |
 | Audyt zależności | Composer (`validate --strict`, `audit`) | `server/` | `make audit-server` | ✅ |
@@ -120,7 +120,7 @@ progi i procedurę; wdrożenie to osobne zadania.
 | MI backendu | brak progu (obserwacja) | `make metrics` (PhpMetrics) |
 | MI klienta | brak progu (obserwacja) | `make metrics` (code-multivitals) |
 | Duplikaty | ≤ 5% | jscpd (`threshold: 5`) |
-| Bundle JS | ≤ 1600 KiB | `make bundle-check` + CI |
+| Bundle JS | ≤ 1600 KiB | `make bundle-check` (ręcznie po buildzie) |
 | Naruszenia zależności | 0 | dependency-cruiser po naprawie TS 7 |
 | Typy i styl backendu | 0 błędów | Psalm poziom 3 + php-cs-fixer (`make lint-server`) |
 | Build klienta | ≤ 10 s | `make metrics` (miękki) |
@@ -359,16 +359,18 @@ są w uzupełnieniu do pomiaru #2 poniżej.
 
 1. Uruchom `make metrics` w katalogu głównym (około 15 s; pełny Stryker:
    `make metrics-mutation`, około 4 min).
-2. Skopiuj wiersz z końcówki do tabeli w JAK-005, nadając kolejny numer i datę.
-3. Dopisz w Sprawozdaniu różnice względem poprzedniego wiersza: co wzrosło,
+2. Po buildzie klienta uruchom `make bundle-check`, żeby sprawdzić próg
+   1600 KiB i odnotować zapas w Sprawozdaniu.
+3. Skopiuj wiersz z końcówki do tabeli w JAK-005, nadając kolejny numer i datę.
+4. Dopisz w Sprawozdaniu różnice względem poprzedniego wiersza: co wzrosło,
    co spadło, które progi z JAK-004 zostały przekroczone i dlaczego.
-4. Pełny raport zostaje w `client/reports/metrics.md` (katalog ignorowany przez
+5. Pełny raport zostaje w `client/reports/metrics.md` (katalog ignorowany przez
    git), a log w `${TMPDIR:-/tmp}/opencode/mvaw`.
-5. Mierz po refaktorze, po dodaniu testów i po zmianie zależności runtime —
+6. Mierz po refaktorze, po dodaniu testów i po zmianie zależności runtime —
    zawsze tą samą komendą i na tej samej maszynie.
 
-Pomiar nie jest częścią CI: `make metrics` uruchamia się ręcznie, a pipeline
-pozostaje przy typach, testach i mutacjach. Zmiana celów `Makefile` albo CI
+Pomiar nie jest częścią CI: `make metrics` i `make bundle-check` uruchamiają się
+ręcznie, a pipeline pozostaje przy typach, testach i mutacjach. Zmiana celów `Makefile` albo CI
 wymaga aktualizacji [[Infrastruktura]] w tym samym commicie.
 
 ## JAK-008: Ograniczenia

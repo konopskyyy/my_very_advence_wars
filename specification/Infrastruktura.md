@@ -417,8 +417,8 @@ pull requeście i ręcznie (`workflow_dispatch`).
 
 - **Zakres:** sześć równoległych jobów:
   - `client/` — **Typy i build** `npx tsc --noEmit`, `npm run unused` (Knip)
-    i `npm run build`, a po buildzie budżet bundla
-    (`scripts/check-bundle-size.mjs`, 1600 KiB),
+    i `npm run build`; budżet bundla jest pomiarem ręcznym
+    (`make bundle-check`), nie krokiem buildu,
   - `client/` — **Testy jednostkowe** `npm run coverage` (Vitest z pokryciem,
     próg 80% linii `src/core`); raport trafia do artefaktu `coverage-report`,
   - `client/` — **Testy mutacyjne** `npm run mutation` (Stryker, `client/stryker.config.mjs`),
@@ -439,7 +439,10 @@ pull requeście i ręcznie (`workflow_dispatch`).
   poniżej któregokolwiek obala job. Raporty (`server/var/infection/`: log, HTML,
   JSON, per-mutator) trafiają do artefaktu `server-mutation-report`. Testy w
   środowisku `test` korzystają z SQLite (`server/var/test.db`), więc job nie
-  potrzebuje MySQL.
+  potrzebuje MySQL. Wrapper `server/bin/phpunit` wczytuje autoload Composera
+  przed skryptem PHPUnita, a Infection używa go przez `phpUnit.customPath` —
+  bez tego Rector preloaduje własny php-parser i PHP kończy się błędem
+  `Cannot redeclare interface PhpParser\NodeVisitor`.
 - **Środowisko:** `ubuntu-latest`, Node 22 (jak obraz `node:22-alpine` w Compose)
   oraz PHP 8.4 z rozszerzeniami `ctype`, `iconv`, `pdo_sqlite`, `sqlite3`,
   `mbstring`, `dom`, `libxml`.
@@ -532,7 +535,7 @@ Compose bezpośrednio też działa — poniżej oba warianty.
 | Pomiar jakości na żądanie (czasy, rozmiar, pokrycie, mutacje, MI klienta i backendu) | `make metrics` | `scripts/metrics.sh` (`npm run metrics` + `docker compose exec -T server composer metrics`) |
 | Pomiar z pełnym Strykerem (około 4 min)   | `make metrics-mutation` | `scripts/metrics.sh --mutation` |
 | Ostatni pełny log komendy klienta        | —                     | `scripts/compact-run.sh --last`                           |
-| Typy i build klienta w CI                | —                     | GitHub Actions: `.github/workflows/ci.yml` (`tsc`, `npm run build`, budżet) |
+| Typy i build klienta w CI                | —                     | GitHub Actions: `.github/workflows/ci.yml` (`tsc`, `npm run unused`, `npm run build`) |
 | Testy z pokryciem w CI                   | —                     | GitHub Actions: `.github/workflows/ci.yml` (`npm run coverage`) |
 | Testy mutacyjne w CI                     | —                     | GitHub Actions: `.github/workflows/ci.yml` (`npm run mutation`) |
 | Testy backendu w CI                      | —                     | GitHub Actions: `.github/workflows/ci.yml` (`php bin/phpunit`) |
@@ -550,7 +553,9 @@ końcówka. Ostatni log otwiera `scripts/compact-run.sh --last`.
 
 Ocena jakości (`make quality-client`, `make lint-client`, `make lint-server`,
 `make audit-server`, `make bundle-check`) i pomiar (`make metrics`,
-`make metrics-mutation`) są uruchamiane ręcznie lub w CI. `make metrics` zapisuje
+`make metrics-mutation`) są uruchamiane ręcznie; część z nich ma odpowiednik
+w CI, ale `make bundle-check` pozostaje wyłącznie pomiarem jakości kodu.
+`make metrics` zapisuje
 raport do `client/reports/metrics.md` (katalog ignorowany przez git) i nie jest
 częścią CI; progi i tabele porównawcze opisuje [[Jakosc-kodu]]. Skrypt
 `composer metrics` (przez `docker compose exec -T server`) zapisuje raport

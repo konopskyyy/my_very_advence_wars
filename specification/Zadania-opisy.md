@@ -1108,14 +1108,14 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
   - **Bez formatowania:** `biome.json` nie włącza formattera, więc zmiana nie przepisuje istniejących plików.
   - **Dokumentacja:** JAK-002 i JAK-004 opisują Biome jako wdrożony linter.
 
-## INFRA-011: Budżet bundla klienta w CI
-- **Kontekst:** Bundle JS osiągnął 1598,4 KiB przy progu 1600 KiB z JAK-004, a pomiar jest ręczny (`make metrics`). Jedna nowa zależność runtime może przekroczyć limit bez żadnego sygnału w CI.
-- **Opis:** Dodajemy `scripts/check-bundle-size.mjs`, który sumuje pliki `.js` w `server/public/game` po buildzie i kończy się błędem powyżej 1600 KiB. Skrypt jest wołany przez `make bundle-check` oraz po kroku build w CI; wynik wypisuje zajętość i zapas do budżetu. Próg pozostaje w jednym miejscu w skrypcie i jest opisany w JAK-004.
+## INFRA-011: Budżet bundla klienta w pomiarze jakości
+- **Kontekst:** Bundle JS osiągnął 1598,4 KiB przy progu 1600 KiB z JAK-004. Liczenie rozmiaru w kroku buildu sprawiło, że CI odrzuca zmianę zależności przekraczającą próg, zanim zdąży ją ocenić przegląd jakości kodu.
+- **Opis:** `scripts/check-bundle-size.mjs` sumuje pliki `.js` w `server/public/game` po buildzie i kończy się błędem powyżej 1600 KiB. Skrypt pozostaje dostępny przez `make bundle-check` jako część ręcznego pomiaru jakości; job buildu w CI wykonuje tylko typy, martwe eksporty i build. Próg pozostaje w jednym miejscu w skrypcie i jest opisany w JAK-004.
 - **Kryteria:**
   - **Pomiar:** skrypt wypisuje sumę KiB plików `.js` bez gzip i różnicę do progu.
-  - **Egzekwowanie:** przekroczenie 1600 KiB kończy CI błędem po buildzie.
+  - **Egzekwowanie:** przekroczenie 1600 KiB kończy błędem `make bundle-check`, a nie job buildu w CI.
   - **Lokalnie:** `make bundle-check` działa po `make client-build`.
-  - **Dokumentacja:** JAK-004 i Infrastruktura opisują cel `make bundle-check` oraz krok CI.
+  - **Dokumentacja:** JAK-004 i Infrastruktura opisują cel `make bundle-check` jako pomiar ręczny, bez kroku w CI.
 
 ## INFRA-012: Porządki CI, Dependabot i wersja Node
 - **Kontekst:** `typecheck` i `build-client` wykonują to samo `npm ci` i `tsc`, żaden job poza mutacjami nie ma timeoutu, a równoległe push-e nie anulują starszych przebiegów. Brak też Dependabota i deklaracji wersji Node w `package.json`, mimo że CI używa Node 22.
@@ -1228,3 +1228,19 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
   - **Siatka:** karty układają się w kilku kolumnach i mieszczą się w lewej połowie okna przy 1280×720.
   - **Interakcja:** kliknięcie karty zmienia podgląd, przewijanie kółkiem działa, a zakup i komunikaty zostają bez zmian.
   - **Dokumentacja:** INTERF-005 opisuje pionowe karty w oknie KUP.
+
+## INFRA-023: Naprawa pipeline'u po aktualizacji zależności
+- **Kontekst:** Po dodaniu Rectora i aktualizacjach zależności z PR #51–#63 joby `Testy backendu` i `Testy mutacyjne backendu` kończyły się błędem `Cannot redeclare interface PhpParser\NodeVisitor`. Rector 2.8 preloaduje własny php-parser, gdy `PHPUNIT_COMPOSER_INSTALL` jest zdefiniowany przed autoloadem Composera. Psalm 7 uznał część wpisów baseline za nieużywane i obalał job `Jakość backendu`.
+- **Opis:** `server/bin/phpunit` wczytuje autoload Composera przed skryptem PHPUnita, a `server/infection.json5` wskazuje ten wrapper jako `phpUnit.customPath`. Baseline Psalma wygenerowano na nowo po aktualizacji do 7.x. Zmiany z otwartych PR-ów zebrano w jednym branchu: wersje akcji GitHub, pakiety klienta i Electrona oraz pakiety Composera razem z lockami.
+- **Kryteria:**
+  - **Backend:** `make test-server`, `make lint-server`, `make audit-server` i `composer mess` przechodzą, a Infection uruchamia `bin/phpunit`.
+  - **Klient:** `make verify` przechodzi (typy, testy i build).
+  - **Zgodność:** `composer validate --strict` nie wykrywa rozjazdu `composer.json` i `composer.lock`; `Infrastruktura.md` opisuje bootstrap PHPUnita w CI.
+
+## INFRA-024: Kolejna część aktualizacji zależności
+- **Kontekst:** Po zamknięciu PR #51–#63 bot wystawił kolejne aktualizacje: PHPUnit 13.4.7, doctrine-bundle 3.4.2, sonata-project/doctrine-orm-admin-bundle 4.22.0 i electron-builder 26.18.0.
+- **Opis:** Zmiany z PR #66–#69 zaaplikowano bezpośrednio na branchu z poprzednią pulą aktualizacji. Locki Composera i Electrona odzwierciedlają nowe wersje, a ograniczenia w `composer.json` i `electron/package.json` pozostają zgodne z nimi.
+- **Kryteria:**
+  - **Backend:** `composer validate --strict`, `make test-server` i `make lint-server` przechodzą z nowymi wersjami PHPUnita i Doctrine.
+  - **Electron:** `npm install --package-lock-only` w `electron/` nie zmienia locka, a `electron-builder` ma wersję co najmniej 26.18.0.
+  - **Porządki:** PR-y #66–#69 zostają zamknięte po przeniesieniu ich zmian do brancha.

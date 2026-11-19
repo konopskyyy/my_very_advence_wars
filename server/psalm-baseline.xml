@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<files psalm-version="6.20.5@e447b655502f2058630e6ee03f2ea1c3789fe166">
+<files psalm-version="7.11.0@9e0d0f88bc0a4233357a9aeb4b32da060644e196">
   <file src="src/Auth/Application/GoogleLogin/GoogleLoginHandler.php">
     <PossiblyUnusedMethod>
       <code><![CDATA[__construct]]></code>
@@ -26,6 +26,7 @@
       <code><![CDATA[hash]]></code>
     </PossiblyUnusedMethod>
     <UnusedProperty>
+      <code><![CDATA[$hash]]></code>
       <code><![CDATA[$id]]></code>
     </UnusedProperty>
   </file>
@@ -39,6 +40,9 @@
       <code><![CDATA[eraseCredentials]]></code>
       <code><![CDATA[googleSub]]></code>
     </PossiblyUnusedMethod>
+    <UnusedProperty>
+      <code><![CDATA[$googleSub]]></code>
+    </UnusedProperty>
   </file>
   <file src="src/Auth/Infrastructure/Google/GoogleIdTokenVerifier.php">
     <PossiblyUnusedMethod>
@@ -46,6 +50,9 @@
     </PossiblyUnusedMethod>
   </file>
   <file src="src/Auth/Infrastructure/Persistence/DoctrineRefreshTokenRepository.php">
+    <QueryBuilderSetParameter>
+      <code><![CDATA[new \DateTimeImmutable()]]></code>
+    </QueryBuilderSetParameter>
     <UnusedClass>
       <code><![CDATA[DoctrineRefreshTokenRepository]]></code>
     </UnusedClass>
@@ -75,11 +82,6 @@
       <code><![CDATA[UserProvider]]></code>
     </UnusedClass>
   </file>
-  <file src="src/Auth/Presentation/Admin/AdminSecurityController.php">
-    <UnusedClass>
-      <code><![CDATA[AdminSecurityController]]></code>
-    </UnusedClass>
-  </file>
   <file src="src/Auth/Presentation/Admin/UserAdmin.php">
     <UnusedClass>
       <code><![CDATA[UserAdmin]]></code>
@@ -89,56 +91,6 @@
     <UnusedClass>
       <code><![CDATA[ApiExceptionListener]]></code>
     </UnusedClass>
-  </file>
-  <file src="src/Auth/Presentation/Api/Controller/GoogleLoginController.php">
-    <UnusedClass>
-      <code><![CDATA[GoogleLoginController]]></code>
-    </UnusedClass>
-  </file>
-  <file src="src/Auth/Presentation/Api/Controller/LoginController.php">
-    <UnusedClass>
-      <code><![CDATA[LoginController]]></code>
-    </UnusedClass>
-  </file>
-  <file src="src/Auth/Presentation/Api/Controller/LogoutController.php">
-    <UnusedClass>
-      <code><![CDATA[LogoutController]]></code>
-    </UnusedClass>
-  </file>
-  <file src="src/Auth/Presentation/Api/Controller/MeController.php">
-    <UnusedClass>
-      <code><![CDATA[MeController]]></code>
-    </UnusedClass>
-  </file>
-  <file src="src/Auth/Presentation/Api/Controller/RefreshController.php">
-    <UnusedClass>
-      <code><![CDATA[RefreshController]]></code>
-    </UnusedClass>
-  </file>
-  <file src="src/Auth/Presentation/Api/Controller/RegisterController.php">
-    <UnusedClass>
-      <code><![CDATA[RegisterController]]></code>
-    </UnusedClass>
-  </file>
-  <file src="src/Auth/Presentation/Api/Request/GoogleLoginRequest.php">
-    <PossiblyUnusedMethod>
-      <code><![CDATA[__construct]]></code>
-    </PossiblyUnusedMethod>
-  </file>
-  <file src="src/Auth/Presentation/Api/Request/LoginRequest.php">
-    <PossiblyUnusedMethod>
-      <code><![CDATA[__construct]]></code>
-    </PossiblyUnusedMethod>
-  </file>
-  <file src="src/Auth/Presentation/Api/Request/RefreshRequest.php">
-    <PossiblyUnusedMethod>
-      <code><![CDATA[__construct]]></code>
-    </PossiblyUnusedMethod>
-  </file>
-  <file src="src/Auth/Presentation/Api/Request/RegisterRequest.php">
-    <PossiblyUnusedMethod>
-      <code><![CDATA[__construct]]></code>
-    </PossiblyUnusedMethod>
   </file>
   <file src="src/Auth/Presentation/Api/Response/AuthResponse.php">
     <PossiblyUnusedProperty>
@@ -154,15 +106,10 @@
       <code><![CDATA[$id]]></code>
     </PossiblyUnusedProperty>
   </file>
-  <file src="src/Controller/HomeController.php">
-    <UnusedClass>
-      <code><![CDATA[HomeController]]></code>
-    </UnusedClass>
-  </file>
   <file src="src/Kernel.php">
-    <UnusedMethod>
-      <code><![CDATA[getAllowedEnvs]]></code>
-    </UnusedMethod>
+    <UnusedClass>
+      <code><![CDATA[Kernel]]></code>
+    </UnusedClass>
   </file>
   <file src="src/Migrations/Version20261031111344.php">
     <UnusedClass>
@@ -172,36 +119,6 @@
   <file src="src/Migrations/Version20261118074339.php">
     <UnusedClass>
       <code><![CDATA[Version20261118074339]]></code>
-    </UnusedClass>
-  </file>
-  <file src="tests/Auth/AdminPanelTest.php">
-    <UnusedClass>
-      <code><![CDATA[AdminPanelTest]]></code>
-    </UnusedClass>
-  </file>
-  <file src="tests/Auth/AuthApiTest.php">
-    <UnusedClass>
-      <code><![CDATA[AuthApiTest]]></code>
-    </UnusedClass>
-  </file>
-  <file src="tests/Auth/Domain/User/EmailTest.php">
-    <UnusedClass>
-      <code><![CDATA[EmailTest]]></code>
-    </UnusedClass>
-  </file>
-  <file src="tests/Auth/GoogleLoginTest.php">
-    <UnusedClass>
-      <code><![CDATA[GoogleLoginTest]]></code>
-    </UnusedClass>
-  </file>
-  <file src="tests/Auth/RefreshTokenTest.php">
-    <UnusedClass>
-      <code><![CDATA[RefreshTokenTest]]></code>
-    </UnusedClass>
-  </file>
-  <file src="tests/Controller/HomeControllerTest.php">
-    <UnusedClass>
-      <code><![CDATA[HomeControllerTest]]></code>
     </UnusedClass>
   </file>
 </files>

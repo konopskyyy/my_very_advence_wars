@@ -25,7 +25,9 @@
     { "action": "shell", "resource": "grep *", "effect": "deny" },
     { "action": "shell", "resource": "egrep *", "effect": "deny" },
     { "action": "shell", "resource": "rg *", "effect": "deny" },
-    { "action": "shell", "resource": "find *", "effect": "deny" }
+    { "action": "shell", "resource": "find *", "effect": "deny" },
+
+    { "action": "shell", "resource": "*", "effect": "allow" }
   ],
 
   // Jeden wynik narzędzia to maks. ~2 tys. tokenów. Pliki większe niż 200

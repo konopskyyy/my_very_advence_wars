@@ -12,8 +12,8 @@
     "build:win:installer": "electron-builder --win"
   },
   "devDependencies": {
-    "electron": "^44.9.1",
-    "electron-builder": "^26.15.3"
+    "electron": "^45.3.3",
+    "electron-builder": "^26.18.0"
   },
   "build": {
     "appId": "com.myveryadvancewars.app",
