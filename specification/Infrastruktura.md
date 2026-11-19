@@ -415,16 +415,21 @@ Pipeline `.github/workflows/ci.yml` sprawdza typy i testy (jednostkowe oraz
 mutacyjne) klienta i backendu. Uruchamia się przy pushu na `master`, przy każdym
 pull requeście i ręcznie (`workflow_dispatch`).
 
-- **Zakres:** pięć równoległych jobów:
-  - `client/` — **TypeScript** `npx tsc --noEmit` (ten sam check co `make lint`),
-  - `client/` — **Testy jednostkowe** `npm test` (Vitest, `client/tests/`),
+- **Zakres:** sześć równoległych jobów:
+  - `client/` — **Typy i build** `npx tsc --noEmit`, `npm run unused` (Knip)
+    i `npm run build`, a po buildzie budżet bundla
+    (`scripts/check-bundle-size.mjs`, 1600 KiB),
+  - `client/` — **Testy jednostkowe** `npm run coverage` (Vitest z pokryciem,
+    próg 80% linii `src/core`); raport trafia do artefaktu `coverage-report`,
   - `client/` — **Testy mutacyjne** `npm run mutation` (Stryker, `client/stryker.config.mjs`),
   - `server/` — **Testy backendu** `php bin/phpunit` (PHPUnit, `server/tests/`),
   - `server/` — **Testy mutacyjne backendu** `vendor/bin/infection` (Infection,
-    `server/infection.json5`).
+    `server/infection.json5`),
+  - `server/` — **Jakość backendu** `composer validate --strict`, `composer audit`,
+    Psalm i php-cs-fixer `--dry-run`.
 - **Mutacje klienta:** Stryker mutuje wyłącznie `client/src/core/**/*.ts` (logika
   bez Phasera), testy uruchamia runnerem `@stryker-mutator/vitest-runner`. Progi:
-  `high 80`, `low 60`, `break 50` — wynik poniżej 50% obala job. Raport HTML
+  `high 85`, `low 75`, `break 70` — wynik poniżej 70% obala job. Raport HTML
   i JSON (`client/reports/`) trafia do artefaktu `mutation-report`.
   Konfiguracja wskazuje nieistniejący `tsconfig.stryker-disabled.json`, bo
   TypeScript 7 nie udostępnia API JS, na którym opiera się preprocesor
@@ -443,12 +448,19 @@ pull requeście i ręcznie (`workflow_dispatch`).
   `composer install` plik `server/.env` (ignorowany przez git) ze zmiennymi
   wymaganymi do bootu Symfony, a następnie generują parę kluczy JWT
   (`lexik:jwt:generate-keypair`). Joby mutacyjne dodatkowo publikują raport.
+  Job `server-quality` nie generuje kluczy — Psalm, php-cs-fixer, walidacja
+  i audyt Composera nie bootują aplikacji.
 - **Uprawnienia:** tylko odczyt repozytorium (`contents: read`).
+- **Stabilność:** każdy job ma `timeout-minutes` (15, mutacje 20), a `concurrency`
+  anuluje starszy przebieg tego samego brancha. Wersję Node pilnuje
+  `engines.node` w `client/package.json` (`>=22`).
+- **Aktualizacje:** `.github/dependabot.yml` co tydzień otwiera PR-y dla npm
+  (katalogi `/`, `/client`, `/electron`), Composera (`/server`) i GitHub Actions.
 - **Czas:** typy i testy jednostkowe trwają sekundy, mutacje klienta około
   4 minut (Stryker uruchamia testy dla każdego mutanta), mutacje backendu
   kilka sekund (kilkadziesiąt mutantów w `server/src/`).
 
-Pipeline nie buduje aplikacji ani nie uruchamia Dockera — nie wymaga sekretów.
+Pipeline nie uruchamia Dockera i nie wymaga sekretów.
 
 ---
 
@@ -503,34 +515,52 @@ Compose bezpośrednio też działa — poniżej oba warianty.
 | Paczka ZIP dla Windows (WSL)             | `make electron-win`   | `npm run build:win --prefix electron`                     |
 | Instalator Windows (wymaga wine)         | `make electron-win-installer` | `npm run build:win:installer --prefix electron`   |
 | Przebuduj klienta do `server/public/game` | `make client-build`  | `docker compose run --rm --no-deps client sh -c 'npm install && npm run build'` |
+| Zależności klienta na hoście | `make client-install` | `cd client && npm install && npm install --prefix tools/code-metrics` |
 | Testy klienta (Vitest)                   | `make test`           | `scripts/compact-run.sh --label test -- bash -c 'cd client && npm test'` |
+| Pokrycie klienta (próg 80% core)         | `make coverage`       | `scripts/compact-run.sh --label coverage -- bash -c 'cd client && npm run coverage'` |
 | Typy i testy klienta (krótki log)        | `make check`          | `scripts/compact-run.sh --label check -- bash -c 'cd client && npx tsc --noEmit && npm test'` |
 | Weryfikacja klienta (typy, testy, build) | `make verify`         | `make check && make client-build`                         |
 | Testy mutacyjne klienta (Stryker)        | `make mutation`       | `cd client && npm run mutation`                           |
 | Typy klienta (krótki log)                | `make lint`           | `scripts/compact-run.sh --label lint -- bash -c 'cd client && npx tsc --noEmit'` |
-| Ocena jakości klienta (typy, zależności, martwy kod, duplikaty) | `make quality-client` | `cd client && npm run quality` |
-| Pomiar jakości na żądanie (czasy, rozmiar, pokrycie, mutacje) | `make metrics` | `scripts/metrics.sh` |
+| Lint klienta (Biome)                     | `make lint-client`    | `cd client && npm run lint`                               |
+| Ocena jakości klienta (typy, lint, zależności, martwy kod, duplikaty) | `make quality-client` | `cd client && npm run quality` |
+| Typy, styl i złożoność backendu (Psalm + php-cs-fixer + PHPMD) | `make lint-server` | `scripts/compact-run.sh --label lint-server -- docker compose exec -T server composer lint && … lint:style && … mess` |
+| Walidacja i audyt Composera              | `make audit-server`   | `docker compose exec -T server composer validate --strict` + `composer audit` |
+| Nieużywane zależności Composera (okresowo) | `make unused-server` | `docker compose exec -T server composer unused`           |
+| Propozycje Rectora przed aktualizacją   | `make rector-dry`     | `docker compose exec -T server composer rector:dry`       |
+| Budżet bundla JS (1600 KiB)              | `make bundle-check`   | `node scripts/check-bundle-size.mjs`                      |
+| Pomiar jakości na żądanie (czasy, rozmiar, pokrycie, mutacje, MI klienta i backendu) | `make metrics` | `scripts/metrics.sh` (`npm run metrics` + `docker compose exec -T server composer metrics`) |
 | Pomiar z pełnym Strykerem (około 4 min)   | `make metrics-mutation` | `scripts/metrics.sh --mutation` |
 | Ostatni pełny log komendy klienta        | —                     | `scripts/compact-run.sh --last`                           |
-| Typy klienta w CI                        | —                     | GitHub Actions: `.github/workflows/ci.yml` (push, PR)     |
-| Testy jednostkowe w CI                   | —                     | GitHub Actions: `.github/workflows/ci.yml` (`npm test`)   |
+| Typy i build klienta w CI                | —                     | GitHub Actions: `.github/workflows/ci.yml` (`tsc`, `npm run build`, budżet) |
+| Testy z pokryciem w CI                   | —                     | GitHub Actions: `.github/workflows/ci.yml` (`npm run coverage`) |
 | Testy mutacyjne w CI                     | —                     | GitHub Actions: `.github/workflows/ci.yml` (`npm run mutation`) |
 | Testy backendu w CI                      | —                     | GitHub Actions: `.github/workflows/ci.yml` (`php bin/phpunit`) |
 | Testy mutacyjne backendu w CI            | —                     | GitHub Actions: `.github/workflows/ci.yml` (`vendor/bin/infection`) |
+| Jakość backendu w CI                     | —                     | GitHub Actions: `.github/workflows/ci.yml` (Psalm, php-cs-fixer, PHPMD, audyt) |
 | Zainstaluj hooki git (Husky)             | `make hooks`          | `npm install` w katalogu głównym                          |
 | Pomiń hooki przy commicie                | —                     | `HUSKY=0 git commit …` lub `git commit --no-verify`       |
 | Zatrzymaj wszystko                       | `make down`           | `docker compose down`                                     |
 | Zatrzymaj i usuń woluminy (⚠️ MySQL)      | `make clean`          | `docker compose down -v`                                  |
 
-Cele `test`, `check`, `lint`, `client-build` i `test-server` uruchamiają
-`scripts/compact-run.sh`: pełny log trafia do `${TMPDIR:-/tmp}/opencode/mvaw`
-i jest usuwany po dobie, a na ekran idzie tylko końcówka. Ostatni log otwiera
-`scripts/compact-run.sh --last`.
+Cele `test`, `coverage`, `check`, `lint`, `lint-server`, `client-build`
+i `test-server` uruchamiają `scripts/compact-run.sh`: pełny log trafia do
+`${TMPDIR:-/tmp}/opencode/mvaw` i jest usuwany po dobie, a na ekran idzie tylko
+końcówka. Ostatni log otwiera `scripts/compact-run.sh --last`.
 
-Ocena jakości (`make quality-client`) i pomiar (`make metrics`,
-`make metrics-mutation`) są uruchamiane ręcznie. `make metrics` zapisuje raport
-do `client/reports/metrics.md` (katalog ignorowany przez git) i nie jest
-częścią CI; progi i tabele porównawcze opisuje [[Jakosc-kodu]].
+Ocena jakości (`make quality-client`, `make lint-client`, `make lint-server`,
+`make audit-server`, `make bundle-check`) i pomiar (`make metrics`,
+`make metrics-mutation`) są uruchamiane ręcznie lub w CI. `make metrics` zapisuje
+raport do `client/reports/metrics.md` (katalog ignorowany przez git) i nie jest
+częścią CI; progi i tabele porównawcze opisuje [[Jakosc-kodu]]. Skrypt
+`composer metrics` (przez `docker compose exec -T server`) zapisuje raport
+PhpMetrics do `server/var/phpmetrics/metrics.json`, a `npm run metrics` raport
+code-multivitals do `client/reports/multivitals.json`. code-multivitals ma
+własny katalog `client/tools/code-metrics/` z TypeScript 6 — w głównym
+`client/` TypeScript 7 nie ma `TypeFlags`, którego wymaga `ts-api-utils`;
+instaluje go `make client-install`. Średnie MI trafiają do kolumn `MI klienta`
+i `MI backendu` w raporcie pomiaru. Oba pomiary są obserwacyjne — nie mają
+progów w CI.
 
 > [!tip] `make console` przyjmuje argumenty
 > `make console about`, `make console debug:router` itd. — argumenty po nazwie

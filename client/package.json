@@ -5,7 +5,10 @@
   "type": "module",
   "scripts": {
     "build": "tsc --noEmit && vite build",
+    "coverage": "vitest run --coverage",
     "dev": "vite",
+    "lint": "biome lint src tests",
+    "metrics": "node tools/code-metrics/node_modules/code-multivitals/dist/cli.js \"src/**/*.ts\" --reporter json --output reports/multivitals.json --max-errors 10000 --max-warnings 10000",
     "mutation": "stryker run",
     "preview": "vite preview",
     "test": "vitest run",
@@ -13,21 +16,26 @@
     "typecheck": "tsc --noEmit",
     "deps:check": "depcruise --config .dependency-cruiser.cjs src",
     "deps:graph": "depcruise --config .dependency-cruiser.cjs --output-type dot src | dot -T svg > dependency-graph.svg",
-    "unused": "ts-prune -p tsconfig.json",
+    "unused": "knip",
     "dup": "jscpd src tests",
-    "quality": "npm run typecheck && npm run deps:check && npm run unused && npm run dup"
+    "quality": "npm run typecheck && npm run lint && npm run deps:check && npm run unused && npm run dup"
+  },
+  "engines": {
+    "node": ">=22"
   },
   "dependencies": {
     "phaser": "^4.2.1",
     "sql.js": "^1.15.1"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.6.8",
     "@stryker-mutator/core": "^10.1.1",
     "@stryker-mutator/vitest-runner": "^10.1.1",
     "@types/sql.js": "^1.4.11",
+    "@vitest/coverage-v8": "^5.1.1",
     "dependency-cruiser": "^17.3.1",
     "jscpd": "^4.0.5",
-    "ts-prune": "^0.10.3",
+    "knip": "^6.45.1",
     "typescript": "^7.0.2",
     "vite": "^8.3.4",
     "vitest": "^5.0.5"

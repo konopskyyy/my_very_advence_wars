@@ -1,0 +1,100 @@
+{
+	"$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+	"files": {
+		"includes": ["src/**/*.ts", "tests/**/*.ts"]
+	},
+	"formatter": {
+		"enabled": false
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"preset": "recommended",
+			"complexity": {
+				"noExcessiveCognitiveComplexity": {
+					"level": "error",
+					"options": {
+						"maxAllowedComplexity": 15
+					}
+				},
+				"useMaxParams": {
+					"level": "error",
+					"options": {
+						"max": 6
+					}
+				},
+				"noExcessiveLinesPerFunction": {
+					"level": "error",
+					"options": {
+						"maxLines": 100
+					}
+				},
+				"useOptionalChain": "off"
+			},
+			"style": {
+				"noNonNullAssertion": "off",
+				"useImportType": "off"
+			},
+			"suspicious": {
+				"noExplicitAny": "off"
+			}
+		}
+	},
+	"overrides": [
+		{
+			"includes": [
+				"src/core/map/movement.ts",
+				"src/core/plan/plan.ts",
+				"src/core/plan/simulate.ts",
+				"src/core/tutorial.ts",
+				"src/scenes/ScenarioMenuScene.ts",
+				"src/scenes/ScenarioScene.ts",
+				"src/storage/planSerialization.ts",
+				"src/view/editorControls.ts",
+				"src/view/mapCard.ts",
+				"src/view/menuBackdrop.ts",
+				"src/view/planTimeline.ts",
+				"src/view/recruitDialog.ts",
+				"src/view/unitCard.ts",
+				"src/view/unitLayer.ts"
+			],
+			"linter": {
+				"rules": {
+					"complexity": {
+						"noExcessiveCognitiveComplexity": "off"
+					}
+				}
+			}
+		},
+		{
+			"includes": [
+				"src/scenes/ScenarioScene.ts",
+				"src/view/accountOverlay.ts",
+				"src/view/authScreen.ts",
+				"src/view/editorPanel.ts",
+				"src/view/objectivesPanel.ts",
+				"src/view/pauseMenu.ts",
+				"src/view/planTimeline.ts",
+				"src/view/recruitDialog.ts",
+				"src/view/scenarioCommandBar.ts"
+			],
+			"linter": {
+				"rules": {
+					"complexity": {
+						"noExcessiveLinesPerFunction": "off"
+					}
+				}
+			}
+		},
+		{
+			"includes": ["tests/**/*.ts"],
+			"linter": {
+				"rules": {
+					"complexity": {
+						"noExcessiveLinesPerFunction": "off"
+					}
+				}
+			}
+		}
+	]
+}

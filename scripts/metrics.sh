@@ -7,6 +7,7 @@ set -uo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 cd "$ROOT" || exit 1
+read -r -a COMPOSE_CMD <<<"${COMPOSE:-docker compose}"
 CLIENT="$ROOT/client"
 REPORT_DIR="$CLIENT/reports"
 LOG_DIR=${TMPDIR:-/tmp}/opencode/mvaw
@@ -21,7 +22,8 @@ Użycie:
 
 Mierzy na żądanie: czasy typów, testów i builda, rozmiar bundla, linie
 i eksporty plików, pokrycie (gdy provider jest zainstalowany), duplikaty,
-naruszenia zależności oraz MSI z istniejącego raportu Strykera.
+naruszenia zależności, MSI z istniejącego raportu Strykera, MI klienta
+z code-multivitals oraz MI backendu z PhpMetrics.
 
   --mutation   najpierw uruchom pełny Stryker (około 4 minut)
 
@@ -52,14 +54,20 @@ mkdir -p "$REPORT_DIR" "$LOG_DIR"
 LAST_SECONDS='—'
 LAST_STATUS=0
 
-run_timed() {
-  local start end
+run_timed_in() {
+  local start end dir
+  dir=$1
+  shift
   start=$(date +%s%N)
-  (cd "$CLIENT" && "$@") >>"$LOG_FILE" 2>&1
+  (cd "$dir" && "$@") >>"$LOG_FILE" 2>&1
   LAST_STATUS=$?
   end=$(date +%s%N)
   LAST_SECONDS=$(awk -v ns="$((end - start))" 'BEGIN { printf "%.1f", ns / 1000000000 }')
   return 0
+}
+
+run_timed() {
+  run_timed_in "$CLIENT" "$@"
 }
 
 json_metric() {
@@ -154,6 +162,44 @@ if [ -d "$CLIENT/node_modules/@vitest/coverage-v8" ]; then
   COVERAGE=$(json_metric "$REPORT_DIR/coverage/coverage-summary.json" 'data.total?.lines?.pct')
 fi
 
+KNIP='—'
+KNIP_RAW=$(cd "$CLIENT" && npx knip --reporter json 2>>"$LOG_FILE")
+if [ -n "$KNIP_RAW" ]; then
+  KNIP=$(node -e '
+    try {
+      const data = JSON.parse(process.argv[1]);
+      console.log(data.issues?.length ?? "—");
+    } catch {
+      console.log("—");
+    }
+  ' "$KNIP_RAW")
+fi
+
+BIOME_ERRORS='—'
+BIOME_WARNINGS='—'
+BIOME_RAW=$(cd "$CLIENT" && npx biome lint src tests --reporter=json 2>>"$LOG_FILE")
+if [ -n "$BIOME_RAW" ]; then
+  BIOME_STATS=$(node -e '
+    try {
+      const data = JSON.parse(process.argv[1]);
+      console.log(`${data.summary?.errors ?? "—"} ${data.summary?.warnings ?? "—"}`);
+    } catch {
+      console.log("— —");
+    }
+  ' "$BIOME_RAW")
+  read -r BIOME_ERRORS BIOME_WARNINGS <<<"$BIOME_STATS"
+fi
+
+CLIENT_MI='—'
+CLIENT_HEALTH='—'
+CLIENT_ERRORS='—'
+CLIENT_WARNINGS='—'
+run_timed npm run metrics
+CLIENT_MI=$(json_metric "$REPORT_DIR/multivitals.json" 'data.averageMI')
+CLIENT_HEALTH=$(json_metric "$REPORT_DIR/multivitals.json" 'data.averageHealthScore')
+CLIENT_ERRORS=$(json_metric "$REPORT_DIR/multivitals.json" 'data.errorCount')
+CLIENT_WARNINGS=$(json_metric "$REPORT_DIR/multivitals.json" 'data.warnCount')
+
 MUTATION='—'
 if [ -f "$REPORT_DIR/mutation.json" ]; then
   MUTATION=$(json_metric "$REPORT_DIR/mutation.json" '
@@ -180,6 +226,21 @@ for candidate in "$ROOT/server/var/infection/infection.json" "$ROOT/server/var/i
     [ "$SERVER_MUTATION" != '—' ] && break
   fi
 done
+
+SERVER_MI='—'
+if command -v "${COMPOSE_CMD[0]}" >/dev/null 2>&1; then
+  run_timed_in "$ROOT" "${COMPOSE_CMD[@]}" exec -T server composer metrics
+  SERVER_MI=$(json_metric "$ROOT/server/var/phpmetrics/metrics.json" '
+    (() => {
+      const values = Object.values(data)
+        .map((item) => item?.mi)
+        .filter((mi) => typeof mi === "number");
+      return values.length
+        ? values.reduce((sum, mi) => sum + mi, 0) / values.length
+        : undefined;
+    })()
+  ')
+fi
 
 (cd "$CLIENT" && npx jscpd src tests --reporters json --output reports/jscpd --silent) >>"$LOG_FILE" 2>&1
 DUPLICATION=$(json_metric "$REPORT_DIR/jscpd/jscpd-report.json" 'data.statistics?.total?.percentage')
@@ -210,19 +271,25 @@ BUNDLE_KB=$(pl "$BUNDLE_KB")
 COVERAGE=$(pl "$COVERAGE")
 MUTATION=$(pl "$MUTATION")
 SERVER_MUTATION=$(pl "$SERVER_MUTATION")
+CLIENT_MI=$(pl "$CLIENT_MI")
+CLIENT_HEALTH=$(pl "$CLIENT_HEALTH")
+SERVER_MI=$(pl "$SERVER_MI")
 DUPLICATION=$(pl "$DUPLICATION")
 
-ROW="| — | $DATE | $COMMIT | $TYPECHECK | $TESTS | $BUILD | $BUNDLE_KB | $COVERAGE | $MUTATION | $SERVER_MUTATION | $MAX_LINES | $MAX_EXPORTS | $DUPLICATION | $DEP_VIOLATIONS |"
+ROW="| — | $DATE | $COMMIT | $TYPECHECK | $TESTS | $BUILD | $BUNDLE_KB | $COVERAGE | $MUTATION | $SERVER_MUTATION | $CLIENT_MI | $SERVER_MI | $MAX_LINES | $MAX_EXPORTS | $DUPLICATION | $DEP_VIOLATIONS |"
 
 cat >"$REPORT_DIR/metrics.md" <<EOF
 # Pomiar jakości — $DATE ($COMMIT)
 
-| Typy (s) | Testy (s) | Build (s) | Bundle JS (KiB) | Pokrycie core (%) | MSI klient (%) | MSI serwer (%) | Max plik (linie) | Eksporty (max) | Duplikaty (%) | Naruszenia depcruise |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| $TYPECHECK | $TESTS | $BUILD | $BUNDLE_KB | $COVERAGE | $MUTATION | $SERVER_MUTATION | $MAX_LINES | $MAX_EXPORTS | $DUPLICATION | $DEP_VIOLATIONS |
+| Typy (s) | Testy (s) | Build (s) | Bundle JS (KiB) | Pokrycie core (%) | MSI klient (%) | MSI serwer (%) | MI klienta | MI backendu | Max plik (linie) | Eksporty (max) | Duplikaty (%) | Naruszenia depcruise |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| $TYPECHECK | $TESTS | $BUILD | $BUNDLE_KB | $COVERAGE | $MUTATION | $SERVER_MUTATION | $CLIENT_MI | $SERVER_MI | $MAX_LINES | $MAX_EXPORTS | $DUPLICATION | $DEP_VIOLATIONS |
 
 - Linie w \`client/src\`: $TOTAL_LINES
 - Największe pliki: $TOP_FILES
+- Nieużywane (Knip): $KNIP zgłoszeń
+- Lint (Biome): $BIOME_ERRORS błędów, $BIOME_WARNINGS ostrzeżeń
+- Agregaty klienta (code-multivitals): MI $CLIENT_MI, Health $CLIENT_HEALTH, $CLIENT_ERRORS błędów, $CLIENT_WARNINGS ostrzeżeń (profil \`default\`, bez bramki)
 - Pełny log: $LOG_FILE
 - Wiersz do tabeli w \`specification/Jakosc-kodu.md\`:
 
@@ -234,8 +301,9 @@ EOF
 echo
 echo "[metrics] $DATE ($COMMIT)"
 echo "  typy: ${TYPECHECK}s | testy: ${TESTS}s | build: ${BUILD}s"
-echo "  bundle JS: ${BUNDLE_KB} KiB | pokrycie core: ${COVERAGE}% | MSI klient: ${MUTATION}% | MSI serwer: ${SERVER_MUTATION}%"
+echo "  bundle JS: ${BUNDLE_KB} KiB | pokrycie core: ${COVERAGE}% | MSI klient: ${MUTATION}% | MSI serwer: ${SERVER_MUTATION}% | MI klienta: ${CLIENT_MI} | MI backendu: ${SERVER_MI}"
 echo "  max plik: ${MAX_LINES} linii | max eksportów: ${MAX_EXPORTS} | duplikaty: ${DUPLICATION}% | naruszenia depcruise: ${DEP_VIOLATIONS}"
+echo "  nieużywane: ${KNIP} | lint: ${BIOME_ERRORS} błędów, ${BIOME_WARNINGS} ostrzeżeń"
 echo "  największe pliki: $TOP_FILES"
 echo "  raport: $REPORT_DIR/metrics.md"
 echo

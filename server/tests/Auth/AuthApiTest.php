@@ -22,6 +22,7 @@ final class AuthApiTest extends WebTestCase
         self::bootKernel();
 
         $entityManager = self::getContainer()->get(EntityManagerInterface::class);
+        self::assertInstanceOf(EntityManagerInterface::class, $entityManager);
         $schemaTool = new SchemaTool($entityManager);
         $schemaTool->createSchema($entityManager->getMetadataFactory()->getAllMetadata());
 
@@ -173,7 +174,10 @@ final class AuthApiTest extends WebTestCase
 
         self::assertResponseStatusCodeSame(201);
 
-        return $this->decode($client->getResponse()->getContent());
+        /** @var array{token: string, user: array{id: int, email: string, createdAt: string}} $payload */
+        $payload = $this->decode($client->getResponse()->getContent());
+
+        return $payload;
     }
 
     /**

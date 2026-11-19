@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<files psalm-version="6.20.5@e447b655502f2058630e6ee03f2ea1c3789fe166">
+  <file src="src/Auth/Application/GoogleLogin/GoogleLoginHandler.php">
+    <PossiblyUnusedMethod>
+      <code><![CDATA[__construct]]></code>
+    </PossiblyUnusedMethod>
+  </file>
+  <file src="src/Auth/Application/LoginUser/LoginUserHandler.php">
+    <PossiblyUnusedMethod>
+      <code><![CDATA[__construct]]></code>
+    </PossiblyUnusedMethod>
+  </file>
+  <file src="src/Auth/Application/Refresh/RefreshTokenManager.php">
+    <PossiblyUnusedMethod>
+      <code><![CDATA[__construct]]></code>
+    </PossiblyUnusedMethod>
+  </file>
+  <file src="src/Auth/Application/RegisterUser/RegisterUserHandler.php">
+    <PossiblyUnusedMethod>
+      <code><![CDATA[__construct]]></code>
+    </PossiblyUnusedMethod>
+  </file>
+  <file src="src/Auth/Domain/RefreshToken/RefreshToken.php">
+    <PossiblyUnusedMethod>
+      <code><![CDATA[expiresAt]]></code>
+      <code><![CDATA[hash]]></code>
+    </PossiblyUnusedMethod>
+    <UnusedProperty>
+      <code><![CDATA[$id]]></code>
+    </UnusedProperty>
+  </file>
+  <file src="src/Auth/Domain/User/Email.php">
+    <PossiblyUnusedMethod>
+      <code><![CDATA[equals]]></code>
+    </PossiblyUnusedMethod>
+  </file>
+  <file src="src/Auth/Domain/User/User.php">
+    <PossiblyUnusedMethod>
+      <code><![CDATA[eraseCredentials]]></code>
+      <code><![CDATA[googleSub]]></code>
+    </PossiblyUnusedMethod>
+  </file>
+  <file src="src/Auth/Infrastructure/Google/GoogleIdTokenVerifier.php">
+    <PossiblyUnusedMethod>
+      <code><![CDATA[__construct]]></code>
+    </PossiblyUnusedMethod>
+  </file>
+  <file src="src/Auth/Infrastructure/Persistence/DoctrineRefreshTokenRepository.php">
+    <UnusedClass>
+      <code><![CDATA[DoctrineRefreshTokenRepository]]></code>
+    </UnusedClass>
+  </file>
+  <file src="src/Auth/Infrastructure/Persistence/DoctrineUserRepository.php">
+    <UnusedClass>
+      <code><![CDATA[DoctrineUserRepository]]></code>
+    </UnusedClass>
+  </file>
+  <file src="src/Auth/Infrastructure/Persistence/Fixtures/UserFixtures.php">
+    <UnusedClass>
+      <code><![CDATA[UserFixtures]]></code>
+    </UnusedClass>
+  </file>
+  <file src="src/Auth/Infrastructure/Security/LexikTokenIssuer.php">
+    <UnusedClass>
+      <code><![CDATA[LexikTokenIssuer]]></code>
+    </UnusedClass>
+  </file>
+  <file src="src/Auth/Infrastructure/Security/SymfonyPasswordHasher.php">
+    <UnusedClass>
+      <code><![CDATA[SymfonyPasswordHasher]]></code>
+    </UnusedClass>
+  </file>
+  <file src="src/Auth/Infrastructure/Security/UserProvider.php">
+    <UnusedClass>
+      <code><![CDATA[UserProvider]]></code>
+    </UnusedClass>
+  </file>
+  <file src="src/Auth/Presentation/Admin/AdminSecurityController.php">
+    <UnusedClass>
+      <code><![CDATA[AdminSecurityController]]></code>
+    </UnusedClass>
+  </file>
+  <file src="src/Auth/Presentation/Admin/UserAdmin.php">
+    <UnusedClass>
+      <code><![CDATA[UserAdmin]]></code>
+    </UnusedClass>
+  </file>
+  <file src="src/Auth/Presentation/Api/ApiExceptionListener.php">
+    <UnusedClass>
+      <code><![CDATA[ApiExceptionListener]]></code>
+    </UnusedClass>
+  </file>
+  <file src="src/Auth/Presentation/Api/Controller/GoogleLoginController.php">
+    <UnusedClass>
+      <code><![CDATA[GoogleLoginController]]></code>
+    </UnusedClass>
+  </file>
+  <file src="src/Auth/Presentation/Api/Controller/LoginController.php">
+    <UnusedClass>
+      <code><![CDATA[LoginController]]></code>
+    </UnusedClass>
+  </file>
+  <file src="src/Auth/Presentation/Api/Controller/LogoutController.php">
+    <UnusedClass>
+      <code><![CDATA[LogoutController]]></code>
+    </UnusedClass>
+  </file>
+  <file src="src/Auth/Presentation/Api/Controller/MeController.php">
+    <UnusedClass>
+      <code><![CDATA[MeController]]></code>
+    </UnusedClass>
+  </file>
+  <file src="src/Auth/Presentation/Api/Controller/RefreshController.php">
+    <UnusedClass>
+      <code><![CDATA[RefreshController]]></code>
+    </UnusedClass>
+  </file>
+  <file src="src/Auth/Presentation/Api/Controller/RegisterController.php">
+    <UnusedClass>
+      <code><![CDATA[RegisterController]]></code>
+    </UnusedClass>
+  </file>
+  <file src="src/Auth/Presentation/Api/Request/GoogleLoginRequest.php">
+    <PossiblyUnusedMethod>
+      <code><![CDATA[__construct]]></code>
+    </PossiblyUnusedMethod>
+  </file>
+  <file src="src/Auth/Presentation/Api/Request/LoginRequest.php">
+    <PossiblyUnusedMethod>
+      <code><![CDATA[__construct]]></code>
+    </PossiblyUnusedMethod>
+  </file>
+  <file src="src/Auth/Presentation/Api/Request/RefreshRequest.php">
+    <PossiblyUnusedMethod>
+      <code><![CDATA[__construct]]></code>
+    </PossiblyUnusedMethod>
+  </file>
+  <file src="src/Auth/Presentation/Api/Request/RegisterRequest.php">
+    <PossiblyUnusedMethod>
+      <code><![CDATA[__construct]]></code>
+    </PossiblyUnusedMethod>
+  </file>
+  <file src="src/Auth/Presentation/Api/Response/AuthResponse.php">
+    <PossiblyUnusedProperty>
+      <code><![CDATA[$refreshToken]]></code>
+      <code><![CDATA[$token]]></code>
+      <code><![CDATA[$user]]></code>
+    </PossiblyUnusedProperty>
+  </file>
+  <file src="src/Auth/Presentation/Api/Response/UserResponse.php">
+    <PossiblyUnusedProperty>
+      <code><![CDATA[$createdAt]]></code>
+      <code><![CDATA[$email]]></code>
+      <code><![CDATA[$id]]></code>
+    </PossiblyUnusedProperty>
+  </file>
+  <file src="src/Controller/HomeController.php">
+    <UnusedClass>
+      <code><![CDATA[HomeController]]></code>
+    </UnusedClass>
+  </file>
+  <file src="src/Kernel.php">
+    <UnusedMethod>
+      <code><![CDATA[getAllowedEnvs]]></code>
+    </UnusedMethod>
+  </file>
+  <file src="src/Migrations/Version20261031111344.php">
+    <UnusedClass>
+      <code><![CDATA[Version20261031111344]]></code>
+    </UnusedClass>
+  </file>
+  <file src="src/Migrations/Version20261118074339.php">
+    <UnusedClass>
+      <code><![CDATA[Version20261118074339]]></code>
+    </UnusedClass>
+  </file>
+  <file src="tests/Auth/AdminPanelTest.php">
+    <UnusedClass>
+      <code><![CDATA[AdminPanelTest]]></code>
+    </UnusedClass>
+  </file>
+  <file src="tests/Auth/AuthApiTest.php">
+    <UnusedClass>
+      <code><![CDATA[AuthApiTest]]></code>
+    </UnusedClass>
+  </file>
+  <file src="tests/Auth/Domain/User/EmailTest.php">
+    <UnusedClass>
+      <code><![CDATA[EmailTest]]></code>
+    </UnusedClass>
+  </file>
+  <file src="tests/Auth/GoogleLoginTest.php">
+    <UnusedClass>
+      <code><![CDATA[GoogleLoginTest]]></code>
+    </UnusedClass>
+  </file>
+  <file src="tests/Auth/RefreshTokenTest.php">
+    <UnusedClass>
+      <code><![CDATA[RefreshTokenTest]]></code>
+    </UnusedClass>
+  </file>
+  <file src="tests/Controller/HomeControllerTest.php">
+    <UnusedClass>
+      <code><![CDATA[HomeControllerTest]]></code>
+    </UnusedClass>
+  </file>
+</files>
