@@ -1,3 +1,4 @@
+import { DEFAULT_LOADOUT, loadoutPrice, type Loadout } from './loadout';
 import { UNIT_DEFS, UNIT_KINDS, type UnitKind } from './units';
 
 export const DEFAULT_FUNDS = 1000;
@@ -62,19 +63,28 @@ export function unitCost(kind: UnitKind): number {
   return UNIT_DEFS[kind].cost;
 }
 
+export function totalCost(kind: UnitKind, loadout: Loadout = DEFAULT_LOADOUT): number {
+  return unitCost(kind) + loadoutPrice(loadout);
+}
+
 export function remainingPurchases(state: RecruitmentState, kind: UnitKind): number | undefined {
   const limit = state.limits[kind];
 
   return limit === undefined ? undefined : Math.max(0, limit - (state.purchased[kind] ?? 0));
 }
 
-export function canAfford(state: RecruitmentState, kind: UnitKind): boolean {
-  return state.funds >= unitCost(kind);
+export function canAfford(
+  state: RecruitmentState,
+  kind: UnitKind,
+  loadout: Loadout = DEFAULT_LOADOUT,
+): boolean {
+  return state.funds >= totalCost(kind, loadout);
 }
 
 export function recruitmentDenial(
   state: RecruitmentState,
   kind: UnitKind,
+  loadout: Loadout = DEFAULT_LOADOUT,
 ): RecruitmentDenial | undefined {
   if (!state.allowedKinds.includes(kind)) {
     return 'forbidden';
@@ -86,20 +96,21 @@ export function recruitmentDenial(
     return 'limit';
   }
 
-  return canAfford(state, kind) ? undefined : 'funds';
+  return canAfford(state, kind, loadout) ? undefined : 'funds';
 }
 
 export function purchaseUnit(
   state: RecruitmentState,
   kind: UnitKind,
+  loadout: Loadout = DEFAULT_LOADOUT,
 ): RecruitmentState | undefined {
-  if (recruitmentDenial(state, kind)) {
+  if (recruitmentDenial(state, kind, loadout)) {
     return undefined;
   }
 
   let next: RecruitmentState = {
     ...state,
-    funds: state.funds - unitCost(kind),
+    funds: state.funds - totalCost(kind, loadout),
     purchased: { ...state.purchased, [kind]: (state.purchased[kind] ?? 0) + 1 },
   };
 

@@ -147,3 +147,4 @@ zadań do wykonania.
 | [[Zadania-opisy#GRA-112: Pionowe karty w oknie KUP\|GRA-112]] | Pionowe karty w oknie KUP | ✅ | GRA-077, INTERF-005 |
 | [[Zadania-opisy#INFRA-023: Naprawa pipeline'u po aktualizacji zależności\|INFRA-023]] | Naprawa pipeline'u po aktualizacji zależności | ✅ | INFRA-003, INFRA-018, `specification/Infrastruktura.md` |
 | [[Zadania-opisy#INFRA-024: Kolejna część aktualizacji zależności\|INFRA-024]] | Kolejna część aktualizacji zależności | ✅ | INFRA-023, `specification/Infrastruktura.md` |
+| [[Zadania-opisy#GRA-113: Wybór uzbrojenia w oknie KUP\|GRA-113]] | Wybór uzbrojenia w oknie KUP | ✅ | GRA-077, GRA-112, INTERF-005, ZAL-004 |

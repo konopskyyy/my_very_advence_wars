@@ -16,6 +16,7 @@ import {
   type RecruitmentState,
 } from '../core/recruitment';
 import { attackTiles } from '../core/ranges';
+import type { Loadout } from '../core/loadout';
 import {
   addAttack,
   attackIntent,
@@ -339,7 +340,7 @@ export class ScenarioScene extends Phaser.Scene {
       onRemoveLast: () => this.removeSelectedLastAction(),
     });
     this.recruitDialog = new RecruitDialog(this, {
-      onRecruit: (kind) => this.recruit(kind),
+      onRecruit: (kind, loadout) => this.recruit(kind, loadout),
       onSelectKind: (kind) => {
         this.recruitKind = kind;
         this.refreshHud();
@@ -856,12 +857,12 @@ export class ScenarioScene extends Phaser.Scene {
     this.refreshTutorial();
   }
 
-  private recruit(kind: UnitKind): boolean {
+  private recruit(kind: UnitKind, loadout: Loadout): boolean {
     if (this.finished || this.playing || this.turn.faction !== this.playerFaction) {
       return false;
     }
 
-    const next = purchaseUnit(this.recruitment, kind);
+    const next = purchaseUnit(this.recruitment, kind, loadout);
 
     if (!next) {
       return false;
