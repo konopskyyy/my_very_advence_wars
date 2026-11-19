@@ -23,7 +23,7 @@ jobs:
         working-directory: client
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
       - name: Node
         uses: actions/setup-node@v5
         with:
@@ -51,7 +51,7 @@ jobs:
         working-directory: client
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
       - name: Node
         uses: actions/setup-node@v5
         with:
@@ -80,7 +80,7 @@ jobs:
         working-directory: client
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
       - name: Node
         uses: actions/setup-node@v5
         with:
@@ -109,7 +109,7 @@ jobs:
         working-directory: server
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
       - name: PHP
         uses: shivammathur/setup-php@v2
         with:
@@ -150,7 +150,7 @@ jobs:
         working-directory: server
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
       - name: PHP
         uses: shivammathur/setup-php@v2
         with:
@@ -199,7 +199,7 @@ jobs:
         working-directory: server
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
       - name: PHP
         uses: shivammathur/setup-php@v2
         with:
