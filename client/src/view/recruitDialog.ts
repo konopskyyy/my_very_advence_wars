@@ -7,15 +7,21 @@ import {
   type UnitKind,
 } from '../core/units';
 import {
+  DEFAULT_LOADOUT,
+  PRIMARY_WEAPONS,
+  SECONDARY_WEAPONS,
+  type Loadout,
+} from '../core/loadout';
+import {
   recruitmentDenial,
   remainingPurchases,
-  unitCost,
+  totalCost,
   type RecruitmentDenial,
   type RecruitmentState,
 } from '../core/recruitment';
 import { FACTION_THEMES, type FactionTheme } from './factionTheme';
 import { formatPoints, formatRange } from './format';
-import { recruitPortraitKey } from './recruitPortrait';
+import { loadoutPortraitKey, recruitPortraitKey } from './recruitPortrait';
 
 const PANEL_MAX_WIDTH = 1160;
 const PANEL_MAX_HEIGHT = 640;
@@ -29,16 +35,6 @@ const CARD_GAP = 10;
 const CARD_PORTRAIT_TOP = 12;
 const CARD_PORTRAIT_SIZE = 148;
 
-interface EquipmentOption {
-  readonly label: string;
-  readonly color: number;
-}
-
-interface EquipmentSlot {
-  readonly label: string;
-  readonly options: readonly EquipmentOption[];
-}
-
 interface UnitRow {
   readonly kind: UnitKind;
   readonly container: Phaser.GameObjects.Container;
@@ -48,16 +44,12 @@ interface UnitRow {
   readonly price: Phaser.GameObjects.Text;
 }
 
-interface LoadoutChip {
-  readonly background: Phaser.GameObjects.Rectangle;
-  readonly text: Phaser.GameObjects.Text;
-}
-
-interface LoadoutRow {
-  readonly kind: UnitKind;
+interface LoadoutDropdown {
   readonly slotIndex: number;
-  readonly label: Phaser.GameObjects.Text;
-  readonly chips: readonly LoadoutChip[];
+  readonly field: Phaser.GameObjects.Rectangle;
+  readonly value: Phaser.GameObjects.Text;
+  readonly popup: Phaser.GameObjects.Rectangle;
+  readonly options: readonly Phaser.GameObjects.Text[];
 }
 
 const UNIT_ROLES: Record<UnitKind, string> = {
@@ -71,218 +63,14 @@ const UNIT_ROLES: Record<UnitKind, string> = {
 };
 
 export interface RecruitDialogHandlers {
-  readonly onRecruit?: (kind: UnitKind) => boolean;
+  readonly onRecruit?: (kind: UnitKind, loadout: Loadout) => boolean;
   readonly onSelectKind?: (kind: UnitKind) => void;
 }
 
-const LOADOUTS: Record<UnitKind, readonly EquipmentSlot[]> = {
-  infantry: [
-    {
-      label: 'Kask',
-      options: [
-        { label: 'Standard', color: 0x4a86e8 },
-        { label: 'Stalowy', color: 0x9aa0a6 },
-        { label: 'Zwiad', color: 0x3f6b4a },
-      ],
-    },
-    {
-      label: 'Mundur',
-      options: [
-        { label: 'Polowy', color: 0x3f6b4a },
-        { label: 'Miejski', color: 0x4a5568 },
-        { label: 'Pustynny', color: 0x8a7445 },
-      ],
-    },
-    {
-      label: 'Broń',
-      options: [
-        { label: 'Karabin', color: 0x2b2f33 },
-        { label: 'Strzelba', color: 0x5a3a22 },
-        { label: 'Snajper', color: 0x1f3a2a },
-      ],
-    },
-    {
-      label: 'Plecak',
-      options: [
-        { label: 'Standard', color: 0x5a4632 },
-        { label: 'Medyczny', color: 0x8a2f2f },
-        { label: 'Zwiad', color: 0x2f4f6b },
-      ],
-    },
-  ],
-  tank: [
-    {
-      label: 'Pancerz',
-      options: [
-        { label: 'Stal', color: 0x5a6570 },
-        { label: 'Reaktywny', color: 0x3f4f5f },
-        { label: 'Ciężki', color: 0x2b3540 },
-      ],
-    },
-    {
-      label: 'Wieża',
-      options: [
-        { label: 'Standard', color: 0x4a5568 },
-        { label: 'Szybka', color: 0x6b7a8a },
-        { label: 'Ciężka', color: 0x2f3a45 },
-      ],
-    },
-    {
-      label: 'Działo',
-      options: [
-        { label: '75 mm', color: 0x2b2f33 },
-        { label: '105 mm', color: 0x3a2f25 },
-        { label: '120 mm', color: 0x1f2a33 },
-      ],
-    },
-    {
-      label: 'Gąsienice',
-      options: [
-        { label: 'Szerokie', color: 0x2b2f33 },
-        { label: 'Wąskie', color: 0x4a4f55 },
-        { label: 'Teren', color: 0x3f4a2f },
-      ],
-    },
-  ],
-  artillery: [
-    {
-      label: 'Lufa',
-      options: [
-        { label: 'Standard', color: 0x2b2f33 },
-        { label: 'Długa', color: 0x3a3f45 },
-        { label: 'Ciężka', color: 0x1f2429 },
-      ],
-    },
-    {
-      label: 'Podstawa',
-      options: [
-        { label: 'Stal', color: 0x4a5568 },
-        { label: 'Lekka', color: 0x6b7a8a },
-        { label: 'Ciężka', color: 0x2f3a45 },
-      ],
-    },
-    {
-      label: 'Amunicja',
-      options: [
-        { label: 'Odłamek', color: 0x8a7445 },
-        { label: 'Przeciw', color: 0x4a2f1f },
-        { label: 'Dymna', color: 0x4a5568 },
-      ],
-    },
-    {
-      label: 'Celownik',
-      options: [
-        { label: 'Optyka', color: 0x2f4f6b },
-        { label: 'Standard', color: 0x3f4a2f },
-        { label: 'Precyzja', color: 0x1f3a2a },
-      ],
-    },
-  ],
-  scout: [
-    {
-      label: 'Kask',
-      options: [
-        { label: 'Zwiad', color: 0x3f6b4a },
-        { label: 'Stalowy', color: 0x9aa0a6 },
-        { label: 'Polowy', color: 0x4a5568 },
-      ],
-    },
-    {
-      label: 'Mundur',
-      options: [
-        { label: 'Zwiad', color: 0x3f6b4a },
-        { label: 'Miejski', color: 0x4a5568 },
-        { label: 'Pustynny', color: 0x8a7445 },
-      ],
-    },
-    {
-      label: 'Karabin',
-      options: [
-        { label: 'Lekki', color: 0x2b2f33 },
-        { label: 'Maszyn', color: 0x3a2f25 },
-        { label: 'Snajper', color: 0x1f3a2a },
-      ],
-    },
-    {
-      label: 'Wyposażenie',
-      options: [
-        { label: 'Radio', color: 0x2f4f6b },
-        { label: 'Apteczka', color: 0x8a2f2f },
-        { label: 'Lornetka', color: 0x5a4632 },
-      ],
-    },
-  ],
-  bazooka: [
-    {
-      label: 'Kask',
-      options: [
-        { label: 'Standard', color: 0x4a86e8 },
-        { label: 'Stalowy', color: 0x9aa0a6 },
-        { label: 'Polowy', color: 0x3f6b4a },
-      ],
-    },
-    {
-      label: 'Mundur',
-      options: [
-        { label: 'Polowy', color: 0x3f6b4a },
-        { label: 'Miejski', color: 0x4a5568 },
-        { label: 'Pustynny', color: 0x8a7445 },
-      ],
-    },
-    {
-      label: 'Wyrzutnia',
-      options: [
-        { label: 'Standard', color: 0x2b2f33 },
-        { label: 'Lekka', color: 0x5a3a22 },
-        { label: 'Ciężka', color: 0x1f2a33 },
-      ],
-    },
-    {
-      label: 'Amunicja',
-      options: [
-        { label: 'Standard', color: 0x8a7445 },
-        { label: 'Kumulacyjna', color: 0x4a2f1f },
-        { label: 'Zapalająca', color: 0x8a2f2f },
-      ],
-    },
-  ],
-  bomber: [
-    {
-      label: 'Kadłub',
-      options: [
-        { label: 'Standard', color: 0x4a86e8 },
-        { label: 'Pancerz', color: 0x9aa0a6 },
-        { label: 'Polowy', color: 0x3f6b4a },
-      ],
-    },
-    {
-      label: 'Uzbrojenie',
-      options: [
-        { label: 'Bomba 25', color: 0xe2b248 },
-        { label: 'Zapalająca', color: 0x8a2f2f },
-        { label: 'Odłamkowa', color: 0x8a7445 },
-      ],
-    },
-  ],
-  helicopter: [
-    {
-      label: 'Kadłub',
-      options: [
-        { label: 'Standard', color: 0x5b6a3a },
-        { label: 'Pancerz', color: 0x9aa0a6 },
-        { label: 'Polowy', color: 0x3f6b4a },
-      ],
-    },
-    {
-      label: 'Uzbrojenie',
-      options: [
-        { label: 'Działo 18', color: 0xe2b248 },
-        { label: 'Rakiety', color: 0x8a2f2f },
-        { label: 'Karabin', color: 0x2b2f33 },
-      ],
-    },
-  ],
-};
+const LOADOUT_SLOTS = [
+  { label: 'Broń podstawowa', options: PRIMARY_WEAPONS },
+  { label: 'Broń dodatkowa', options: SECONDARY_WEAPONS },
+] as const;
 
 function denialMessage(denial: RecruitmentDenial): string {
   switch (denial) {
@@ -300,7 +88,8 @@ export class RecruitDialog {
     Phaser.GameObjects.GameObject & Phaser.GameObjects.Components.Visible
   > = [];
   private readonly rows: UnitRow[] = [];
-  private readonly loadoutRows: LoadoutRow[] = [];
+  private readonly dropdowns: LoadoutDropdown[] = [];
+  private openDropdown: number | null = null;
   private readonly overlay: Phaser.GameObjects.Rectangle;
   private readonly panel: Phaser.GameObjects.Rectangle;
   private readonly accent: Phaser.GameObjects.Rectangle;
@@ -329,15 +118,9 @@ export class RecruitDialog {
   private readonly recruitNotice: Phaser.GameObjects.Text;
   private readonly balanceText: Phaser.GameObjects.Text;
   private readonly closeButton: Phaser.GameObjects.Rectangle;
-  private readonly selection: Record<UnitKind, number[]> = {
-    infantry: [0, 0, 0, 0],
-    tank: [0, 0, 0, 0],
-    artillery: [0, 0, 0, 0],
-    scout: [0, 0, 0, 0],
-    bazooka: [0, 0, 0, 0],
-    bomber: [0, 0],
-    helicopter: [0, 0],
-  };
+  private readonly selection: Record<UnitKind, Loadout> = Object.fromEntries(
+    UNIT_KINDS.map((kind) => [kind, { ...DEFAULT_LOADOUT }]),
+  ) as Record<UnitKind, Loadout>;
   private theme: FactionTheme = FACTION_THEMES.blue;
   private faction: FactionId = 'blue';
   private selectedKind: UnitKind = 'infantry';
@@ -593,54 +376,87 @@ export class RecruitDialog {
         .setDepth(DEPTH + 2),
     );
 
-    const loadoutBaseY = portraitY + 178;
+    const loadoutBaseY = portraitY + 166;
 
-    for (const kind of UNIT_KINDS) {
-      LOADOUTS[kind].forEach((slot, slotIndex) => {
-        const y = loadoutBaseY + slotIndex * 50;
-        const label = this.register(
+    LOADOUT_SLOTS.forEach((slot, slotIndex) => {
+      const optionCount = slot.options.length;
+      const y = loadoutBaseY + slotIndex * 120;
+
+      this.register(
+        scene.add
+          .text(infoX, y, slot.label.toUpperCase(), {
+            fontFamily: 'monospace',
+            fontSize: '10px',
+            color: this.theme.accentSoft,
+          })
+          .setScrollFactor(0)
+          .setDepth(DEPTH + 3),
+      );
+
+      const field = this.register(
+        scene.add
+          .rectangle(infoX, y + 18, infoWidth, 26, this.theme.accentDark, 1)
+          .setOrigin(0, 0)
+          .setScrollFactor(0)
+          .setDepth(DEPTH + 3)
+          .setStrokeStyle(1, this.theme.divider, 1)
+          .setInteractive({ useHandCursor: true }),
+      );
+
+      const value = this.register(
+        scene.add
+          .text(infoX + 10, y + 31, '', {
+            fontFamily: 'monospace',
+            fontSize: '11px',
+            color: '#f2f5f7',
+          })
+          .setScrollFactor(0)
+          .setDepth(DEPTH + 4),
+      );
+
+      this.register(
+        scene.add
+          .text(infoX + infoWidth - 22, y + 28, '▾', {
+            fontFamily: 'monospace',
+            fontSize: '14px',
+            color: this.theme.accentSoft,
+          })
+          .setScrollFactor(0)
+          .setDepth(DEPTH + 4),
+      );
+
+      const popup = this.register(
+        scene.add
+          .rectangle(infoX, y + 44, infoWidth, optionCount * 24 + 6, 0x0b0e12, 1)
+          .setOrigin(0, 0)
+          .setScrollFactor(0)
+          .setDepth(DEPTH + 4)
+          .setStrokeStyle(1, this.theme.accentBright, 0.9)
+          .setVisible(false),
+      );
+
+      const options = slot.options.map((option, optionIndex) => {
+        const text = this.register(
           scene.add
-            .text(infoX, y + 4, slot.label, {
+            .text(infoX + 10, y + 48 + optionIndex * 24, option.label, {
               fontFamily: 'monospace',
-              fontSize: '10px',
+              fontSize: '11px',
               color: '#9fb0a5',
             })
             .setScrollFactor(0)
-            .setDepth(DEPTH + 3),
+            .setDepth(DEPTH + 5)
+            .setInteractive({ useHandCursor: true })
+            .setVisible(false),
         );
-        const chips = slot.options.map((option, optionIndex) => {
-          const x = infoX + 82 + optionIndex * 60;
-          const background = this.register(
-            scene.add
-              .rectangle(x, y, 56, 22, this.theme.accentDark, 1)
-              .setOrigin(0, 0)
-              .setScrollFactor(0)
-              .setDepth(DEPTH + 2)
-              .setStrokeStyle(1, this.theme.divider, 1)
-              .setInteractive({ useHandCursor: true }),
-          );
-          const text = this.register(
-            scene.add
-              .text(x + 28, y + 11, option.label, {
-                fontFamily: 'monospace',
-                fontSize: '9px',
-                color: '#9fb0a5',
-              })
-              .setOrigin(0.5)
-              .setScrollFactor(0)
-              .setDepth(DEPTH + 3),
-          );
 
-          background.on('pointerdown', () =>
-            this.selectOption(kind, slotIndex, optionIndex),
-          );
+        text.on('pointerdown', () => this.selectWeapon(slotIndex, optionIndex));
 
-          return { background, text };
-        });
-
-        this.loadoutRows.push({ kind, slotIndex, label, chips });
+        return text;
       });
-    }
+
+      field.on('pointerdown', () => this.toggleDropdown(slotIndex));
+      this.dropdowns.push({ slotIndex, field, value, popup, options });
+    });
 
     const buttonY = panelY + panelHeight - 32;
 
@@ -736,12 +552,14 @@ export class RecruitDialog {
       : (recruitment.allowedKinds[0] ?? this.selectedKind);
     this.applyTheme(FACTION_THEMES[faction]);
     this.setVisible(true);
+    this.closeDropdowns();
     this.render();
     this.handlers.onSelectKind?.(this.selectedKind);
   }
 
   hide(): void {
     this.open = false;
+    this.closeDropdowns();
     this.setVisible(false);
   }
 
@@ -750,14 +568,15 @@ export class RecruitDialog {
       return;
     }
 
-    const denial = recruitmentDenial(this.recruitment, this.selectedKind);
+    const loadout = this.selection[this.selectedKind];
+    const denial = recruitmentDenial(this.recruitment, this.selectedKind, loadout);
 
     if (denial) {
       this.recruitNotice.setText(denialMessage(denial));
       return;
     }
 
-    if (this.handlers.onRecruit(this.selectedKind)) {
+    if (this.handlers.onRecruit(this.selectedKind, loadout)) {
       this.hide();
       return;
     }
@@ -779,22 +598,36 @@ export class RecruitDialog {
     this.render();
   }
 
-  private selectOption(kind: UnitKind, slotIndex: number, optionIndex: number): void {
-    const selection = this.selection[kind];
+  private toggleDropdown(slotIndex: number): void {
+    this.openDropdown = this.openDropdown === slotIndex ? null : slotIndex;
+    this.renderDropdowns();
+  }
 
-    if (!selection || kind !== this.selectedKind) {
-      return;
-    }
+  private closeDropdowns(): void {
+    this.openDropdown = null;
+    this.renderDropdowns();
+  }
 
-    selection[slotIndex] = optionIndex;
-    this.renderPortrait();
-    this.renderLoadout();
+  private selectWeapon(slotIndex: number, optionIndex: number): void {
+    const loadout = this.selection[this.selectedKind];
+    const next: Loadout =
+      slotIndex === 0
+        ? { ...loadout, primary: (PRIMARY_WEAPONS[optionIndex] ?? PRIMARY_WEAPONS[0]).id }
+        : {
+            ...loadout,
+            secondary: (SECONDARY_WEAPONS[optionIndex] ?? SECONDARY_WEAPONS[0]).id,
+          };
+
+    this.selection[this.selectedKind] = next;
+    this.openDropdown = null;
+    this.render();
   }
 
   private render(): void {
     this.renderRows();
     this.renderUnit();
     this.renderRecruitment();
+    this.renderDropdowns();
   }
 
   private renderRows(): void {
@@ -874,7 +707,9 @@ export class RecruitDialog {
       return 'WYCZERPANE';
     }
 
-    return remaining === undefined ? `${unitCost(kind)}` : `${unitCost(kind)} · ×${remaining}`;
+    const price = totalCost(kind, this.selection[kind]);
+
+    return remaining === undefined ? `${price}` : `${price} · ×${remaining}`;
   }
 
   private renderRecruitment(): void {
@@ -884,14 +719,15 @@ export class RecruitDialog {
 
     this.balanceText.setText(`KONTO ${this.recruitment.funds}`);
 
-    const denial = recruitmentDenial(this.recruitment, this.selectedKind);
+    const loadout = this.selection[this.selectedKind];
+    const denial = recruitmentDenial(this.recruitment, this.selectedKind, loadout);
     const disabled = denial !== undefined;
 
     this.recruitButton
       .setFillStyle(disabled ? 0x2a2f33 : this.theme.accentDark, 1)
       .setStrokeStyle(1, disabled ? this.theme.divider : this.theme.accentBright, 0.8);
     this.recruitLabel
-      .setText(`KUP JEDNOSTKĘ · ${unitCost(this.selectedKind)}`)
+      .setText(`KUP JEDNOSTKĘ · ${totalCost(this.selectedKind, loadout)}`)
       .setColor(disabled ? '#7a848a' : '#ffffff');
     this.recruitNotice.setText(disabled ? denialMessage(denial) : '');
   }
@@ -906,48 +742,35 @@ export class RecruitDialog {
       [
         `HP ${stats.maxHp}/${stats.maxHp} · ATK ${stats.attack} · DEF ${stats.defense}${ammo}`,
         `Ruch ${formatPoints(stats.moveRange)} · Wzrok ${formatRange(stats.visionRange)} · Strzał ${formatRange(stats.attackRange)}`,
-        `Cena ${unitCost(this.selectedKind)}`,
+        `Cena ${totalCost(this.selectedKind, this.selection[this.selectedKind])}`,
       ].join('\n'),
     );
     this.renderPortrait();
-    this.renderLoadout();
   }
 
   private renderPortrait(): void {
-    const slots = LOADOUTS[this.selectedKind];
-    const selection = this.selection[this.selectedKind] ?? [];
-    const accent = slots[1]?.options[selection[1] ?? 0]?.color ?? this.theme.divider;
-
-    this.portraitImage.setTexture(recruitPortraitKey(this.selectedKind));
-    this.portraitFrame.setStrokeStyle(2, accent, 1);
+    this.portraitImage.setTexture(loadoutPortraitKey(this.selection[this.selectedKind]));
   }
 
-  private renderLoadout(): void {
-    const selection = this.selection[this.selectedKind] ?? [];
+  private renderDropdowns(): void {
+    const loadout = this.selection[this.selectedKind];
 
-    for (const row of this.loadoutRows) {
-      const visible = row.kind === this.selectedKind;
-      const options = LOADOUTS[row.kind][row.slotIndex]?.options ?? [];
+    this.dropdowns.forEach((dropdown) => {
+      const isPrimary = dropdown.slotIndex === 0;
+      const selectedId = isPrimary ? loadout.primary : loadout.secondary;
+      const options = isPrimary ? PRIMARY_WEAPONS : SECONDARY_WEAPONS;
+      const selectedIndex = options.findIndex((option) => option.id === selectedId);
+      const open = this.openDropdown === dropdown.slotIndex;
 
-      row.label.setVisible(visible);
-
-      row.chips.forEach((chip, optionIndex) => {
-        chip.background.setVisible(visible);
-        chip.text.setVisible(visible);
-
-        if (!visible) {
-          return;
-        }
-
-        const active = selection[row.slotIndex] === optionIndex;
-        const color = options[optionIndex]?.color ?? this.theme.accentDark;
-
-        chip.background
-          .setFillStyle(active ? color : this.theme.accentDark, 1)
-          .setStrokeStyle(1, active ? this.theme.accentBright : this.theme.divider, 1);
-        chip.text.setColor(active ? '#ffffff' : '#9fb0a5');
+      dropdown.value.setText(options[selectedIndex]?.label ?? options[0].label);
+      dropdown.field
+        .setStrokeStyle(1, open ? this.theme.accentBright : this.theme.divider, 1)
+        .setFillStyle(open ? this.theme.accent : this.theme.accentDark, 0.9);
+      dropdown.popup.setVisible(open);
+      dropdown.options.forEach((text, optionIndex) => {
+        text.setVisible(open).setColor(optionIndex === selectedIndex ? '#ffffff' : '#9fb0a5');
       });
-    }
+    });
   }
 
   private applyTheme(theme: FactionTheme): void {
@@ -963,6 +786,7 @@ export class RecruitDialog {
     this.closeButton
       .setFillStyle(theme.accentDark, 1)
       .setStrokeStyle(1, theme.accentBright, 0.8);
+    this.renderDropdowns();
   }
 
   private setVisible(visible: boolean): void {

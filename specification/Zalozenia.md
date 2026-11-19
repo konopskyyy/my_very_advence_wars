@@ -66,6 +66,10 @@
 
 - `cost` to cena zakupu jednostki w oknie `KUP`; budżet scenariusza
   i limity zakupów opisuje ADR-046.
+- Cenę całkowitą powiększają dopłaty za wybrane uzbrojenie: broń podstawowa
+  to karabin (0), bazooka (+100) albo snajperka (+75), a dodatkowa pistolet (0)
+  albo granaty (+30). Domyślny zestaw karabin + pistolet nie zmienia ceny
+  bazowej. Wybór broni nie zmienia statystyk jednostki opisanych w tabeli.
 
 - `moveRange` to budżet ruchu na turę, `visionRange` — promień widzenia,
   a `attackRange` — maksymalna odległość ataku.

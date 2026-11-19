@@ -6,6 +6,7 @@ import {
   purchaseUnit,
   recruitmentDenial,
   remainingPurchases,
+  totalCost,
   unitCost,
 } from '../../src/core/recruitment';
 import { PIERWSZE_KROKI } from '../../src/core/campaign/missions/pierwsze-kroki';
@@ -17,6 +18,33 @@ describe('ceny jednostek', () => {
     expect(unitCost('scout')).toBe(150);
     expect(unitCost('tank')).toBe(300);
     expect(unitCost('artillery')).toBe(250);
+  });
+});
+
+describe('cena z wybranym uzbrojeniem', () => {
+  it('dodaje dopłatę do ceny bazowej', () => {
+    expect(totalCost('infantry')).toBe(100);
+    expect(totalCost('infantry', { primary: 'bazooka', secondary: 'pistol' })).toBe(200);
+    expect(totalCost('tank', { primary: 'rifle', secondary: 'grenades' })).toBe(330);
+  });
+
+  it('pobiera cenę całkowitą z konta', () => {
+    const state = createRecruitment({ funds: 1000 });
+    const bought = purchaseUnit(state, 'infantry', {
+      primary: 'sniper',
+      secondary: 'grenades',
+    });
+
+    expect(bought?.funds).toBe(795);
+  });
+
+  it('odmawia zakupu, gdy zabraknie środków na dopłatę', () => {
+    const state = createRecruitment({ funds: 180 });
+
+    expect(recruitmentDenial(state, 'infantry')).toBeUndefined();
+    expect(recruitmentDenial(state, 'infantry', { primary: 'bazooka', secondary: 'pistol' })).toBe(
+      'funds',
+    );
   });
 });
 

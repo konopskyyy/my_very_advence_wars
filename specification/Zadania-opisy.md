@@ -1244,3 +1244,12 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
   - **Backend:** `composer validate --strict`, `make test-server` i `make lint-server` przechodzą z nowymi wersjami PHPUnita i Doctrine.
   - **Electron:** `npm install --package-lock-only` w `electron/` nie zmienia locka, a `electron-builder` ma wersję co najmniej 26.18.0.
   - **Porządki:** PR-y #66–#69 zostają zamknięte po przeniesieniu ich zmian do brancha.
+
+## GRA-113: Wybór uzbrojenia w oknie KUP
+- **Kontekst:** Prawa strona okna `KUP` pokazywała cztery rzędy nieaktywnych żetonów wyposażenia. Gracz powinien móc wybrać uzbrojenie, które widać w podglądzie i które wpływa na cenę całkowitą.
+- **Opis:** Zamiast żetonów pojawiają się dwie listy rozwijane: „Broń podstawowa” (karabin, bazooka, snajperka) oraz „Broń dodatkowa” (pistolet, granaty). Pozostałe sloty wyposażenia na razie nie są wyświetlane. Wybór broni zmienia cenę całkowitą jednostki — cenę bazową powiększa dopłata za broń — oraz podgląd po prawej. Gdy nie ma grafiki broni, podgląd podmienia portret na inną z dostępnych grafik jednostek.
+- **Kryteria:**
+  - **Interfejs:** obie listy rozwijają się po kliknięciu, wybór zamyka listę i aktualizuje cenę na karcie, w podglądzie i na przycisku zakupu.
+  - **Ekonomia:** dopłaty są zgodne z ZAL-004 i pobierane z konta przy zakupie; domyślny zestaw (karabin + pistolet) nie zmienia dotychczasowych cen.
+  - **Podgląd:** zmiana broni podmienia grafikę portretu na inną z dostępnych; bez grafik broni podgląd nie pozostawia pustego pola.
+  - **Testy i dokumentacja:** testy obejmują wycenę zestawu i zakup z dopłatą; INTERF-005 i ZAL-004 opisują nowy interfejs i ceny.
