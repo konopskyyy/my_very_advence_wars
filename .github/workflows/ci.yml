@@ -118,7 +118,7 @@ jobs:
           coverage: none
           tools: composer:v2
       - name: Cache Composera
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.composer/cache
           key: composer-${{ hashFiles('server/composer.lock') }}
@@ -159,7 +159,7 @@ jobs:
           coverage: pcov
           tools: composer:v2
       - name: Cache Composera
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.composer/cache
           key: composer-${{ hashFiles('server/composer.lock') }}
@@ -208,7 +208,7 @@ jobs:
           coverage: none
           tools: composer:v2
       - name: Cache Composera
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.composer/cache
           key: composer-${{ hashFiles('server/composer.lock') }}
