@@ -21,19 +21,18 @@ import {
 import { visibleUnitAt, type VisionPoint } from '../core/vision';
 import { FACTION_THEMES, type FactionTheme } from './factionTheme';
 import { UnitCard } from './unitCard';
-import { BAR_HEIGHT, TURN_COLUMN_X } from './hudLayout';
+import { BAR_PADDING, BAR_WIDTH } from './hudLayout';
 import { unitTexture } from './unitLayer';
 
-const LOG_X = 806;
-const LOG_WIDTH = 92;
-const OBJECTIVES_X = 640;
-const OBJECTIVES_WIDTH = 76;
-const AIRSTRIKE_X = 722;
-const AIRSTRIKE_WIDTH = 76;
-const RECRUIT_X = 908;
-const RECRUIT_WIDTH = 92;
-const BUTTON_Y = 10;
-const BUTTON_HEIGHT = 44;
+const CONTENT_WIDTH = BAR_WIDTH - BAR_PADDING * 2;
+const BUTTON_HEIGHT = 36;
+const BUTTON_GAP = 8;
+const BUTTONS_Y_FROM_BOTTOM = 330;
+const HUD_DIVIDER_Y_FROM_BOTTOM = 150;
+const HUD_Y_FROM_BOTTOM = 138;
+const TURN_Y_FROM_BOTTOM = 76;
+const END_TURN_Y_FROM_BOTTOM = 54;
+const END_TURN_HEIGHT = 44;
 
 export interface ScenarioBarState {
   readonly scenario: ScenarioDefinition;
@@ -58,9 +57,7 @@ export interface ScenarioCommandBarHandlers {
   readonly onLog: () => void;
   readonly onObjectives: () => void;
   readonly onAirstrike: () => void;
-  readonly onScenarioMenu: () => void;
-  readonly onMainMenu: () => void;
-  readonly returnLabel?: string;
+  readonly onPauseMenu: () => void;
 }
 
 export class ScenarioCommandBar {
@@ -78,8 +75,9 @@ export class ScenarioCommandBar {
   private readonly recruitPrice: Phaser.GameObjects.Text;
   private readonly endTurnButton: Phaser.GameObjects.Rectangle;
   private readonly barTurnLabel: Phaser.GameObjects.Text;
-  private readonly scenarioName: Phaser.GameObjects.Text;
   private readonly hud: Phaser.GameObjects.Text;
+  private readonly pauseMenuButton: Phaser.GameObjects.Rectangle;
+  private readonly pauseMenuLabel: Phaser.GameObjects.Text;
   private readonly unitCard: UnitCard;
   private theme: FactionTheme = FACTION_THEMES.blue;
   private recruitKind: UnitKind = 'infantry';
@@ -88,12 +86,14 @@ export class ScenarioCommandBar {
     private readonly scene: Phaser.Scene,
     private readonly handlers: ScenarioCommandBarHandlers,
   ) {
-    const barY = this.scene.scale.height - BAR_HEIGHT;
+    const barX = this.scene.scale.width - BAR_WIDTH;
+    const height = this.scene.scale.height;
+    const buttonsY = height - BUTTONS_Y_FROM_BOTTOM;
     const theme = FACTION_THEMES.blue;
 
     this.bar = this.register(
       this.scene.add
-        .rectangle(0, barY, this.scene.scale.width, BAR_HEIGHT, theme.barBackground, 0.94)
+        .rectangle(barX, 0, BAR_WIDTH, height, theme.barBackground, 0.94)
         .setOrigin(0, 0)
         .setScrollFactor(0)
         .setDepth(20),
@@ -102,48 +102,20 @@ export class ScenarioCommandBar {
 
     this.barStripe = this.register(
       this.scene.add
-        .rectangle(0, barY, this.scene.scale.width, 2, theme.accent, 1)
+        .rectangle(barX, 0, 2, height, theme.accent, 1)
         .setOrigin(0, 0)
         .setScrollFactor(0)
         .setDepth(21),
     );
 
-    this.makeBarLink(
-      this.handlers.returnLabel ?? 'MENU SCENARIUSZY',
-      16,
-      14,
-      this.handlers.onScenarioMenu,
-    );
-    this.makeBarLink('MENU GŁÓWNE', 16, 32, this.handlers.onMainMenu);
-
-    this.barTurnLabel = this.register(
-      this.scene.add
-        .text(16, barY + 8, '', {
-          fontFamily: 'monospace',
-          fontSize: '12px',
-          color: theme.accentSoft,
-        })
-        .setScrollFactor(0)
-        .setDepth(22),
-    );
-
-    this.scenarioName = this.register(
-      this.scene.add
-        .text(16, barY + 26, '', {
-          fontFamily: 'monospace',
-          fontSize: '12px',
-          color: '#f2f5f7',
-        })
-        .setScrollFactor(0)
-        .setDepth(22),
-    );
-
     this.hud = this.register(
       this.scene.add
-        .text(16, barY + 44, '', {
+        .text(barX + BAR_PADDING, height - HUD_Y_FROM_BOTTOM, '', {
           fontFamily: 'monospace',
           fontSize: '9px',
           color: '#9fb0a5',
+          lineSpacing: 2,
+          wordWrap: { width: CONTENT_WIDTH },
         })
         .setScrollFactor(0)
         .setDepth(22),
@@ -152,7 +124,14 @@ export class ScenarioCommandBar {
     this.barSeparators.push(
       this.register(
         this.scene.add
-          .rectangle(LOG_X - 12, barY + 12, 1, BAR_HEIGHT - 24, theme.divider, 1)
+          .rectangle(
+            barX + BAR_PADDING,
+            height - HUD_DIVIDER_Y_FROM_BOTTOM,
+            CONTENT_WIDTH,
+            1,
+            theme.divider,
+            1,
+          )
           .setOrigin(0, 0)
           .setScrollFactor(0)
           .setDepth(21),
@@ -161,19 +140,24 @@ export class ScenarioCommandBar {
 
     this.logButton = this.makeBarButton({
       label: '',
-      x: LOG_X,
-      y: barY + BUTTON_Y,
-      width: LOG_WIDTH,
+      x: barX + BAR_PADDING,
+      y: buttonsY,
+      width: CONTENT_WIDTH,
       height: BUTTON_HEIGHT,
       action: this.handlers.onLog,
     });
     this.logLabel = this.register(
       this.scene.add
-        .text(LOG_X + LOG_WIDTH / 2, barY + BUTTON_Y + BUTTON_HEIGHT / 2, 'DZIENNIK', {
-          fontFamily: 'monospace',
-          fontSize: '11px',
-          color: '#ffffff',
-        })
+        .text(
+          barX + BAR_PADDING + CONTENT_WIDTH / 2,
+          buttonsY + BUTTON_HEIGHT / 2,
+          'DZIENNIK',
+          {
+            fontFamily: 'monospace',
+            fontSize: '12px',
+            color: theme.accentSoft,
+          },
+        )
         .setOrigin(0.5)
         .setScrollFactor(0)
         .setDepth(22),
@@ -181,25 +165,34 @@ export class ScenarioCommandBar {
 
     this.objectivesButton = this.makeBarButton({
       label: 'CELE',
-      x: OBJECTIVES_X,
-      y: barY + BUTTON_Y,
-      width: OBJECTIVES_WIDTH,
+      x: barX + BAR_PADDING,
+      y: buttonsY + BUTTON_HEIGHT + BUTTON_GAP,
+      width: CONTENT_WIDTH,
       height: BUTTON_HEIGHT,
       action: this.handlers.onObjectives,
     });
 
     this.airstrikeButton = this.makeBarButton({
       label: 'NALOT',
-      x: AIRSTRIKE_X,
-      y: barY + BUTTON_Y,
-      width: AIRSTRIKE_WIDTH,
+      x: barX + BAR_PADDING,
+      y: buttonsY + (BUTTON_HEIGHT + BUTTON_GAP) * 2,
+      width: CONTENT_WIDTH,
       height: BUTTON_HEIGHT,
       action: this.handlers.onAirstrike,
     });
 
+    const recruitY = buttonsY + (BUTTON_HEIGHT + BUTTON_GAP) * 3;
+
     this.recruitButton = this.register(
       this.scene.add
-        .rectangle(RECRUIT_X, barY + BUTTON_Y, RECRUIT_WIDTH, BUTTON_HEIGHT, theme.accentDark, 1)
+        .rectangle(
+          barX + BAR_PADDING,
+          recruitY,
+          CONTENT_WIDTH,
+          BUTTON_HEIGHT,
+          theme.accentDark,
+          1,
+        )
         .setOrigin(0, 0)
         .setScrollFactor(0)
         .setDepth(21)
@@ -209,18 +202,18 @@ export class ScenarioCommandBar {
 
     this.recruitIcon = this.register(
       this.scene.add
-        .image(RECRUIT_X + 20, barY + BUTTON_Y + 22, unitTexture(this.scene, 'infantry', 'blue').key)
-        .setDisplaySize(28, 28)
+        .image(barX + BAR_PADDING + 24, recruitY + BUTTON_HEIGHT / 2, unitTexture(this.scene, 'infantry', 'blue').key)
+        .setDisplaySize(26, 26)
         .setScrollFactor(0)
         .setDepth(22),
     );
 
     this.recruitLabel = this.register(
       this.scene.add
-        .text(RECRUIT_X + 58, barY + BUTTON_Y + 14, 'KUP', {
+        .text(barX + BAR_PADDING + CONTENT_WIDTH / 2 + 10, recruitY + 8, 'KUP', {
           fontFamily: 'monospace',
           fontSize: '11px',
-          color: '#ffffff',
+          color: theme.accentSoft,
         })
         .setOrigin(0.5)
         .setScrollFactor(0)
@@ -229,7 +222,7 @@ export class ScenarioCommandBar {
 
     this.recruitPrice = this.register(
       this.scene.add
-        .text(RECRUIT_X + 58, barY + BUTTON_Y + 30, '', {
+        .text(barX + BAR_PADDING + CONTENT_WIDTH / 2 + 10, recruitY + 24, '', {
           fontFamily: 'monospace',
           fontSize: '9px',
           color: theme.accentSoft,
@@ -247,16 +240,45 @@ export class ScenarioCommandBar {
     );
     this.recruitButton.on('pointerup', this.handlers.onRecruit);
 
-    const turnWidth = this.scene.scale.width - TURN_COLUMN_X - 16;
+    this.barTurnLabel = this.register(
+      this.scene.add
+        .text(barX + BAR_PADDING, height - TURN_Y_FROM_BOTTOM, '', {
+          fontFamily: 'monospace',
+          fontSize: '12px',
+          color: theme.accentSoft,
+        })
+        .setScrollFactor(0)
+        .setDepth(22),
+    );
 
     this.endTurnButton = this.makeBarButton({
       label: 'WYKONAJ TURĘ',
-      x: TURN_COLUMN_X,
-      y: barY + BUTTON_Y,
-      width: turnWidth,
-      height: BUTTON_HEIGHT,
+      x: barX + BAR_PADDING,
+      y: height - END_TURN_Y_FROM_BOTTOM,
+      width: CONTENT_WIDTH,
+      height: END_TURN_HEIGHT,
       action: this.handlers.onEndTurn,
     });
+
+    this.pauseMenuButton = this.makeBarButton({
+      label: '',
+      x: 16,
+      y: 14,
+      width: 132,
+      height: 28,
+      action: this.handlers.onPauseMenu,
+    });
+    this.pauseMenuLabel = this.register(
+      this.scene.add
+        .text(16 + 132 / 2, 14 + 28 / 2, 'MENU PAUZY', {
+          fontFamily: 'monospace',
+          fontSize: '12px',
+          color: '#ffffff',
+        })
+        .setOrigin(0.5)
+        .setScrollFactor(0)
+        .setDepth(22),
+    );
 
     this.unitCard = new UnitCard(this.scene);
   }
@@ -270,6 +292,17 @@ export class ScenarioCommandBar {
       if ('setVisible' in object) {
         (object as Phaser.GameObjects.GameObject & { setVisible: (value: boolean) => void }).setVisible(visible);
       }
+    }
+  }
+
+  setPauseMenuVisible(visible: boolean): void {
+    this.pauseMenuButton.setVisible(visible);
+    this.pauseMenuLabel.setVisible(visible);
+
+    if (visible) {
+      this.pauseMenuButton.setInteractive({ useHandCursor: true });
+    } else {
+      this.pauseMenuButton.disableInteractive();
     }
   }
 
@@ -288,7 +321,7 @@ export class ScenarioCommandBar {
     }
   }
 
-  refreshScenario({ scenario, state, turn, hover, funds, recruitKind, vision, recruitment }: ScenarioBarState): void {
+  refreshScenario({ state, turn, hover, funds, recruitKind, vision, recruitment }: ScenarioBarState): void {
     this.applyTheme(turn.faction);
     this.setAirstrikeAvailability(Boolean(recruitment?.purchased.bomber));
 
@@ -320,8 +353,7 @@ export class ScenarioCommandBar {
       parts.push('Heks —');
     }
 
-    this.scenarioName.setText(truncate(scenario.name, 42));
-    this.hud.setText(truncate(parts.join(' · '), 108));
+    this.hud.setText(parts.map((part) => truncate(part, 20)).join('\n'));
     this.barTurnLabel.setText(`Tura ${turn.turn} — ${FACTION_DEFS[turn.faction].label}`);
   }
 
@@ -371,31 +403,6 @@ export class ScenarioCommandBar {
       .setFillStyle(theme.accentDark, 1)
       .setStrokeStyle(1, theme.accentBright, 0.8);
     this.barTurnLabel.setColor(theme.accentSoft);
-  }
-
-  private makeBarLink(
-    label: string,
-    x: number,
-    y: number,
-    action: () => void,
-  ): Phaser.GameObjects.Text {
-    const link = this.register(
-      this.scene.add
-        .text(x, y, label, {
-          fontFamily: 'monospace',
-          fontSize: '10px',
-          color: '#9fb0a5',
-        })
-        .setScrollFactor(0)
-        .setDepth(22)
-        .setInteractive({ useHandCursor: true }),
-    );
-
-    link.on('pointerover', () => link.setColor(this.theme.accentSoft));
-    link.on('pointerout', () => link.setColor('#9fb0a5'));
-    link.on('pointerdown', action);
-
-    return link;
   }
 
   private makeBarButton(options: {

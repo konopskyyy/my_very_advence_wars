@@ -148,3 +148,19 @@ zadań do wykonania.
 | [[Zadania-opisy#INFRA-023: Naprawa pipeline'u po aktualizacji zależności\|INFRA-023]] | Naprawa pipeline'u po aktualizacji zależności | ✅ | INFRA-003, INFRA-018, `specification/Infrastruktura.md` |
 | [[Zadania-opisy#INFRA-024: Kolejna część aktualizacji zależności\|INFRA-024]] | Kolejna część aktualizacji zależności | ✅ | INFRA-023, `specification/Infrastruktura.md` |
 | [[Zadania-opisy#GRA-113: Wybór uzbrojenia w oknie KUP\|GRA-113]] | Wybór uzbrojenia w oknie KUP | ✅ | GRA-077, GRA-112, INTERF-005, ZAL-004 |
+| [[Zadania-opisy#GRA-114: Pionowy pasek dowodzenia po prawej\|GRA-114]] | Pionowy pasek dowodzenia po prawej | ✅ | GRA-082, ADR-024, ADR-052, INTERF-005 |
+| [[Zadania-opisy#GRA-115: Kursor z celownikiem nad wrogiem\|GRA-115]] | Kursor z celownikiem nad wrogiem | ✅ | GRA-107, ADR-053, INTERF-005 |
+| [[Zadania-opisy#GRA-116: Uproszczenie pionowego menu i jedna belka HUD\|GRA-116]] | Uproszczenie pionowego menu i jedna belka HUD | ✅ | GRA-114, ADR-052, INTERF-005 |
+| [[Zadania-opisy#GRA-117: Dzielony dolny HUD i węższe menu prawe\|GRA-117]] | Dzielony dolny HUD i węższe menu prawe | ✅ | GRA-116, ADR-052, INTERF-005 |
+| [[Zadania-opisy#GRA-118: Usunięcie białej ramki minimapy\|GRA-118]] | Usunięcie białej ramki minimapy | ✅ | GRA-117, INTERF-005 |
+| [[Zadania-opisy#GRA-119: Liczniki przy końcu tury i ukrywanie menu głównego\|GRA-119]] | Liczniki przy końcu tury i ukrywanie menu głównego | ✅ | GRA-116, ADR-052, INTERF-005 |
+| [[Zadania-opisy#GRA-120: Menu pauzy, dolne przyciski i brak konta w grze\|GRA-120]] | Menu pauzy, dolne przyciski i brak konta w grze | ✅ | GRA-119, ADR-052, INTERF-005 |
+| [[Zadania-opisy#GRA-121: Zwijana ikonka podpowiedzi samouczka\|GRA-121]] | Zwijana ikonka podpowiedzi samouczka | ✅ | GRA-114, ADR-052, INTERF-005 |
+| [[Zadania-opisy#GRA-122: Portrety czołgu i bazooki w sklepie\|GRA-122]] | Portrety czołgu i bazooki w sklepie | ✅ | GRA-082, INTERF-005 |
+| [[Zadania-opisy#GRA-123: Skalowanie portretu w prawym panelu sklepu\|GRA-123]] | Skalowanie portretu w prawym panelu sklepu | ✅ | GRA-122, INTERF-005 |
+| [[Zadania-opisy#GRA-124: Portret snajperki w sklepie\|GRA-124]] | Portret snajperki w sklepie | ✅ | GRA-122, INTERF-005 |
+| [[Zadania-opisy#GRA-125: Portret zwiadowcy w sklepie\|GRA-125]] | Portret zwiadowcy w sklepie | ✅ | GRA-122, INTERF-005 |
+| [[Zadania-opisy#GRA-126: Portret artylerii w sklepie\|GRA-126]] | Portret artylerii w sklepie | ✅ | GRA-122, INTERF-005 |
+| [[Zadania-opisy#GRA-127: Portret bombowca w sklepie\|GRA-127]] | Portret bombowca w sklepie | ✅ | GRA-122, INTERF-005 |
+| [[Zadania-opisy#GRA-128: Portret śmigłowca w sklepie\|GRA-128]] | Portret śmigłowca w sklepie | ✅ | GRA-122, INTERF-005 |
+| [[Zadania-opisy#GRA-129: Usunięcie jednostki bazooka i nowy piechur z bronią\|GRA-129]] | Usunięcie jednostki bazooka i nowy piechur z bronią | ⬜ | GRA-096, GRA-122, INTERF-005, ZAL-004 |

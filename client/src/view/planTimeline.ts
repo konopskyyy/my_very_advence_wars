@@ -8,7 +8,13 @@ import type { GameState } from '../core/state';
 import type { TurnState } from '../core/turn';
 import { FACTION_DEFS, UNIT_DEFS } from '../core/units';
 import { FACTION_THEMES, type FactionTheme } from './factionTheme';
-import { BAR_HEIGHT, PLANNER_COLLAPSED, PLANNER_EXPANDED, TURN_COLUMN_X } from './hudLayout';
+import {
+  BAR_WIDTH,
+  HUD_MARGIN,
+  bottomPanels,
+  PLANNER_COLLAPSED,
+  PLANNER_EXPANDED,
+} from './hudLayout';
 
 const HEADER_HEIGHT = 34;
 const LABEL_WIDTH = 150;
@@ -23,6 +29,7 @@ const TOGGLE_WIDTH = 96;
 const BUTTON_GAP = 8;
 const REMOVE_X = 240;
 const REMOVE_WIDTH = 80;
+const TURN_COLUMN_RIGHT_OFFSET = 270;
 
 export interface PlanTimelineView {
   readonly turn: TurnState;
@@ -85,7 +92,7 @@ export class PlanTimeline {
   private playing = false;
   private scrubbing = false;
   private timeMs = 0;
-  private areaX = LABEL_WIDTH;
+  private areaX = 0;
   private areaY = 0;
   private areaWidth = 1;
   private areaHeight = 1;
@@ -94,16 +101,25 @@ export class PlanTimeline {
     private readonly scene: Phaser.Scene,
     private readonly handlers: PlanTimelineHandlers,
   ) {
-    const width = this.scene.scale.width;
-    const areaX = LABEL_WIDTH;
-    const areaY = this.scene.scale.height - BAR_HEIGHT - PLANNER_EXPANDED + HEADER_HEIGHT + 6;
+    const panels = bottomPanels(this.scene.scale.width - BAR_WIDTH);
+    const width = panels.plannerWidth;
+    const areaX = panels.plannerLeft + LABEL_WIDTH;
+    const areaY =
+      this.scene.scale.height - HUD_MARGIN - PLANNER_EXPANDED + HEADER_HEIGHT + 6;
     const areaWidth = Math.max(1, width - LABEL_WIDTH - 18);
     const areaHeight = Math.max(1, PLANNER_EXPANDED - HEADER_HEIGHT - TRACK_GAP);
     const column = this.column();
 
     this.background = this.register(
       this.scene.add
-        .rectangle(0, 0, width, PLANNER_EXPANDED, this.theme.barBackground, 0.82)
+        .rectangle(
+          panels.plannerLeft,
+          0,
+          width,
+          PLANNER_EXPANDED,
+          this.theme.barBackground,
+          0.82,
+        )
         .setOrigin(0, 0)
         .setScrollFactor(0)
         .setDepth(18),
@@ -112,7 +128,7 @@ export class PlanTimeline {
 
     this.stripe = this.register(
       this.scene.add
-        .rectangle(0, 0, width, 2, this.theme.accent, 1)
+        .rectangle(panels.plannerLeft, 0, width, 2, this.theme.accent, 1)
         .setOrigin(0, 0)
         .setScrollFactor(0)
         .setDepth(19),
@@ -488,38 +504,41 @@ export class PlanTimeline {
     playX: number;
     playWidth: number;
   } {
-    const width = this.scene.scale.width;
-    const playWidth = Math.max(80, width - TURN_COLUMN_X - 16 - TOGGLE_WIDTH - BUTTON_GAP);
+    const panels = bottomPanels(this.scene.scale.width - BAR_WIDTH);
+    const width = panels.plannerWidth;
+    const turnColumnX = panels.plannerLeft + width - TURN_COLUMN_RIGHT_OFFSET;
+    const playWidth = Math.max(80, TURN_COLUMN_RIGHT_OFFSET - 16 - TOGGLE_WIDTH - BUTTON_GAP);
 
     return {
-      x: TURN_COLUMN_X,
+      x: turnColumnX,
       toggleWidth: TOGGLE_WIDTH,
-      playX: TURN_COLUMN_X + TOGGLE_WIDTH + BUTTON_GAP,
+      playX: turnColumnX + TOGGLE_WIDTH + BUTTON_GAP,
       playWidth,
     };
   }
 
   private layout(): void {
-    const width = this.scene.scale.width;
+    const panels = bottomPanels(this.scene.scale.width - BAR_WIDTH);
+    const width = panels.plannerWidth;
     const panelHeight = this.height;
-    const panelY = this.scene.scale.height - BAR_HEIGHT - panelHeight;
+    const panelY = this.scene.scale.height - HUD_MARGIN - panelHeight;
     const theme = this.theme;
     const column = this.column();
 
-    this.background.setPosition(0, panelY).setSize(width, panelHeight);
-    this.stripe.setPosition(0, panelY).setSize(width, 2);
-    this.title.setPosition(14, panelY + 9);
-    this.turnLabel.setPosition(104, panelY + 11);
-    this.noticeText.setPosition(330, panelY + 11);
+    this.background.setPosition(panels.plannerLeft, panelY).setSize(width, panelHeight);
+    this.stripe.setPosition(panels.plannerLeft, panelY).setSize(width, 2);
+    this.title.setPosition(panels.plannerLeft + 14, panelY + 9);
+    this.turnLabel.setPosition(panels.plannerLeft + 104, panelY + 11);
+    this.noticeText.setPosition(panels.plannerLeft + 330, panelY + 11);
 
     this.toggleButton.setPosition(column.x, panelY + 6);
     this.toggleLabel.setPosition(column.x + column.toggleWidth / 2, panelY + 17);
     this.playButton.setPosition(column.playX, panelY + 6);
     this.playLabel.setPosition(column.playX + column.playWidth / 2, panelY + 17);
-    this.removeButton.setPosition(REMOVE_X, panelY + 6);
-    this.removeLabel.setPosition(REMOVE_X + REMOVE_WIDTH / 2, panelY + 17);
+    this.removeButton.setPosition(panels.plannerLeft + REMOVE_X, panelY + 6);
+    this.removeLabel.setPosition(panels.plannerLeft + REMOVE_X + REMOVE_WIDTH / 2, panelY + 17);
 
-    this.areaX = LABEL_WIDTH;
+    this.areaX = panels.plannerLeft + LABEL_WIDTH;
     this.areaY = panelY + HEADER_HEIGHT + 6;
     this.areaWidth = Math.max(1, width - LABEL_WIDTH - 18);
     this.areaHeight = Math.max(1, panelHeight - HEADER_HEIGHT - TRACK_GAP);
@@ -614,6 +633,7 @@ export class PlanTimeline {
     const areaX = this.areaX;
     const areaWidth = this.areaWidth;
     const areaY = this.areaY;
+    const labelX = bottomPanels(this.scene.scale.width - BAR_WIDTH).plannerLeft + 12;
     const trackTop = areaY + RULER_HEIGHT;
     const trackArea = Math.max(8, this.areaHeight - RULER_HEIGHT);
     const trackHeight = Math.min(MAX_TRACK_HEIGHT, trackArea / Math.max(1, view.plan.units.length));
@@ -657,7 +677,7 @@ export class PlanTimeline {
       this.timelineGraphics.fillRect(areaX, y, areaWidth, Math.max(2, trackHeight - 4));
 
       const text = this.scene.add
-        .text(12, y + 1, `${index + 1}. ${label} · ${moves}R ${attacks}A${extras}`, {
+        .text(labelX, y + 1, `${index + 1}. ${label} · ${moves}R ${attacks}A${extras}`, {
           fontFamily: 'monospace',
           fontSize: '10px',
           color: isSelected ? '#f2d35c' : '#d8e2dc',

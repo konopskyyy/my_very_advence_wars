@@ -29,8 +29,10 @@ export function placeUnit(
   kind: UnitKind,
   coord: HexCoord,
   faction: FactionId,
+  attackOverride?: number,
 ): GameState {
-  const unit = createUnit(`u${state.nextUnitSeq}`, kind, faction, coord);
+  const created = createUnit(`u${state.nextUnitSeq}`, kind, faction, coord);
+  const unit = attackOverride === undefined ? created : { ...created, attackOverride };
   const others = state.units.filter(
     (other) => other.pos.col !== coord.col || other.pos.row !== coord.row,
   );

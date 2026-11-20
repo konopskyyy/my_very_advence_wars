@@ -936,6 +936,7 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
   - **Nazewnictwo:** interfejs nie używa słowa „bazookier”; jednostka to żołnierz z bazooką, a jej wewnętrzny rodzaj pozostaje `bazooka`.
   - **Komunikat:** końcowy dymek nie twierdzi, że bazooka jest jedynym zagrożeniem; wymienia też inne czołgi, śmigłowce i artylerię.
   - **Testy:** testy transportu, czołgu i misji pokrywają zmiany, a `make verify` przechodzi.
+  - **Uwaga (GRA-129):** opis historyczny — osobna jednostka `bazooka` i etykieta `BAZOOKA_STATS` zostały później usunięte; specjalny piechur z bazooką w drugim samouczku zachował atak 15 przez `attackOverride`.
   - **Dokumentacja:** ZAL-004, ZAL-005, ZAL-011 i INTERF-005 opisują pasażerów czołgu, dźwięk ruchu i nowe nazewnictwo.
 
 ## GRA-098: Trzeci akt samouczka — Walka
@@ -1253,3 +1254,144 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
   - **Ekonomia:** dopłaty są zgodne z ZAL-004 i pobierane z konta przy zakupie; domyślny zestaw (karabin + pistolet) nie zmienia dotychczasowych cen.
   - **Podgląd:** zmiana broni podmienia grafikę portretu na inną z dostępnych; bez grafik broni podgląd nie pozostawia pustego pola.
   - **Testy i dokumentacja:** testy obejmują wycenę zestawu i zakup z dopłatą; INTERF-005 i ZAL-004 opisują nowy interfejs i ceny.
+
+## GRA-114: Pionowy pasek dowodzenia po prawej
+- **Kontekst:** Dolny pasek z ADR-024 zabiera 64 px wysokości mapy i wymusza zawieszenie planera i minimapy nad sobą. Użytkownik chce przebudować układ HUD tak, żeby dowodzenie stało pionowo przy prawej krawędzi, a mapa zyskała miejsce.
+- **Opis:** `BAR_HEIGHT` znika na rzecz `BAR_WIDTH`; `scenarioCommandBar.ts` ustawia pasek na całej wysokości ekranu przy prawej krawędzi i układa w pionie turę, nazwę scenariusza, liczniki, przyciski `DZIENNIK`/`CELE`/`NALOT`/`KUP`, odnośniki menu oraz `WYKONAJ TURĘ` przy dole. Planer dostaje szerokość mapy bez paska, minimapa zostaje w lewym dolnym rogu nad planerem, a dymek samouczka przesuwa się przed pasek. Strefy blokady kliknięć i przewijania krawędzią uwzględniają nową pozycję paska, w tym prawą krawędź tuż przed nim.
+- **Kryteria:**
+  - **Układ:** przy wewnętrznej rozdzielczości 1280×720 pasek ma stałą szerokość, nie zachodzi na planer, minimapę ani dymek samouczka, a wszystkie przyciski są widoczne i klikalne bez zmiany rozdzielczości.
+  - **Interakcja:** kliknięcia i kółko nad paskiem nie trafiają na mapę; przewijanie krawędzią działa z lewej strony paska, a planer i minimapa zachowują dotychczasowe zachowanie względem mapy.
+  - **Motyw:** pasek, planer i kursor zmieniają akcenty zgodnie z aktywną stroną, a tryb replayu nie pokazuje paska i nie blokuje prawej krawędzi.
+  - **Dokumentacja:** ADR-024 wskazuje na ADR-052, a INTERF-005 opisuje pionowy pasek i nowe położenie pozostałych elementów HUD.
+
+## GRA-115: Kursor z celownikiem nad wrogiem
+- **Kontekst:** Kursor w scenie scenariusza rysował zawsze biały obrys heksu, więc nie odróżniał pustego terenu od celu ataku.
+- **Opis:** `drawCursor()` w `ScenarioScene.ts` rysuje zwykły obrys heksu w akcencie aktywnej strony, a nad widoczną jednostką przeciwnej strony — celownik z czterech kresek w jaśniejszym akcencie tej samej strony. Wykorzystanie `hoveredUnit()` gwarantuje, że kursor nie ujawnia jednostek ukrytych mgłą i nie zmienia reguł wyboru celu.
+- **Kryteria:**
+  - **Stany:** nad pustym heksem i własną jednostką kursor pozostaje obrysem heksu w kolorze głównym aktywnej strony; nad widocznym wrogiem pokazuje celownik.
+  - **Widoczność:** kursor nie zdradza wrogów niewidocznych przez mgłę i czyści się po wejściu na elementy UI oraz po zakończeniu rozgrywki.
+  - **Dokumentacja:** INTERF-005 i ADR-053 opisują oba stany kursora.
+
+## GRA-116: Uproszczenie pionowego menu i jedna belka HUD
+- **Kontekst:** Po GRA-114 pionowy pasek wciąż powtarzał numer tury na górze i na dole, pokazywał zbędny opis misji oraz odnośnik do menu kampanii, a `MENU GŁÓWNE` chowało się w dolnej części paska. Minimapa i planer tworzyły dwa oddzielne panele jeden nad drugim.
+- **Opis:** Numer tury z aktywną stroną przenosi się do bezpośredniego sąsiedztwa przycisku `WYKONAJ TURĘ`. Nazwa scenariusza i odnośnik do menu kampanii znikają z paska, a `MENU GŁÓWNE` staje się przyciskiem w lewym górnym rogu ekranu, poza paskiem. Planer dostaje jedno wspólne tło i obramowanie z minimapą, więc minimapa traci własną ramkę i wchodzi w górną część tej samej belki; w trybie replayu, gdzie planer jest ukryty, minimapa zachowuje samodzielną ramkę.
+- **Kryteria:**
+  - **Pasek:** liczniki zaczynają się przy górnej krawędzi paska, przyciski zachowują stałe pozycje, a tura i `WYKONAJ TURĘ` tworzą jedną grupę przy dole; nie ma nazwy scenariusza ani dolnych odnośników.
+  - **Nawigacja:** `MENU GŁÓWNE` jest klikalne w lewym górnym rogu i nie nachodzi na kartę jednostki ani dymek samouczka.
+  - **Belka HUD:** minimapa i planer mają wspólne tło i obramowanie bez przerwy między nimi; zwijanie planera nie rozrywa belki, a replay rysuje minimapę z własną ramką.
+  - **Testy i dokumentacja:** `make verify` przechodzi, a ADR-052 i INTERF-005 opisują uproszczony pasek oraz jedną belkę.
+
+## GRA-117: Dzielony dolny HUD i węższe menu prawe
+- **Kontekst:** Jedna belka z GRA-116 dawała minimapie i planerowi wspólne tło ułożone warstwowo. Użytkownik chie, żeby dolny HUD był podzielony na dwa osobne fragmenty obok siebie: minimapa zajmuje 1/4 szerokości, planer resztę, a oba mają tę samą stylistykę. Prawe menu ma być wyraźnie węższe.
+- **Opis:** `BAR_WIDTH` zmniejsza się z 224 do 160 px, a zawartość prawego paska dostosowuje się do węższej kolumny. Dolny HUD dostaje wspólny układ `bottomPanels()`: marginesy, przerwę między panelami i podział dostępnej szerokości mapy na minimapę (1/4) oraz planer (3/4). Minimapa i planer rysują własne tła, obramowania i górny akcent w tej samej motywie aktywnej strony, wyrównane do dolnej krawędzi ekranu. Planer przesuwa całą swoją zawartość o lewą krawędź panelu, a strefy kursora nad planerem i minimapą korzystają z nowych granic.
+- **Kryteria:**
+  - **Podział:** przy 1280×720 minimapa zajmuje 1/4 szerokości dolnego HUD-u, planer 3/4, między nimi jest przerwa, a oba panele mają ten sam margines dolny i identyczny styl tła, obramowania i akcentu.
+  - **Prawe menu:** pasek ma 160 px szerokości i mieści liczniki, wszystkie przyciski oraz grupę tury z `WYKONAJ TURĘ` bez nakładania się tekstu.
+  - **Interakcja:** kliknięcia, kółko i przewijanie krawędzią nad panelami nie trafiają na mapę, a zwijanie planera nie zmienia położenia minimapy.
+  - **Dokumentacja i testy:** ADR-052 i INTERF-005 opisują nowy podział, `make verify` przechodzi.
+
+## GRA-118: Usunięcie białej ramki minimapy
+- **Kontekst:** Biały prostokąt wycinka kamery w `view/minimap.ts` przy domyślnym zoomie pokrywał się z krawędziami minimapy i wyglądał jak przypadkowa biała ramka wokół panelu.
+- **Opis:** Rysowanie prostokąta `camera.worldView` znika razem z nieużywanym polem `camera` w `MinimapState`. Minimapa zachowuje teren, kropki jednostek i znacznik bazy w panelu z tłem i akcentem aktywnej strony.
+- **Kryteria:**
+  - **Wygląd:** wokół minimapy nie ma białego obrysu, a ramka panelu ma kolor akcentu aktywnej strony.
+  - **Dokumentacja i testy:** INTERF-005 nie opisuje już prostokąta wycinka kamery, a `make verify` przechodzi.
+
+## GRA-119: Liczniki przy końcu tury i ukrywanie menu głównego
+- **Kontekst:** Pionowy pasek trzymał liczniki jednostek, kafli, kredytów i heksu pod kursorem na górze, a przycisk `MENU GŁÓWNE` zostawał klikalny także wtedy, gdy odtwarzana była walka.
+- **Opis:** Blok informacji przenosi się na dół paska, do sekcji nad numerem tury i przyciskiem `WYKONAJ TURĘ`, z własną linią oddzielającą. Przycisk w lewym górnym rogu (obecnie `MENU PAUZY`) znika i przestaje być klikalny na czas odtwarzania tury, a wraca po jej zakończeniu.
+- **Kryteria:**
+  - **Układ:** liczniki wraz z heksem pod kursorem są wyświetlane nad numerem tury przy dole; tekst nie zachodzi na przyciski ani na krawędź paska.
+  - **Walka:** w trakcie odtwarzania tury przycisk w lewym górnym rogu jest niewidoczny i nie reaguje na kliknięcia, po zakończeniu wraca do poprzedniego wyglądu.
+  - **Dokumentacja i testy:** ADR-052 i INTERF-005 opisują nowy układ, a `make verify` przechodzi.
+
+## GRA-120: Menu pauzy, dolne przyciski i brak konta w grze
+- **Kontekst:** Przycisk w lewym górnym rogu prowadził prosto do menu głównego, przyciski dowodzenia stały wysoko w pasku, a globalny przycisk `KONTO` z `accountOverlay.ts` był widoczny także na scenie walki.
+- **Opis:** Lewy górny przycisk staje się `MENU PAUZY` i otwiera istniejący modal pauzy zamiast przechodzić do menu głównego. Przyciski `DZIENNIK`, `CELE`, `NALOT` i `KUP` przesuwają się w dół paska, tuż nad linię oddzielającą sekcję informacyjną. Na czas scenariusza chowany jest globalny przycisk `KONTO`; po wyjściu ze sceny wraca do poprzedniego stanu.
+- **Kryteria:**
+  - **Nawigacja:** kliknięcie lewego górnego przycisku otwiera `PAUZA`, a nie scenę menu; skrót `ESC` nadal działa.
+  - **Układ:** cztery przyciski dowodzenia leżą bezpośrednio nad sekcją liczników, zachowują odstępy i nie zachodzą na numer tury.
+  - **Konto:** podczas scenariusza na ekranie nie ma przycisku `KONTO`, a po powrocie do menu jest on znowu widoczny.
+  - **Dokumentacja i testy:** ADR-052 i INTERF-005 opisują nowy układ, a `make verify` przechodzi.
+
+## GRA-121: Zwijana ikonka podpowiedzi samouczka
+- **Kontekst:** `view/tutorialTip.ts` zawsze pokazywał rozwinięty dymek z etykietą „SAMOUCZEK”, który zasłaniał część mapy i nie reagował na kliknięcia.
+- **Opis:** Podpowiedź startuje jako mała okrągła ikonka z ozdobnym „i”, ustawiona w prawym górnym rogu mapy przed paskiem dowodzenia. Kliknięcie ikonki rozwija dotychczasowy dymek z tytułem i treścią, a osobna okrągła ikonka „−” w jego rogu zwija go z powrotem. Otwarta podpowiedź blokuje kliknięcia i kółko nad swoim obszarem, a zmiana kroku samouczka aktualizuje treść bez wymuszania rozwinięcia.
+- **Kryteria:**
+  - **Ikonka:** w stanie zwiniętym widoczna jest tylko mała ikonka „i”; kliknięcie jej rozwija panel, a kliknięcie „−” wraca do ikonki.
+  - **Treść:** rozwinięty panel zachowuje etykietę „SAMOUCZEK”, tytuł i tekst aktywnego kroku oraz krótki dźwięk przy nowym kroku.
+  - **Interakcja:** kliknięcia i kółko nad ikonką albo panelem nie trafiają na mapę, a schowanie podpowiedzi (np. przez modal trafienia z bazooki) ją zwija.
+  - **Dokumentacja i testy:** ADR-052 i INTERF-005 opisują zwijaną podpowiedź, a `make verify` przechodzi.
+
+## GRA-122: Portrety czołgu i bazooki w sklepie
+- **Kontekst:** Okno rekrutacji używało wspólnego portretu piechura dla bazooki, a portret czołgu pochodził ze starego pliku PNG. Użytkownik dostarczył dwa nowe obrazy: `czolg.jpg` i `bazooka.jpg`.
+- **Opis:** Obrazy trafiają do `client/src/assets/ai/units/` pod angielskimi nazwami `tank.jpg` i `bazooka.jpg`, zgodnymi z `UnitKind`. `view/recruitPortrait.ts` wczytuje oba pliki, przypisuje nowy portret do rodzaju `tank` i `bazooka`, a dla wariantu wyposażenia `bazooka` z pistoletem używa portretu bazooki. Stary, nieużywany `tank.png` znika z zasobów.
+- **Kryteria:**
+  - **Zasoby:** w katalogu jednostek są pliki `tank.jpg` i `bazooka.jpg`, a po starym `tank.png` nie ma śladu w kodzie ani w katalogu.
+  - **Sklep:** karta bazooki w siatce rekrutacji i portret w prawym panelu pokazują nowy obraz `bazooka.jpg`, a karta czołgu pokazuje `tank.jpg`.
+  - **Wyposażenie:** wariant `bazooka` z pistoletem pokazuje portret bazooki, a `bazooka` z granatami zachowuje odrębny portret czołgu.
+  - **Dokumentacja i testy:** INTERF-005 opisuje nowe pliki, a `make verify` przechodzi.
+  - **Uwaga (GRA-129):** plik `bazooka.jpg` pozostaje, ale od teraz służy tylko jako portret wariantu wyposażenia `bazooka` z pistoletem — karta osobnej jednostki z bazooką znika.
+
+## GRA-123: Skalowanie portretu w prawym panelu sklepu
+- **Kontekst:** nowe pliki `tank.jpg` i `bazooka.jpg` mają 1024×1024 pikseli, podczas gdy poprzednie portrety miały 256×256. `renderPortrait()` w `view/recruitDialog.ts` zmieniał tylko teksturę, przez co portret w prawym panelu wyświetlał się w naturalnym rozmiarze pliku zamiast w wymiarze panelu.
+- **Opis:** Rozmiar wyświetlanego portretu jest zapamiętany w polu `portraitDisplaySize` i ponownie nakładany przez `setDisplaySize()` po każdej zmianie tekstury w `renderPortrait()`, niezależnie od rozdzielczości pliku źródłowego.
+- **Kryteria:**
+  - **Rozmiar:** wybór dowolnej jednostki lub wariantu wyposażenia w prawym panelu zawsze pokazuje portret o tym samym rozmiarze co ramka, bez wychodzenia poza nią.
+  - **Spójność:** karta w siatce i portret w prawym panelu mają przewidywalny rozmiar niezależnie od tego, czy źródłem jest PNG 256×256, czy JPG 1024×1024.
+  - **Dokumentacja i testy:** INTERF-005 opisuje skalowanie portretu, a `make verify` przechodzi.
+
+## GRA-124: Portret snajperki w sklepie
+- **Kontekst:** uzbrojenie główne `sniper` (Snajperka) nie miało własnego portretu — w prawym panelu okna `KUP` pokazywało zwiadowcę (z pistoletem) albo bombowca (z granatami). Użytkownik dostarczył grafikę `Gemini_Generated_Image_miebhmmiebhmmieb.jpg`.
+- **Opis:** Obraz trafia do `client/src/assets/ai/units/` jako `sniper.jpg`. `view/recruitPortrait.ts` wprowadza typ `PortraitId = UnitKind | 'sniper'` dla kluczy portretów, dodaje snajperkę do `PORTRAIT_URLS` i przypisuje nowy portret do wariantu `sniper` z pistoletem. Wariant `sniper` z granatami zachowuje odrębny portret bombowca, żeby każdy z sześciu zestawów uzbrojenia miał inną grafikę.
+- **Kryteria:**
+  - **Zasób:** w katalogu jednostek jest plik `sniper.jpg` wczytywany razem z pozostałymi portretami.
+  - **Sklep:** wybór Snajperki z Pistoletem w prawym panelu pokazuje nowy portret; Snajperka z Granatami nadal pokazuje bombowca.
+  - **Spójność:** portrety wszystkich sześciu kombinacji uzbrojenia są nadal rozłączne, a nowy plik 1024×1024 jest skalowany do ramki zgodnie z GRA-123.
+  - **Dokumentacja i testy:** INTERF-005 opisuje nowy plik, a `make verify` przechodzi.
+
+## GRA-125: Portret zwiadowcy w sklepie
+- **Kontekst:** portret zwiadowcy pochodził ze starego pliku `scout.png` (256×256). Użytkownik dostarczył nową grafikę `Gemini_Generated_Image_w2d6ddw2d6ddw2d6.jpg` w tym samym stylu co portrety czołgu, bazooki i snajperki.
+- **Opis:** Obraz trafia do `client/src/assets/ai/units/` jako `scout.jpg` i zastępuje `scout.png` w mapowaniu `PORTRAIT_URLS` w `view/recruitPortrait.ts`. Stary plik znika z zasobów.
+- **Kryteria:**
+  - **Zasób:** w katalogu jednostek jest `scout.jpg`, a po `scout.png` nie ma śladu w kodzie ani w katalogu.
+  - **Sklep:** karta zwiadowcy w siatce rekrutacji i jego portret w prawym panelu pokazują nowy obraz.
+  - **Spójność:** nowy plik 1024×1024 jest skalowany do ramki zgodnie z GRA-123, a pozostałe mapowania portretów się nie zmieniają.
+  - **Dokumentacja i testy:** INTERF-005 opisuje nowy plik, a `make verify` przechodzi.
+
+## GRA-126: Portret artylerii w sklepie
+- **Kontekst:** portret artylerii pochodził ze starego pliku `artillery.png` (256×256). Użytkownik dostarczył nową grafikę `Gemini_Generated_Image_9ukqjq9ukqjq9ukq.jpg` w tym samym stylu co pozostałe nowe portrety.
+- **Opis:** Obraz trafia do `client/src/assets/ai/units/` jako `artillery.jpg` i zastępuje `artillery.png` w mapowaniu `PORTRAIT_URLS` w `view/recruitPortrait.ts`. Stary plik znika z zasobów.
+- **Kryteria:**
+  - **Zasób:** w katalogu jednostek jest `artillery.jpg`, a po `artillery.png` nie ma śladu w kodzie ani w katalogu.
+  - **Sklep:** karta artylerii w siatce rekrutacji i jej portret w prawym panelu pokazują nowy obraz, także dla wariantu `rifle` z granatami.
+  - **Spójność:** nowy plik 1024×1024 jest skalowany do ramki zgodnie z GRA-123, a pozostałe mapowania portretów się nie zmieniają.
+  - **Dokumentacja i testy:** INTERF-005 opisuje nowy plik, a `make verify` przechodzi.
+
+## GRA-127: Portret bombowca w sklepie
+- **Kontekst:** portret bombowca pochodził ze starego pliku `bomber.png` (128×128). Użytkownik dostarczył nową grafikę `Gemini_Generated_Image_eyh3e6eyh3e6eyh3.jpg` w tym samym stylu co pozostałe nowe portrety.
+- **Opis:** Obraz trafia do `client/src/assets/ai/units/` jako `bomber.jpg` i zastępuje `bomber.png` w mapowaniu `PORTRAIT_URLS` w `view/recruitPortrait.ts`. Stary plik znika z zasobów.
+- **Kryteria:**
+  - **Zasób:** w katalogu jednostek jest `bomber.jpg`, a po `bomber.png` nie ma śladu w kodzie ani w katalogu.
+  - **Sklep:** karta bombowca w siatce rekrutacji i jego portret w prawym panelu pokazują nowy obraz, także dla wariantu `sniper` z granatami.
+  - **Spójność:** nowy plik 1024×1024 jest skalowany do ramki zgodnie z GRA-123, a pozostałe mapowania portretów się nie zmieniają.
+  - **Dokumentacja i testy:** INTERF-005 opisuje nowy plik, a `make verify` przechodzi.
+
+## GRA-128: Portret śmigłowca w sklepie
+- **Kontekst:** portret śmigłowca pochodził ze starego pliku `helicopter.png` (128×128). Użytkownik dostarczył nową grafikę `Gemini_Generated_Image_s3bygvs3bygvs3by.jpg` w tym samym stylu co pozostałe nowe portrety.
+- **Opis:** Obraz trafia do `client/src/assets/ai/units/` jako `helicopter.jpg` i zastępuje `helicopter.png` w mapowaniu `PORTRAIT_URLS` w `view/recruitPortrait.ts`. Stary plik znika z zasobów.
+- **Kryteria:**
+  - **Zasób:** w katalogu jednostek jest `helicopter.jpg`, a po `helicopter.png` nie ma śladu w kodzie ani w katalogu.
+  - **Sklep:** karta śmigłowca w siatce rekrutacji i jego portret w prawym panelu pokazują nowy obraz.
+  - **Spójność:** nowy plik 1024×1024 jest skalowany do ramki zgodnie z GRA-123, a pozostałe mapowania portretów się nie zmieniają.
+  - **Dokumentacja i testy:** INTERF-005 opisuje nowy plik, a `make verify` przechodzi.
+
+## GRA-129: Usunięcie jednostki bazooka i nowy piechur z bronią
+- **Kontekst:** `bazooka` istniało jako osobne `UnitKind` z własnymi statystykami i kartą w sklepie, choć wybór uzbrojenia w `KUP` i tak decydował tylko o cenie i portrecie. Użytkownik chce jednego żołnierza, który wybiera broń główną (karabin, bazooka albo snajperka), i usunięcia osobnej jednostki z bazooką.
+- **Opis:** `UnitKind` traci `'bazooka'`; usuwane są `core/units/bazooka.ts`, wpisy w `UNIT_DEFS`, `UNIT_KINDS`, `createUnit` i `UNIT_ROLES`. Piechur (`infantry`) pozostaje jedyną jednostką piechoty, a wybór broni głównej nadal zmienia tylko portret i cenę: karabin → `infantry.png`, bazooka → `bazooka.jpg`, snajperka → `sniper.jpg` — plik `bazooka.jpg` zostaje w zasobach. W drugim samouczku zamiast wroga z `kind: 'bazooka'` spawnuje się piechur z bazooką: `TutorialSpawn` dostaje opcjonalne `attackOverride`, a jednostka z nadanym atakiem 15 zachowuje lekcję o przebijaniu pancerza. Pola `bazookaHits`, cel `BAZOOKA` i dymek potwierdzający pozostają, ale liczone są trafienia tego specjalnego piechura.
+- **Kryteria:**
+  - **Jednostki:** `UnitKind`, `UNIT_DEFS`, `UNIT_KINDS`, `createUnit`, `UNIT_ROLES` i eksport z `core/units/index.ts` nie zawierają bazooki; plik `core/units/bazooka.ts` znika.
+  - **Sklep:** w siatce rekrutacji nie ma karty „Żołnierz z bazooką”; piechur może wybrać karabin, bazookę lub snajperkę, a portret w prawym panelu zmienia się odpowiednio na `infantry.png`, `bazooka.jpg`, `sniper.jpg`.
+  - **Samouczek:** w misji `tutorial-ruch-jednostek` przy bazie pojawia się czerwony piechur z bazooką, trafia czołg za 15 obrażeń, a krok `BAZOOKA` i dymek `TRAFIENIE Z BAZOOKI!` działają jak dotąd.
+  - **Walka:** atak z `attackOverride` jest uwzględniany w `combat.ts`, `volley.ts` i `timeline.ts`; zwykłe jednostki używają `UNIT_DEFS[kind].attack`.
+  - **Dokumentacja i testy:** ZAL-004, ZAL-006, INTERF-005 i opisy GRA-096/GRA-122 odzwierciedlają nowy model, a `make verify` przechodzi.

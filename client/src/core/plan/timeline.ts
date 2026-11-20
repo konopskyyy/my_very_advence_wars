@@ -1,7 +1,7 @@
 import type { HexCoord } from '../map';
 import type { GameState } from '../state';
 import { loadPassenger, unloadPassenger } from '../transport';
-import { UNIT_DEFS, type Unit } from '../units';
+import { unitAttack, type Unit } from '../units';
 import { boardingTarget, unloadAction, walkActions } from './simulate';
 import type { TurnPlan } from './types';
 
@@ -106,7 +106,7 @@ export function buildTimeline(plan: TurnPlan, state: GameState): TurnTimeline {
         attackerPos: step.before.pos,
         targetId: action.targetId,
         targetPos: target?.pos ?? step.before.pos,
-        damage: UNIT_DEFS[unit.kind].attack,
+        damage: unitAttack(unit),
       });
     });
 

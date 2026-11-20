@@ -18,6 +18,7 @@ export interface TutorialSpawn {
   readonly faction: FactionId;
   readonly col: number;
   readonly row: number;
+  readonly attackOverride?: number;
 }
 
 export interface TutorialGoal {

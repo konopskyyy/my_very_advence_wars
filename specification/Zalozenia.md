@@ -60,7 +60,6 @@
 | `tank`      | Czołg     |  300 |     20 |    3 |    9 |      7 |             3 |              1 |        6 |
 | `artillery` | Artyleria |  250 |     14 |    2 |   12 |      3 |    cała mapa |     cała mapa |        6 |
 | `scout`     | Zwiadowca |  150 |      8 |    6 |    3 |      2 |    cała mapa |              1 |        — |
-| `bazooka`   | Żołnierz z bazooką | 200 | 10 | 3 | 15 | 3 | 2 | 2 | — |
 | `bomber`    | Bombowiec | 250 | 10 | 2 | 25 | 2 | cała mapa | cała mapa | 1 |
 | `helicopter` | Śmigłowiec | 300 | 12 | 5 | 18 | 3 | 4 | 2 | 6 |
 
@@ -77,7 +76,10 @@
   ruch (6 zamiast 2) i rola jednostki rozpoznawczej. Na mapie i w rekrutacji
   używa sylwetki oraz portretu żołnierza, tak jak piechota.
 - `defense` jest zapisane, ale nie zmniejsza obrażeń; walka korzysta wyłącznie
-  z `attack` atakującego.
+  z `attack` atakującego. Jednostka może mieć `attackOverride` w danych
+  (`UnitBase`), które zastępuje atak z tabeli — używa go specjalny piechur
+  z bazooką w drugim samouczku. Helper `unitAttack()` z `core/units` jest
+  jedynym źródłem obrażeń w `combat.ts`, `volley.ts` i `timeline.ts`.
 - Czołg i artyleria mają zapas strzałów (`ammo`); piechota i zwiad nie mają
   pola amunicji i nie zużywają pocisków — ich strzał kosztuje 1 punkt ruchu.
   Bieżąca liczba strzałów wynika z pozostałego ruchu: pełny `moveRange` daje
@@ -91,16 +93,15 @@
   ruchu, nie strzela i nie może zostać zaatakowany.
 - Strony jednostek to `blue`, `red` i `neutral`; edytor i rozgrywka używają
   niebieskiej i czerwonej.
-- Piechota ma domyślnie broń `RIFLE` (karabin), a żołnierz z bazooką — `BAZOOKA`;
-  obie wskazują dźwięk wystrzału. Czołg, artyleria i zwiad nie mają jeszcze
-  własnej broni i do czasu jej dodania korzystają z domyślnego dźwięku wystrzału.
+- Piechota ma w danych broń `RIFLE` (karabin), która wskazuje dźwięk wystrzału.
+  Wybór broni głównej w oknie `KUP` nie zmienia tej danej — zmienia tylko portret
+  i cenę. Czołg, artyleria i zwiad nie mają jeszcze własnej broni i do czasu jej
+  dodania korzystają z domyślnego dźwięku wystrzału.
 - Dźwięk ruchu jest właściwością definicji jednostki (`UnitStats.moveSound`):
-  piechota, żołnierz z bazooką, zwiadowca i czołg mają `'step'`, a artyleria
-  pozostaje cicha. Podczas odtwarzania tury dźwięk odtwarza się raz na każdy
+  piechota, zwiadowca i czołg mają `'step'`, a artyleria pozostaje cicha. Podczas odtwarzania tury dźwięk odtwarza się raz na każdy
   pokonany heks.
 - Dźwięk śmierci jest właściwością definicji jednostki (`UnitStats.deathSound`):
-  piechota i żołnierz z bazooką mają `'death'`, a czołg, artyleria i zwiad nie
-  mają dźwięku śmierci.
+  piechota ma `'death'`, a czołg, artyleria i zwiad nie mają dźwięku śmierci.
 - Bombowiec (`bomber`) ma jeden strzał w turze: `ammo: 1` i ruch 2, więc strzał
   kosztuje cały budżet ruchu i ustawia `hasActed`. Zasięg wzroku i strzału obejmuje
   całą mapę (stała `FULL_MAP_RANGE`), a atak 25 niszczy czołg jednym trafieniem.
@@ -268,8 +269,9 @@
   karabinierów, którzy pojawiają się dopiero po wykonaniu tej tury. Czołg ma
   20 HP, więc dwa strzały po 5 obrażeń go nie niszczą. Karabinierzy po tym
   ostrzale wycofują się, a gracz wraca czołgiem do bazy na heksie `(2, 5)`.
-  Przy bazie pojawia się żołnierz z bazooką i w pierwszej turze wroga trafia
-  czołg pociskiem za 15 obrażeń. Dymek potwierdzenia przypomina, że to nie
+  Przy bazie pojawia się czerwony piechur z bazooką (`UnitKind` pozostaje
+  `infantry`, a `attackOverride` podnosi jego atak do 15) i w pierwszej turze
+  wroga trafia czołg pociskiem za 15 obrażeń. Dymek potwierdzenia przypomina, że to nie
   jedyne zagrożenie dla czołgu — równie groźne są inne czołgi, śmigłowce
   i artyleria. Dopiero dymek z przyciskiem `ROZUMIEM` pozwala zakończyć misję. Misja odblokowuje się po ukończeniu pierwszej, a postęp jest
   zapisywany trwale w przeglądarce.
