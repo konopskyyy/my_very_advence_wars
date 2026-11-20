@@ -300,7 +300,7 @@ describe('podpowiedzi samouczka', () => {
     expect(bazooka).toHaveLength(1);
     expect(bazooka[0]?.index).toBe(8);
     expect(bazooka[0]?.units).toEqual([
-      { kind: 'bazooka', faction: 'red', col: 3, row: 5 },
+      { kind: 'infantry', faction: 'red', col: 3, row: 5, attackOverride: 15 },
     ]);
     expect(tutorialComplete(tutorial, backHome)).toBe(false);
     expect(

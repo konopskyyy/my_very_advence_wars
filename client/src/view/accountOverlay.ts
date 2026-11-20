@@ -9,6 +9,7 @@ export interface AccountOverlay {
   open(): void;
   close(): void;
   toggle(): void;
+  setTriggerVisible(visible: boolean): void;
 }
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -28,6 +29,10 @@ export function mountAccountOverlay(): AccountOverlay {
 
 export function toggleAccountOverlay(): void {
   instance?.toggle();
+}
+
+export function setAccountTriggerVisible(visible: boolean): void {
+  instance?.setTriggerVisible(visible);
 }
 
 function query<T extends Element>(root: ParentNode, selector: string): T {
@@ -267,6 +272,13 @@ function createOverlay(): AccountOverlay {
         open();
       } else {
         close();
+      }
+    },
+    setTriggerVisible: (visible) => {
+      trigger.hidden = !visible;
+
+      if (!visible) {
+        modal.hidden = true;
       }
     },
   };

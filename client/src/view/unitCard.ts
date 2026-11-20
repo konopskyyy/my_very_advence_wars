@@ -3,7 +3,7 @@ import { canMoveNow, terrainAt, toDoubled } from '../core/map';
 import type { PlanAction } from '../core/plan';
 import type { GameState } from '../core/state';
 import { TERRAIN_DEFS } from '../core/map/terrain';
-import { FACTION_DEFS, shotsLeft, UNIT_DEFS, type Unit } from '../core/units';
+import { FACTION_DEFS, shotsLeft, UNIT_DEFS, unitAttack, type Unit } from '../core/units';
 import { formatPoints, formatRange } from './format';
 import { unitTexture } from './unitLayer';
 
@@ -142,7 +142,7 @@ export class UnitCard {
       .setText(`${stats.label} — ${FACTION_DEFS[selected.faction].label}`)
       .setColor('#f2f5f7');
     this.stats.setText(
-      `HP ${selected.hp}/${stats.maxHp} · ATK ${stats.attack} · DEF ${stats.defense}${ammo}${cargo}`,
+      `HP ${selected.hp}/${stats.maxHp} · ATK ${unitAttack(selected)} · DEF ${stats.defense}${ammo}${cargo}`,
     );
     this.ranges.setText(
       `Ruch ${formatPoints(canMove ? selected.movesLeft : 0)}/${stats.moveRange} · Wzrok ${formatRange(stats.visionRange)} · Strzał ${formatRange(stats.attackRange)}`,

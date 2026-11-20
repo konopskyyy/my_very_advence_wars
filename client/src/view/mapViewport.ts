@@ -15,6 +15,7 @@ export interface MapViewportOptions {
   readonly panSpeed?: number;
   readonly edgePanSpeed?: number;
   readonly edgePanMargin?: number;
+  readonly edgePanRightInset?: number;
   readonly edgePanBlocked?: (pointer: Phaser.Input.Pointer) => boolean;
   readonly margin?: number;
   readonly size?: number;
@@ -149,7 +150,8 @@ export class MapViewport {
     }
 
     const left = pointer.x <= margin;
-    const right = pointer.x >= this.scene.scale.width - margin;
+    const right =
+      pointer.x >= this.scene.scale.width - margin - (this.options.edgePanRightInset ?? 0);
     const up = pointer.y <= margin;
     const down = pointer.y >= this.scene.scale.height - margin;
 

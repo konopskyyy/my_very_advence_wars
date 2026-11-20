@@ -1,6 +1,6 @@
 import type { GameState } from '../state';
 import { loadPassenger, unloadPassenger } from '../transport';
-import { UNIT_DEFS } from '../units';
+import { unitAttack } from '../units';
 import { boardingTarget, unloadAction, walkActions } from './simulate';
 import type { PlanHit, TurnPlan } from './types';
 
@@ -35,7 +35,7 @@ export function planVolley(state: GameState, plan: TurnPlan): VolleyPlan {
         return;
       }
 
-      const damage = UNIT_DEFS[unit.kind].attack;
+      const damage = unitAttack(unit);
 
       hits.push({
         attackerId: unit.id,

@@ -4,7 +4,6 @@ import {
   createArtillery,
   type ArtilleryUnit,
 } from './artillery';
-import { BAZOOKA_STATS, createBazooka, type BazookaUnit } from './bazooka';
 import { BOMBER_STATS, createBomber, type BomberUnit } from './bomber';
 import { createHelicopter, HELICOPTER_STATS, type HelicopterUnit } from './helicopter';
 import type { FactionId } from './faction';
@@ -18,7 +17,6 @@ export type Unit =
   | TankUnit
   | ArtilleryUnit
   | ScoutUnit
-  | BazookaUnit
   | BomberUnit
   | HelicopterUnit;
 
@@ -27,7 +25,6 @@ export const UNIT_DEFS: Record<UnitKind, UnitStats> = {
   tank: TANK_STATS,
   artillery: ARTILLERY_STATS,
   scout: SCOUT_STATS,
-  bazooka: BAZOOKA_STATS,
   bomber: BOMBER_STATS,
   helicopter: HELICOPTER_STATS,
 };
@@ -37,10 +34,13 @@ export const UNIT_KINDS: readonly UnitKind[] = [
   'tank',
   'artillery',
   'scout',
-  'bazooka',
   'bomber',
   'helicopter',
 ];
+
+export function unitAttack(unit: Unit): number {
+  return unit.attackOverride ?? UNIT_DEFS[unit.kind].attack;
+}
 
 export function createUnit(
   id: string,
@@ -57,8 +57,6 @@ export function createUnit(
       return createArtillery(id, faction, pos);
     case 'scout':
       return createScout(id, faction, pos);
-    case 'bazooka':
-      return createBazooka(id, faction, pos);
     case 'bomber':
       return createBomber(id, faction, pos);
     case 'helicopter':

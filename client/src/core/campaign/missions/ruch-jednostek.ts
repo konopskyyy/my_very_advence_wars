@@ -5,6 +5,8 @@ import type { CampaignTile } from '../types';
 const MAP_COLS = 16;
 const MAP_ROWS = 10;
 
+export const BAZOOKA_ATTACK = 15;
+
 const PLAYER_DEPLOYMENT = [
   { kind: 'infantry', col: 3, row: 4 },
   { kind: 'infantry', col: 3, row: 6 },
@@ -114,10 +116,18 @@ export const RUCH_JEDNOSTEK: CampaignTile = {
         {
           hint: {
             title: 'POWRÓT DO BAZY',
-            text: 'Karabiny nie przebiły pancerza i karabinierzy wycofali się. Wróć czołgiem do bazy na heksie (2, 5) albo obok niej i wykonaj turę. Przy bazie czeka na ciebie żołnierz z bazooką.',
+            text: 'Karabiny nie przebiły pancerza i karabinierzy wycofali się. Wróć czołgiem do bazy na heksie (2, 5) albo obok niej i wykonaj turę. Przy bazie czeka na ciebie piechur z bazooką.',
           },
           until: { returned: true },
-          spawn: [{ kind: 'bazooka', faction: 'red', col: 3, row: 5 }],
+          spawn: [
+            {
+              kind: 'infantry',
+              faction: 'red',
+              col: 3,
+              row: 5,
+              attackOverride: BAZOOKA_ATTACK,
+            },
+          ],
         },
         {
           hint: {

@@ -2,10 +2,17 @@ import type Phaser from 'phaser';
 import { cellCoord, hexToPixel, type GameMap, type HexCoord } from '../core/map';
 import { TERRAIN_DEFS } from '../core/map/terrain';
 import { FACTION_DEFS, type Unit } from '../core/units';
-import { HEX_SIZE } from './hexGrid';
+import {
+  BAR_WIDTH,
+  bottomPanels,
+  HUD_MARGIN,
+  MINIMAP_HEIGHT,
+  MINIMAP_PANEL_HEIGHT,
+} from './hudLayout';
+import { type FactionTheme } from './factionTheme';
 
 const WIDTH = 176;
-const HEIGHT = 132;
+const HEIGHT = MINIMAP_HEIGHT;
 const MARGIN = 12;
 const PADDING = 6;
 const DEPTH = 30;
@@ -13,7 +20,6 @@ const DEPTH = 30;
 export interface MinimapLayout {
   readonly cellSize: number;
   point(coord: HexCoord): { x: number; y: number };
-  pixelPoint(x: number, y: number): { x: number; y: number };
 }
 
 export function minimapLayout(
@@ -66,19 +72,21 @@ export function minimapLayout(
 
       return pixelPoint(center.x, center.y);
     },
-    pixelPoint,
   };
 }
 
 export interface MinimapState {
   readonly map: GameMap;
   readonly units: readonly Unit[];
-  readonly camera: Phaser.Cameras.Scene2D.Camera;
+  readonly theme: FactionTheme;
   readonly bottomInset: number;
+  readonly standalone?: boolean;
   readonly spawn?: HexCoord;
 }
 
 export class Minimap {
+  private readonly panel: Phaser.GameObjects.Rectangle;
+  private readonly stripe: Phaser.GameObjects.Rectangle;
   private readonly frame: Phaser.GameObjects.Graphics;
   private readonly terrain: Phaser.GameObjects.Graphics;
   private readonly overlay: Phaser.GameObjects.Graphics;
@@ -87,8 +95,21 @@ export class Minimap {
   private terrainTop?: number;
   private left = MARGIN;
   private top = 0;
+  private panelLeft = MARGIN;
+  private panelTop = 0;
+  private panelWidth = WIDTH;
 
   constructor(private readonly scene: Phaser.Scene) {
+    this.panel = scene.add
+      .rectangle(0, 0, WIDTH, MINIMAP_PANEL_HEIGHT, 0x0b0f14, 0.82)
+      .setOrigin(0, 0)
+      .setScrollFactor(0)
+      .setDepth(DEPTH - 1);
+    this.stripe = scene.add
+      .rectangle(0, 0, WIDTH, 2, 0x6fd08c, 1)
+      .setOrigin(0, 0)
+      .setScrollFactor(0)
+      .setDepth(DEPTH);
     this.frame = scene.add.graphics().setScrollFactor(0).setDepth(DEPTH);
     this.terrain = scene.add.graphics().setScrollFactor(0).setDepth(DEPTH + 1);
     this.overlay = scene.add.graphics().setScrollFactor(0).setDepth(DEPTH + 2);
@@ -103,21 +124,56 @@ export class Minimap {
   }
 
   get uiObjects(): readonly Phaser.GameObjects.GameObject[] {
-    return [this.frame, this.terrain, this.overlay, this.title];
+    return [
+      this.panel,
+      this.stripe,
+      this.frame,
+      this.terrain,
+      this.overlay,
+      this.title,
+    ];
   }
 
   contains(x: number, y: number): boolean {
     return (
-      x >= this.left &&
-      x <= this.left + WIDTH &&
-      y >= this.top &&
-      y <= this.top + HEIGHT
+      x >= this.panelLeft &&
+      x <= this.panelLeft + this.panelWidth &&
+      y >= this.panelTop &&
+      y <= this.panelTop + MINIMAP_PANEL_HEIGHT
     );
   }
 
-  update({ map, units, camera, bottomInset, spawn }: MinimapState): void {
-    this.top = this.scene.scale.height - bottomInset - HEIGHT;
-    this.layoutFrame();
+  update({ map, units, theme, bottomInset, standalone, spawn }: MinimapState): void {
+    const isStandalone = standalone === true;
+    const panels = bottomPanels(this.scene.scale.width - BAR_WIDTH);
+
+    if (isStandalone) {
+      this.panelLeft = MARGIN;
+      this.panelTop = this.scene.scale.height - bottomInset - HEIGHT;
+      this.panelWidth = WIDTH;
+      this.left = this.panelLeft;
+      this.top = this.panelTop;
+    } else {
+      this.panelLeft = panels.minimapLeft;
+      this.panelTop = this.scene.scale.height - HUD_MARGIN - MINIMAP_PANEL_HEIGHT;
+      this.panelWidth = panels.minimapWidth;
+      this.left = this.panelLeft + Math.floor((this.panelWidth - WIDTH) / 2);
+      this.top = this.panelTop + 16;
+    }
+
+    this.panel
+      .setVisible(!isStandalone)
+      .setPosition(this.panelLeft, this.panelTop)
+      .setSize(this.panelWidth, MINIMAP_PANEL_HEIGHT)
+      .setFillStyle(theme.barBackground, 0.82)
+      .setStrokeStyle(1, theme.accent, 1);
+    this.stripe
+      .setVisible(!isStandalone)
+      .setPosition(this.panelLeft, this.panelTop)
+      .setSize(this.panelWidth, 2)
+      .setFillStyle(theme.accent, 1);
+    this.title.setColor(theme.accentSoft);
+    this.layoutFrame(isStandalone);
 
     if (map !== this.terrainMap || this.top !== this.terrainTop) {
       this.terrainMap = map;
@@ -162,34 +218,22 @@ export class Minimap {
       this.overlay.strokeCircle(point.x, point.y, 2.6);
     }
 
-    const view = camera.worldView;
-    const topLeft = toScreen(
-      layout.pixelPoint(view.x / HEX_SIZE, view.y / HEX_SIZE),
-    );
-    const bottomRight = toScreen(
-      layout.pixelPoint(
-        (view.x + view.width) / HEX_SIZE,
-        (view.y + view.height) / HEX_SIZE,
-      ),
-    );
-
-    this.overlay.lineStyle(1, 0xffffff, 0.85);
-    this.overlay.strokeRect(
-      topLeft.x,
-      topLeft.y,
-      Math.max(2, bottomRight.x - topLeft.x),
-      Math.max(2, bottomRight.y - topLeft.y),
-    );
   }
 
-  private layoutFrame(): void {
+  private layoutFrame(standalone: boolean): void {
     this.frame.clear();
-    this.frame.fillStyle(0x0b0f14, 0.86);
-    this.frame.fillRoundedRect(this.left, this.top, WIDTH, HEIGHT, 6);
-    this.frame.lineStyle(1, 0x6fd08c, 0.55);
-    this.frame.strokeRoundedRect(this.left, this.top, WIDTH, HEIGHT, 6);
 
-    this.title.setPosition(this.left + 8, this.top + 4);
+    if (standalone) {
+      this.frame.fillStyle(0x0b0f14, 0.86);
+      this.frame.fillRoundedRect(this.left, this.top, WIDTH, HEIGHT, 6);
+      this.frame.lineStyle(1, 0x6fd08c, 0.55);
+      this.frame.strokeRoundedRect(this.left, this.top, WIDTH, HEIGHT, 6);
+    }
+
+    this.title.setPosition(
+      standalone ? this.left + 8 : this.panelLeft + 12,
+      standalone ? this.top + 4 : this.panelTop + 4,
+    );
   }
 
   private drawTerrain(map: GameMap): void {

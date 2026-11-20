@@ -69,18 +69,21 @@ import {
   type TutorialProgress,
   type TutorialScript,
 } from '../core/tutorial';
+import { BAZOOKA_ATTACK } from '../core/campaign/missions/ruch-jednostek';
 import { boardingPath, canBoard, cargoOf } from '../core/transport';
 import { HexMapView, HEX_SIZE, outlineHex } from '../view/hexGrid';
 import { MapViewport } from '../view/mapViewport';
 import { MissionResult } from '../view/missionResult';
 import { Minimap } from '../view/minimap';
 import { ObjectivesPanel } from '../view/objectivesPanel';
+import { setAccountTriggerVisible } from '../view/accountOverlay';
 import { PauseMenu } from '../view/pauseMenu';
 import { PlanTimeline } from '../view/planTimeline';
 import { ReplayBanner } from '../view/replayBanner';
 import { RecruitDialog } from '../view/recruitDialog';
 import { ScenarioCommandBar } from '../view/scenarioCommandBar';
-import { BAR_HEIGHT } from '../view/hudLayout';
+import { BAR_WIDTH, bottomPanels, HUD_MARGIN } from '../view/hudLayout';
+import { FACTION_THEMES } from '../view/factionTheme';
 import { SpawnPointView } from '../view/spawnPoint';
 import { installButtonClickSound } from '../view/buttonAudio';
 import {
@@ -116,6 +119,10 @@ const ATTACK_HINT_COLOR = 0xe0563f;
 const PENDING_ATTACK_COLOR = 0xffb347;
 const BOARD_HINT_COLOR = 0x5aa9e6;
 const ATTACK_HINT_SIZE = HEX_SIZE - 8;
+function isBazookaInfantry(unit: Unit): boolean {
+  return unit.kind === 'infantry' && unit.attackOverride === BAZOOKA_ATTACK;
+}
+
 const SHOT_LINE_DASH = 8;
 const SHOT_LINE_GAP = 5;
 const PLAN_COLORS = [0xf2d35c, 0x6fd08c, 0x5aa9e6, 0xe0a15a, 0xc77dff, 0x7bdff2];
@@ -285,6 +292,8 @@ export class ScenarioScene extends Phaser.Scene {
 
   create(): void {
     installButtonClickSound(this);
+    setAccountTriggerVisible(false);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => setAccountTriggerVisible(true));
 
     this.uiCamera = undefined;
 
@@ -293,6 +302,7 @@ export class ScenarioScene extends Phaser.Scene {
       zoomMax: 2.5,
       startZoom: 0.9,
       edgePanMargin: EDGE_PAN_MARGIN,
+      edgePanRightInset: this.replayMode ? 0 : BAR_WIDTH,
       edgePanBlocked: (pointer) =>
         this.pointerOverModal() || this.pointerOverCommandBar(pointer),
     });
@@ -326,9 +336,7 @@ export class ScenarioScene extends Phaser.Scene {
       onLog: () => this.openLogPanel(),
       onObjectives: () => this.openObjectives(),
       onAirstrike: () => this.startAirstrike(),
-      onScenarioMenu: () => this.scene.start(this.returnScene),
-      onMainMenu: () => this.scene.start('menu'),
-      returnLabel: this.returnLabel,
+      onPauseMenu: () => this.pauseMenu.show(),
     });
     this.planner = new PlanTimeline(this, {
       onToggle: () => this.clearPreview(),
@@ -422,8 +430,9 @@ export class ScenarioScene extends Phaser.Scene {
       units: this.replayMode
         ? this.state.units
         : visibleUnits(this.state, this.playerFaction, this.visionFor(this.playerFaction)),
-      camera: this.cameras.main,
-      bottomInset: this.replayMode ? 8 : BAR_HEIGHT + this.planner.height + 8,
+      theme: FACTION_THEMES[this.turn.faction],
+      bottomInset: this.replayMode ? 8 : this.planner.height + 8,
+      standalone: this.replayMode,
       spawn: this.scenario.spawn
         ? { col: this.scenario.spawn.col, row: this.scenario.spawn.row }
         : undefined,
@@ -570,6 +579,10 @@ export class ScenarioScene extends Phaser.Scene {
     }
 
     if (this.pointerOverModal() || this.pointerOverCommandBar(pointer)) {
+      return;
+    }
+
+    if (this.tutorialTip.contains(pointer.x, pointer.y)) {
       return;
     }
 
@@ -981,6 +994,7 @@ export class ScenarioScene extends Phaser.Scene {
     }
 
     this.playing = true;
+    this.commandBar.setPauseMenuVisible(false);
     this.playback = {
       timeline: this.timeline,
       elapsed: 0,
@@ -1115,9 +1129,10 @@ export class ScenarioScene extends Phaser.Scene {
     const enemyHitTank = !wasPlayerTurn && hitsOnTank.length > 0;
 
     if (!wasPlayerTurn) {
-      this.tutorialBazookaHits += hitsOnTank.filter(
-        (hit) => this.state.units.find((unit) => unit.id === hit.attackerId)?.kind === 'bazooka',
-      ).length;
+      this.tutorialBazookaHits += hitsOnTank.filter((hit) => {
+        const attacker = this.state.units.find((unit) => unit.id === hit.attackerId);
+        return attacker !== undefined && isBazookaInfantry(attacker);
+      }).length;
     }
 
     this.state = committed.state;
@@ -1155,6 +1170,7 @@ export class ScenarioScene extends Phaser.Scene {
       });
 
     this.playing = false;
+    this.commandBar.setPauseMenuVisible(true);
     this.playback = null;
     this.previewMs = null;
     this.pendingMove = null;
@@ -1247,7 +1263,7 @@ export class ScenarioScene extends Phaser.Scene {
 
     if (this.scenario.id === 'tutorial-ruch-jednostek') {
       const bazooka = this.state.units.find(
-        (unit) => unit.kind === 'bazooka' && unit.faction !== this.playerFaction,
+        (unit) => isBazookaInfantry(unit) && unit.faction !== this.playerFaction,
       );
       const tank = this.state.units.find(
         (unit) => unit.kind === 'tank' && unit.faction === this.playerFaction,
@@ -2089,7 +2105,30 @@ export class ScenarioScene extends Phaser.Scene {
       return;
     }
 
-    outlineHex(this.cursor, this.mapView.center(this.hover), 0xffffff, 2);
+    const center = this.mapView.center(this.hover);
+    const theme = FACTION_THEMES[this.turn.faction];
+    const target = this.hoveredUnit();
+
+    if (!target || target.faction === this.playerFaction) {
+      outlineHex(this.cursor, center, theme.accent, 2);
+
+      return;
+    }
+
+    const inner = HEX_SIZE * 0.7;
+    const outer = HEX_SIZE * 1.2;
+
+    this.cursor.lineStyle(2, theme.accentBright, 1);
+    this.cursor.beginPath();
+    this.cursor.moveTo(center.x, center.y - outer);
+    this.cursor.lineTo(center.x, center.y - inner);
+    this.cursor.moveTo(center.x, center.y + inner);
+    this.cursor.lineTo(center.x, center.y + outer);
+    this.cursor.moveTo(center.x - outer, center.y);
+    this.cursor.lineTo(center.x - inner, center.y);
+    this.cursor.moveTo(center.x + inner, center.y);
+    this.cursor.lineTo(center.x + outer, center.y);
+    this.cursor.strokePath();
   }
 
   private pointerOverModal(): boolean {
@@ -2103,14 +2142,19 @@ export class ScenarioScene extends Phaser.Scene {
   }
 
   private pointerOverCommandBar(pointer: Phaser.Input.Pointer): boolean {
-    return !this.replayMode && pointer.y >= this.scale.height - BAR_HEIGHT;
+    return !this.replayMode && pointer.x >= this.scale.width - BAR_WIDTH;
   }
 
   private pointerOverPlanner(pointer: Phaser.Input.Pointer): boolean {
+    const panels = bottomPanels(this.scale.width - BAR_WIDTH);
+    const height = this.planner?.height ?? 0;
+
     return (
       !this.replayMode &&
-      !this.pointerOverCommandBar(pointer) &&
-      pointer.y >= this.scale.height - BAR_HEIGHT - (this.planner?.height ?? 0)
+      pointer.x >= panels.plannerLeft &&
+      pointer.x <= panels.plannerLeft + panels.plannerWidth &&
+      pointer.y >= this.scale.height - HUD_MARGIN - height &&
+      pointer.y <= this.scale.height - HUD_MARGIN
     );
   }
 
@@ -2118,7 +2162,9 @@ export class ScenarioScene extends Phaser.Scene {
     return (
       this.pointerOverModal() ||
       this.pointerOverCommandBar(pointer) ||
-      this.pointerOverPlanner(pointer)
+      this.pointerOverPlanner(pointer) ||
+      this.minimap.contains(pointer.x, pointer.y) ||
+      this.tutorialTip.contains(pointer.x, pointer.y)
     );
   }
 
@@ -2146,7 +2192,7 @@ export class ScenarioScene extends Phaser.Scene {
 
     const bazookaSpawnIndex =
       this.tutorialScript?.steps.findIndex((step) =>
-        step.spawn?.some((unit) => unit.kind === 'bazooka'),
+        step.spawn?.some((unit) => unit.attackOverride === BAZOOKA_ATTACK),
       ) ?? -1;
 
     if (bazookaSpawnIndex >= 0 && this.tutorialSpawnedUnits.has(bazookaSpawnIndex) && !enemiesLeft) {
@@ -2280,7 +2326,7 @@ export class ScenarioScene extends Phaser.Scene {
     }
 
     let state = this.state;
-    const spawnedKinds = new Set<UnitKind>();
+    let bazookaSpawned = false;
 
     for (const batch of batches) {
       const ids: string[] = [];
@@ -2288,14 +2334,16 @@ export class ScenarioScene extends Phaser.Scene {
       for (const spawn of batch.units) {
         const beforeIds = new Set(state.units.map((unit) => unit.id));
         const coord = this.spawnCoord(state, spawn.faction, spawn.col, spawn.row);
-        state = placeUnit(state, spawn.kind, coord, spawn.faction);
+        state = placeUnit(state, spawn.kind, coord, spawn.faction, spawn.attackOverride);
         const added = state.units.find((unit) => !beforeIds.has(unit.id));
 
         if (added) {
           ids.push(added.id);
         }
 
-        spawnedKinds.add(spawn.kind);
+        if (spawn.attackOverride === BAZOOKA_ATTACK) {
+          bazookaSpawned = true;
+        }
       }
 
       this.tutorialSpawnedUnits.set(batch.index, ids);
@@ -2305,8 +2353,8 @@ export class ScenarioScene extends Phaser.Scene {
 
     if (!this.replayMode) {
       this.planner.notice(
-        spawnedKinds.has('bazooka')
-          ? 'Przy bazie pojawia się czerwony żołnierz z bazooką'
+        bazookaSpawned
+          ? 'Przy bazie pojawia się czerwony piechur z bazooką'
           : 'Na prawym skrzydle pojawiają się czerwoni karabinierzy',
       );
     }

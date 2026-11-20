@@ -1,6 +1,6 @@
 import { hexDistance } from './map/layout';
 import type { GameState } from './state';
-import { applyAttackCost, shotsLeft, UNIT_DEFS, type Unit } from './units';
+import { applyAttackCost, shotsLeft, UNIT_DEFS, unitAttack, type Unit } from './units';
 
 export function canAttackThisTurn(unit: Unit): boolean {
   if (unit.hasActed) {
@@ -30,7 +30,7 @@ export function attackUnit(state: GameState, attackerId: string, targetId: strin
     return state;
   }
 
-  const hp = target.hp - UNIT_DEFS[attacker.kind].attack;
+  const hp = target.hp - unitAttack(attacker);
   const units = state.units
     .filter((unit) => unit.id !== target.id || hp > 0)
     .map((unit) => {

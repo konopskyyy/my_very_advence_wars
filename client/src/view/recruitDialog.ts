@@ -20,6 +20,7 @@ import {
   type RecruitmentState,
 } from '../core/recruitment';
 import { FACTION_THEMES, type FactionTheme } from './factionTheme';
+import { BAR_WIDTH } from './hudLayout';
 import { formatPoints, formatRange } from './format';
 import { loadoutPortraitKey, recruitPortraitKey } from './recruitPortrait';
 
@@ -57,7 +58,6 @@ const UNIT_ROLES: Record<UnitKind, string> = {
   tank: 'POJAZD · czołg',
   artillery: 'POJAZD · artyleria',
   scout: 'ŻOŁNIERZ · zwiadowca',
-  bazooka: 'ŻOŁNIERZ · bazooka',
   bomber: 'LOTNICTWO · bombowiec',
   helicopter: 'LOTNICTWO · śmigłowiec',
 };
@@ -103,6 +103,7 @@ export class RecruitDialog {
   private readonly listHeight: number;
   private readonly cardWidth: number;
   private readonly cardPortraitSize: number;
+  private readonly portraitDisplaySize: number;
   private readonly cardColumns: number;
   private readonly cardStepX: number;
   private readonly cardStepY: number;
@@ -131,9 +132,9 @@ export class RecruitDialog {
     scene: Phaser.Scene,
     private readonly handlers: RecruitDialogHandlers = {},
   ) {
-    const centerX = scene.scale.width / 2;
+    const centerX = (scene.scale.width - BAR_WIDTH) / 2;
     const centerY = scene.scale.height / 2;
-    const panelWidth = Math.min(PANEL_MAX_WIDTH, scene.scale.width - PANEL_MARGIN * 2);
+    const panelWidth = Math.min(PANEL_MAX_WIDTH, scene.scale.width - BAR_WIDTH - PANEL_MARGIN * 2);
     const panelHeight = Math.min(PANEL_MAX_HEIGHT, scene.scale.height - PANEL_MARGIN * 2);
     const panelX = centerX - panelWidth / 2;
     const panelY = centerY - panelHeight / 2;
@@ -149,6 +150,7 @@ export class RecruitDialog {
     const portraitY = contentTop;
     const portraitWidth = 190;
     const portraitHeight = 220;
+    this.portraitDisplaySize = portraitWidth - 20;
     const infoX = rightX + portraitWidth + 16;
     const infoWidth = rightWidth - portraitWidth - 16;
     const buttonCenterX = rightX + rightWidth / 2;
@@ -325,7 +327,7 @@ export class RecruitDialog {
           portraitY + portraitHeight / 2,
           recruitPortraitKey('infantry'),
         )
-        .setDisplaySize(portraitWidth - 20, portraitWidth - 20)
+        .setDisplaySize(this.portraitDisplaySize, this.portraitDisplaySize)
         .setScrollFactor(0)
         .setDepth(DEPTH + 2),
     );
@@ -749,7 +751,9 @@ export class RecruitDialog {
   }
 
   private renderPortrait(): void {
-    this.portraitImage.setTexture(loadoutPortraitKey(this.selection[this.selectedKind]));
+    this.portraitImage
+      .setTexture(loadoutPortraitKey(this.selection[this.selectedKind]))
+      .setDisplaySize(this.portraitDisplaySize, this.portraitDisplaySize);
   }
 
   private renderDropdowns(): void {

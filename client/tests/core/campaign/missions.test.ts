@@ -72,7 +72,7 @@ describe('misje kampanii', () => {
     expect(steps[7]?.retireSpawn).toBe(6);
     expect(steps[8]?.until).toEqual({ returned: true });
     expect(steps[8]?.spawn).toEqual([
-      { kind: 'bazooka', faction: 'red', col: 3, row: 5 },
+      { kind: 'infantry', faction: 'red', col: 3, row: 5, attackOverride: 15 },
     ]);
     expect(steps[9]?.until).toEqual({ bazookaHits: 1 });
     expect([...terrains]).toEqual(

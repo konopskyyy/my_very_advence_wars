@@ -4,7 +4,7 @@ import type { FactionId } from './faction';
 import type { Unit } from './model';
 import type { Weapon } from './weapons';
 
-export type UnitKind = 'infantry' | 'tank' | 'artillery' | 'scout' | 'bazooka' | 'bomber' | 'helicopter';
+export type UnitKind = 'infantry' | 'tank' | 'artillery' | 'scout' | 'bomber' | 'helicopter';
 
 export const FULL_MAP_RANGE = 999;
 
@@ -16,6 +16,7 @@ export interface UnitBase {
   readonly movesLeft: number;
   readonly hasActed: boolean;
   readonly cargo?: readonly Unit[];
+  readonly attackOverride?: number;
 }
 
 export interface UnitStats {
