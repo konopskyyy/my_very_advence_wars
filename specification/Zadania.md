@@ -164,3 +164,4 @@ zadań do wykonania.
 | [[Zadania-opisy#GRA-127: Portret bombowca w sklepie\|GRA-127]] | Portret bombowca w sklepie | ✅ | GRA-122, INTERF-005 |
 | [[Zadania-opisy#GRA-128: Portret śmigłowca w sklepie\|GRA-128]] | Portret śmigłowca w sklepie | ✅ | GRA-122, INTERF-005 |
 | [[Zadania-opisy#GRA-129: Usunięcie jednostki bazooka i nowy piechur z bronią\|GRA-129]] | Usunięcie jednostki bazooka i nowy piechur z bronią | ⬜ | GRA-096, GRA-122, INTERF-005, ZAL-004 |
+| [[Zadania-opisy#GRA-130: Zwiadowca bez broni i portret zależny od wyboru\|GRA-130]] | Zwiadowca bez broni i portret zależny od wyboru | ✅ | GRA-113, GRA-125, INTERF-005, ZAL-004 |

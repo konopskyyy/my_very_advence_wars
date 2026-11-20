@@ -1395,3 +1395,12 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
   - **Samouczek:** w misji `tutorial-ruch-jednostek` przy bazie pojawia się czerwony piechur z bazooką, trafia czołg za 15 obrażeń, a krok `BAZOOKA` i dymek `TRAFIENIE Z BAZOOKI!` działają jak dotąd.
   - **Walka:** atak z `attackOverride` jest uwzględniany w `combat.ts`, `volley.ts` i `timeline.ts`; zwykłe jednostki używają `UNIT_DEFS[kind].attack`.
   - **Dokumentacja i testy:** ZAL-004, ZAL-006, INTERF-005 i opisy GRA-096/GRA-122 odzwierciedlają nowy model, a `make verify` przechodzi.
+
+## GRA-130: Zwiadowca bez broni i portret zależny od wyboru
+- **Kontekst:** zwiadowca nie ma broni, ale okno `KUP` pokazywało mu obie listy uzbrojenia, a prompt jego portretu zawierał karabin. Portret w prawym panelu zależał wyłącznie od zestawu broni, więc zmiana wybranej jednostki przy domyślnym zestawie nie zmieniała obrazu.
+- **Opis:** `view/recruitDialog.ts` ukrywa dla zwiadowcy nagłówek „WYPOSAŻENIE” i oba rozwijane wybory broni, a kliknięcia w nie nie zmieniają zestawu. `view/recruitPortrait.ts` dostaje `detailPortraitKey(kind, loadout)`: przy domyślnym zestawie karabin + pistolet pokazuje własny portret jednostki, po wyborze innej broni — portret zestawu, a dla zwiadowcy zawsze `scout.jpg`. Z promptu zwiadowcy w `prompts/gemini-portrety-jednostek.md` znika wzmianka o karabinie.
+- **Kryteria:**
+  - **Rekrutacja:** zwiadowca nie ma sekcji uzbrojenia ani list rozwijanych, a jego cena pozostaje ceną bazową bez dopłat.
+  - **Portret:** wybór jednostki przy domyślnym zestawie pokazuje portret tej jednostki, zmiana broni podmienia go na grafikę zestawu, a zwiadowca zawsze pokazuje `scout.jpg`.
+  - **Grafika:** prompt zwiadowcy nie opisuje żadnej broni.
+  - **Dokumentacja i testy:** INTERF-005, ZAL-004 i testy portretów są aktualne, a `make verify` przechodzi.
