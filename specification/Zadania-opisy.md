@@ -713,7 +713,7 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
 
 ## GRA-079: Panel konta w grze
 - **Kontekst:** Po wejściu pod `/game/` strona główna znika, a gracz nie miał wglądu w konto ani sposobu wylogowania się bez powrotu do niej. Elektron w ogóle pomija stronę startową.
-- **Opis:** `view/accountOverlay.ts` montuje w grze nakładkę DOM z przyciskiem w prawym górnym rogu. Panel pokazuje e-mail i datę utworzenia konta oraz „Wyloguj się”, a bez sesji — kompaktowy formularz logowania i rejestracji korzystający z tego samego modułu `auth/`. Panel otwiera się z przycisku nakładki i z pozycji „KONTO” w menu głównym, zamyka klawiszem Escape i kliknięciem tła, a jego stan odświeża się po zalogowaniu i wylogowaniu. Nakładka działa nad kanwą Phasera i nie przechwytuje kliknięć, gdy jest zamknięta.
+- **Opis:** `view/accountOverlay.ts` montuje w grze nakładkę DOM z przyciskiem w prawym górnym rogu. Panel pokazuje e-mail i datę utworzenia konta oraz „Wyloguj się”, a bez sesji — kompaktowy formularz logowania i rejestracji korzystający z tego samego modułu `auth/`. Panel otwiera się z przycisku nakładki, zamyka klawiszem Escape i kliknięciem tła, a jego stan odświeża się po zalogowaniu i wylogowaniu. Nakładka działa nad kanwą Phasera i nie przechwytuje kliknięć, gdy jest zamknięta.
 - **Kryteria:**
   - **Widoczność:** przycisk konta jest widoczny w menu i w scenariuszach, nad kanwą.
   - **Zalogowany:** panel pokazuje e-mail, datę utworzenia i przycisk wylogowania.
@@ -1404,3 +1404,12 @@ i kryteria. Status i powiązania są wyłącznie w [[Zadania]].
   - **Portret:** wybór jednostki przy domyślnym zestawie pokazuje portret tej jednostki, zmiana broni podmienia go na grafikę zestawu, a zwiadowca zawsze pokazuje `scout.jpg`.
   - **Grafika:** prompt zwiadowcy nie opisuje żadnej broni.
   - **Dokumentacja i testy:** INTERF-005, ZAL-004 i testy portretów są aktualne, a `make verify` przechodzi.
+
+## GRA-131: Usunięcie podpisu konta i trzy kolumny w KUP
+- **Kontekst:** w menu głównym pod przyciskiem konta nakładki DOM widniał drugi, klikalny napis „KONTO” rysowany w Phaserze, a siatka kart w oknie `KUP` mieściła przy 1280×720 tylko dwie jednostki w rzędzie.
+- **Opis:** z `scenes/MenuScene.ts` znika tekst „KONTO” w prawym górnym rogu wraz z obsługą kliknięcia — panel otwiera wyłącznie przycisk nakładki z `view/accountOverlay.ts`. `CARD_WIDTH` w `view/recruitDialog.ts` zmniejsza się do 172 px, więc przy 1280×720 karty układają się w trzech kolumnach; liczba kolumn nadal zależy od szerokości panelu.
+- **Kryteria:**
+  - **Menu:** w prawym górnym rogu jest tylko jeden przycisk konta, bez dodatkowego napisu pod nim; kliknięcie otwiera panel konta.
+  - **Siatka:** przy 1280×720 w lewej połowie okna `KUP` stoją trzy karty w rzędzie, a na węższym oknie liczba kolumn nadal się zmniejsza.
+  - **Interakcja:** wybór karty, przewijanie kółkiem i zakup działają bez zmian.
+  - **Dokumentacja i testy:** INTERF-001, INTERF-005 i opis GRA-079 są aktualne, a `make verify` przechodzi.
