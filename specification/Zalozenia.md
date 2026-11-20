@@ -68,13 +68,15 @@
 - Cenę całkowitą powiększają dopłaty za wybrane uzbrojenie: broń podstawowa
   to karabin (0), bazooka (+100) albo snajperka (+75), a dodatkowa pistolet (0)
   albo granaty (+30). Domyślny zestaw karabin + pistolet nie zmienia ceny
-  bazowej. Wybór broni nie zmienia statystyk jednostki opisanych w tabeli.
+  bazowej. Wybór broni nie zmienia statystyk jednostki opisanych w tabeli;
+  zwiadowca nie wybiera broni i zawsze płaci cenę bazową.
 
 - `moveRange` to budżet ruchu na turę, `visionRange` — promień widzenia,
   a `attackRange` — maksymalna odległość ataku.
 - Zwiadowca widzi całą mapę, tak jak artyleria; od artylerii odróżnia go
-  ruch (6 zamiast 2) i rola jednostki rozpoznawczej. Na mapie i w rekrutacji
-  używa sylwetki oraz portretu żołnierza, tak jak piechota.
+  ruch (6 zamiast 2) i rola jednostki rozpoznawczej. Na mapie używa sylwetki
+  żołnierza, a w rekrutacji własnego portretu `scout.jpg`; nie wybiera broni,
+  więc cena zakupu nie ma dopłat za uzbrojenie.
 - `defense` jest zapisane, ale nie zmniejsza obrażeń; walka korzysta wyłącznie
   z `attack` atakującego. Jednostka może mieć `attackOverride` w danych
   (`UnitBase`), które zastępuje atak z tabeli — używa go specjalny piechur

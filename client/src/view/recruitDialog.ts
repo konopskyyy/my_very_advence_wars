@@ -22,7 +22,7 @@ import {
 import { FACTION_THEMES, type FactionTheme } from './factionTheme';
 import { BAR_WIDTH } from './hudLayout';
 import { formatPoints, formatRange } from './format';
-import { loadoutPortraitKey, recruitPortraitKey } from './recruitPortrait';
+import { detailPortraitKey, recruitPortraitKey } from './recruitPortrait';
 
 const PANEL_MAX_WIDTH = 1160;
 const PANEL_MAX_HEIGHT = 640;
@@ -30,7 +30,7 @@ const PANEL_MARGIN = 24;
 const DEPTH = 40;
 const HEADER_HEIGHT = 54;
 const FOOTER_HEIGHT = 58;
-const CARD_WIDTH = 184;
+const CARD_WIDTH = 172;
 const CARD_HEIGHT = 236;
 const CARD_GAP = 10;
 const CARD_PORTRAIT_TOP = 12;
@@ -47,8 +47,10 @@ interface UnitRow {
 
 interface LoadoutDropdown {
   readonly slotIndex: number;
+  readonly label: Phaser.GameObjects.Text;
   readonly field: Phaser.GameObjects.Rectangle;
   readonly value: Phaser.GameObjects.Text;
+  readonly chevron: Phaser.GameObjects.Text;
   readonly popup: Phaser.GameObjects.Rectangle;
   readonly options: readonly Phaser.GameObjects.Text[];
 }
@@ -384,7 +386,7 @@ export class RecruitDialog {
       const optionCount = slot.options.length;
       const y = loadoutBaseY + slotIndex * 120;
 
-      this.register(
+      const label = this.register(
         scene.add
           .text(infoX, y, slot.label.toUpperCase(), {
             fontFamily: 'monospace',
@@ -416,7 +418,7 @@ export class RecruitDialog {
           .setDepth(DEPTH + 4),
       );
 
-      this.register(
+      const chevron = this.register(
         scene.add
           .text(infoX + infoWidth - 22, y + 28, '▾', {
             fontFamily: 'monospace',
@@ -457,7 +459,7 @@ export class RecruitDialog {
       });
 
       field.on('pointerdown', () => this.toggleDropdown(slotIndex));
-      this.dropdowns.push({ slotIndex, field, value, popup, options });
+      this.dropdowns.push({ slotIndex, label, field, value, chevron, popup, options });
     });
 
     const buttonY = panelY + panelHeight - 32;
@@ -601,6 +603,10 @@ export class RecruitDialog {
   }
 
   private toggleDropdown(slotIndex: number): void {
+    if (this.selectedKind === 'scout') {
+      return;
+    }
+
     this.openDropdown = this.openDropdown === slotIndex ? null : slotIndex;
     this.renderDropdowns();
   }
@@ -611,6 +617,10 @@ export class RecruitDialog {
   }
 
   private selectWeapon(slotIndex: number, optionIndex: number): void {
+    if (this.selectedKind === 'scout') {
+      return;
+    }
+
     const loadout = this.selection[this.selectedKind];
     const next: Loadout =
       slotIndex === 0
@@ -752,14 +762,30 @@ export class RecruitDialog {
 
   private renderPortrait(): void {
     this.portraitImage
-      .setTexture(loadoutPortraitKey(this.selection[this.selectedKind]))
+      .setTexture(detailPortraitKey(this.selectedKind, this.selection[this.selectedKind]))
       .setDisplaySize(this.portraitDisplaySize, this.portraitDisplaySize);
   }
 
   private renderDropdowns(): void {
     const loadout = this.selection[this.selectedKind];
+    const showWeapons = this.selectedKind !== 'scout';
 
+    this.equipmentTitle.setVisible(showWeapons);
     this.dropdowns.forEach((dropdown) => {
+      if (!showWeapons) {
+        dropdown.label.setVisible(false);
+        dropdown.field.setVisible(false);
+        dropdown.value.setVisible(false);
+        dropdown.chevron.setVisible(false);
+        dropdown.popup.setVisible(false);
+        dropdown.options.forEach((text) => text.setVisible(false));
+        return;
+      }
+
+      dropdown.label.setVisible(true);
+      dropdown.field.setVisible(true);
+      dropdown.value.setVisible(true);
+      dropdown.chevron.setVisible(true);
       const isPrimary = dropdown.slotIndex === 0;
       const selectedId = isPrimary ? loadout.primary : loadout.secondary;
       const options = isPrimary ? PRIMARY_WEAPONS : SECONDARY_WEAPONS;

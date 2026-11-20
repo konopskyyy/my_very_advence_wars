@@ -48,3 +48,11 @@ export function recruitPortraitKey(kind: UnitKind): string {
 export function loadoutPortraitKey(loadout: Loadout): string {
   return portraitKey(LOADOUT_PORTRAITS[loadout.primary][loadout.secondary]);
 }
+
+export function detailPortraitKey(kind: UnitKind, loadout: Loadout): string {
+  if (kind === 'scout' || (loadout.primary === 'rifle' && loadout.secondary === 'pistol')) {
+    return recruitPortraitKey(kind);
+  }
+
+  return loadoutPortraitKey(loadout);
+}

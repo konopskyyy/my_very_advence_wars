@@ -19,7 +19,7 @@ Unit: INFANTRY. One infantry soldier in a steel helmet and olive field uniform, 
 ### Zwiadowca — `scout.png`
 
 ```text
-Unit: SCOUT. Light infantry scout in a green helmet and lightweight recon uniform, binoculars held to the eyes, carbine slung on the back, agile forward-leaning stance, sleeker and lighter than the standard infantry soldier. Same style, same muted meadow background, full-bleed square frame, no text.
+Unit: SCOUT. Light infantry scout in a green helmet and lightweight recon uniform, binoculars held to the eyes, empty hands, no weapon of any kind, agile forward-leaning stance, sleeker and lighter than the standard infantry soldier. Same style, same muted meadow background, full-bleed square frame, no text.
 ```
 
 ### Żołnierz z bazooką — `bazooka.png`

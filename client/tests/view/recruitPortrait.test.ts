@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { loadoutPortraitKey } from '../../src/view/recruitPortrait';
+import {
+  detailPortraitKey,
+  loadoutPortraitKey,
+  recruitPortraitKey,
+} from '../../src/view/recruitPortrait';
 
 describe('portret w oknie KUP', () => {
   it('używa innej dostępnej grafiki dla każdego zestawu broni', () => {
@@ -23,6 +27,28 @@ describe('portret w oknie KUP', () => {
     );
     expect(loadoutPortraitKey({ ...base, primary: 'sniper' })).not.toBe(
       loadoutPortraitKey(base),
+    );
+  });
+
+  it('pokazuje portret wybranej jednostki przy domyślnym zestawie broni', () => {
+    const defaultLoadout = { primary: 'rifle', secondary: 'pistol' } as const;
+
+    expect(detailPortraitKey('tank', defaultLoadout)).toBe(recruitPortraitKey('tank'));
+    expect(detailPortraitKey('scout', defaultLoadout)).toBe(recruitPortraitKey('scout'));
+    expect(detailPortraitKey('helicopter', defaultLoadout)).toBe(
+      recruitPortraitKey('helicopter'),
+    );
+  });
+
+  it('podmienia portret jednostki po wyborze innej broni', () => {
+    const loadout = { primary: 'bazooka', secondary: 'pistol' } as const;
+
+    expect(detailPortraitKey('infantry', loadout)).toBe(loadoutPortraitKey(loadout));
+  });
+
+  it('zwiadowca zawsze pokazuje własny portret', () => {
+    expect(detailPortraitKey('scout', { primary: 'sniper', secondary: 'grenades' })).toBe(
+      recruitPortraitKey('scout'),
     );
   });
 });
