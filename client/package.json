@@ -35,7 +35,7 @@
     "@vitest/coverage-v8": "^5.1.1",
     "dependency-cruiser": "^18.7.2",
     "jscpd": "^5.4.3",
-    "knip": "^6.45.1",
+    "knip": "^6.48.0",
     "typescript": "^7.0.2",
     "vite": "^8.3.8",
     "vitest": "^5.0.5"
